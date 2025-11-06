@@ -1,9 +1,8 @@
 from fastapi import APIRouter, status
-from sqlalchemy import text
 from redis import asyncio as aioredis
 
-from app.database import AsyncSessionLocal
 from app.config import settings
+from app.database import ping_mongo
 
 router = APIRouter()
 
@@ -19,17 +18,16 @@ async def health_check():
         "status": "healthy",
         "service": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "database": "unknown",
+        "mongodb": "unknown",
         "redis": "unknown",
     }
 
-    # Check database connection
+    # Check MongoDB connection
     try:
-        async with AsyncSessionLocal() as session:
-            await session.execute(text("SELECT 1"))
-            health_status["database"] = "healthy"
+        await ping_mongo()
+        health_status["mongodb"] = "healthy"
     except Exception as e:
-        health_status["database"] = f"unhealthy: {str(e)}"
+        health_status["mongodb"] = f"unhealthy: {str(e)}"
         health_status["status"] = "degraded"
 
     # Check Redis connection

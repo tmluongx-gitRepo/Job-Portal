@@ -21,15 +21,18 @@ services:
       dockerfile: Dockerfile.dev
     container_name: job-portal-frontend
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     volumes:
       - ./frontend:/app:cached
       - /app/node_modules
       - /app/.next
+    env_file:
+      - .env
     environment:
-      - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - WATCHPACK_POLLING=true
+      NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+      NEXT_PUBLIC_API_URL: "http://localhost:${BACKEND_PORT:-8000}"
+      NEXT_PUBLIC_BASE_URL: "http://localhost:${FRONTEND_PORT:-3000}"
     networks:
       - job-portal-network
     depends_on:
@@ -43,14 +46,13 @@ services:
       dockerfile: Dockerfile.dev
     container_name: job-portal-backend
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend:/app:cached
+    env_file:
+      - .env
     environment:
-      - PYTHONUNBUFFERED=1
-      - CHROMA_HOST=chromadb
-      - CHROMA_PORT=8001
-      - REDIS_URL=redis://redis:6379/0
+      PYTHONUNBUFFERED: "1"
     networks:
       - job-portal-network
     depends_on:
@@ -63,7 +65,7 @@ services:
     image: chromadb/chroma:latest
     container_name: job-portal-chromadb
     ports:
-      - "8001:8000"
+      - "${CHROMA_EXTERNAL_PORT:-8001}:8000"
     volumes:
       - chroma_data:/chroma/chroma
     environment:
@@ -78,7 +80,7 @@ services:
     image: redis:7-alpine
     container_name: job-portal-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes

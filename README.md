@@ -265,6 +265,8 @@ Job-Portal/
 | ChromaDB   | http://localhost:8001        | job-portal-chromadb     |
 | Redis      | redis://localhost:6379       | job-portal-redis        |
 
+> The backend connects to MongoDB (e.g., MongoDB Atlas). Provide your connection string via `MONGO_URI` in a `.env` file or shell environment before starting the containers.
+
 ## 🔄 Common Commands
 
 ### Stop All Services

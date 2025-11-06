@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     CHROMA_PORT: int = 8000
     CHROMA_COLLECTION_NAME: str = "job_portal"
 
+    # MongoDB
+    MONGO_URI: str = "mongodb://localhost:27017"
+    MONGO_DB_NAME: str = "job_portal"
+
     # Redis
     REDIS_URL: str = "redis://redis:6379/0"
 

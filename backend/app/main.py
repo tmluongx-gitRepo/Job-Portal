@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import health
 from app.config import settings
-from app.database import get_chroma_client
+from app.database import close_mongo_client, get_chroma_client, ping_mongo, ping_redis
 
 
 @asynccontextmanager
@@ -20,12 +20,40 @@ async def lifespan(app: FastAPI):
         print(f"✅ Connected to ChromaDB at {settings.CHROMA_HOST}:{settings.CHROMA_PORT}")
         print(f"✅ ChromaDB heartbeat: {client.heartbeat()}")
     except Exception as e:
-        print(f"⚠️  Failed to connect to ChromaDB: {e}")
+        error_msg = str(e).split("\n")[0] if "\n" in str(e) else str(e)
+        print(f"⚠️  Failed to connect to ChromaDB: {error_msg}")
+
+    # Initialize MongoDB connection
+    try:
+        await ping_mongo()
+        print("✅ Connected to MongoDB")
+    except ConnectionError as e:
+        # User-friendly error for configuration issues
+        print(f"⚠️  MongoDB: {e}")
+    except Exception as e:
+        # Network or other connection errors
+        error_msg = str(e).split(",")[0] if "," in str(e) else str(e)
+        print(f"⚠️  Failed to connect to MongoDB: {error_msg}")
+
+    # Initialize Redis connection
+    try:
+        redis_info = await ping_redis()
+        print(f"✅ Connected to Redis at {settings.REDIS_URL}")
+        print(f"✅ Redis version: {redis_info['version']} ({redis_info['mode']})")
+    except ConnectionError as e:
+        # User-friendly error for configuration issues
+        print(f"⚠️  Redis: {e}")
+    except Exception as e:
+        # Network or other connection errors
+        error_msg = str(e).split("\n")[0] if "\n" in str(e) else str(e)
+        print(f"⚠️  Failed to connect to Redis: {error_msg}")
 
     yield
 
     # Shutdown
     print(f"Shutting down {settings.APP_NAME}")
+
+    close_mongo_client()
 
 
 # Create FastAPI application
