@@ -46,5 +46,5 @@ logs/
 *.sqlite3
 
 # Docker volumes
-postgres_data/
+chroma_data/
 redis_data/

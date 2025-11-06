@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import health
 from app.config import settings
+from app.database import get_chroma_client
 
 
 @asynccontextmanager
@@ -12,7 +13,17 @@ async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
     print(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+
+    # Initialize ChromaDB connection
+    try:
+        client = get_chroma_client()
+        print(f"✅ Connected to ChromaDB at {settings.CHROMA_HOST}:{settings.CHROMA_PORT}")
+        print(f"✅ ChromaDB heartbeat: {client.heartbeat()}")
+    except Exception as e:
+        print(f"⚠️  Failed to connect to ChromaDB: {e}")
+
     yield
+
     # Shutdown
     print(f"Shutting down {settings.APP_NAME}")
 

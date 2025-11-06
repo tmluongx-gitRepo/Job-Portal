@@ -9,9 +9,10 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = True
 
-    # Database
-    # Use asyncpg driver for SQLAlchemy async engine.
-    DATABASE_URL: str = "postgresql+asyncpg://jobportal:jobportal123@postgres:5432/jobportal_db"
+    # ChromaDB Vector Database
+    CHROMA_HOST: str = "chromadb"
+    CHROMA_PORT: int = 8000
+    CHROMA_COLLECTION_NAME: str = "job_portal"
 
     # Redis
     REDIS_URL: str = "redis://redis:6379/0"
