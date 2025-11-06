@@ -1,0 +1,102 @@
+services:
+  # Development environment container (for VSCode connection)
+  devcontainer:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    container_name: job-portal-dev
+    volumes:
+      - .:/workspace:cached
+    command: sleep infinity
+    networks:
+      - job-portal-network
+    depends_on:
+      - chromadb
+      - redis
+
+  # Frontend Next.js application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: job-portal-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./frontend:/app:cached
+      - /app/node_modules
+      - /app/.next
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+      NEXT_PUBLIC_API_URL: "http://localhost:${BACKEND_PORT:-8000}"
+      NEXT_PUBLIC_BASE_URL: "http://localhost:${FRONTEND_PORT:-3000}"
+    networks:
+      - job-portal-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Backend FastAPI application
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: job-portal-backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app:cached
+    env_file:
+      - .env
+    environment:
+      PYTHONUNBUFFERED: "1"
+    networks:
+      - job-portal-network
+    depends_on:
+      - chromadb
+      - redis
+    restart: unless-stopped
+
+  # ChromaDB Vector Database
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: job-portal-chromadb
+    ports:
+      - "${CHROMA_EXTERNAL_PORT:-8001}:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    networks:
+      - job-portal-network
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: job-portal-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - job-portal-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  job-portal-network:
+    driver: bridge
+
+volumes:
+  chroma_data:
+  redis_data:
