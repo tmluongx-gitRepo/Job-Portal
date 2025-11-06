@@ -13,7 +13,7 @@ A full-stack job portal application built with Next.js and FastAPI, fully contai
 **Backend:**
 - FastAPI
 - Python 3.12
-- PostgreSQL
+- ChromaDB (Vector Database)
 - Redis
 
 ## Prerequisites
@@ -29,7 +29,7 @@ Before you start, you need to install:
    - Install Cursor
    - Launch Cursor to make sure it works
 
-**That's it!** No need to install Node, Python, PostgreSQL, or Redis locally. Docker handles everything!
+**That's it!** No need to install Node, Python, ChromaDB, or Redis locally. Docker handles everything!
 
 ---
 
@@ -116,10 +116,10 @@ docker compose up
 ```
 
 **What this does (First Time):**
-- Downloads all necessary Docker images (Node, Python, PostgreSQL, Redis)
+- Downloads all necessary Docker images (Node, Python, ChromaDB, Redis)
 - **Automatically builds** your frontend and backend containers
 - Installs all dependencies (npm packages, Python packages)
-- Starts PostgreSQL database
+- Starts ChromaDB vector database
 - Starts Redis cache
 - Starts all services
 - **Takes 5-10 minutes** (be patient!)
@@ -262,7 +262,7 @@ Job-Portal/
 |------------|------------------------------|-------------------------|
 | Frontend   | http://localhost:3000        | job-portal-frontend     |
 | Backend    | http://localhost:8000        | job-portal-backend      |
-| PostgreSQL | postgresql://localhost:5432  | job-portal-postgres     |
+| ChromaDB   | http://localhost:8001        | job-portal-chromadb     |
 | Redis      | redis://localhost:6379       | job-portal-redis        |
 
 ## 🔄 Common Commands
@@ -297,7 +297,7 @@ docker compose up --build
 ```bash
 docker compose logs frontend    # See frontend logs
 docker compose logs backend     # See backend logs
-docker compose logs postgres    # See database logs
+docker compose logs chromadb    # See database logs
 docker compose logs -f          # Follow all logs in real-time
 ```
 

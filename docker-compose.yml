@@ -11,7 +11,7 @@ services:
     networks:
       - job-portal-network
     depends_on:
-      - postgres
+      - chromadb
       - redis
 
   # Frontend Next.js application
@@ -48,36 +48,29 @@ services:
       - ./backend:/app:cached
     environment:
       - PYTHONUNBUFFERED=1
-      - DATABASE_URL=postgresql+asyncpg://jobportal:jobportal123@postgres:5432/jobportal_db
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8001
       - REDIS_URL=redis://redis:6379/0
     networks:
       - job-portal-network
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - chromadb
+      - redis
     restart: unless-stopped
 
-  # PostgreSQL Database
-  postgres:
-    image: postgres:16-alpine
-    container_name: job-portal-postgres
+  # ChromaDB Vector Database
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: job-portal-chromadb
     ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_USER=jobportal
-      - POSTGRES_PASSWORD=jobportal123
-      - POSTGRES_DB=jobportal_db
+      - "8001:8000"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
     networks:
       - job-portal-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jobportal -d jobportal_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     restart: unless-stopped
 
   # Redis Cache
@@ -103,5 +96,5 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
+  chroma_data:
   redis_data:
