@@ -20,6 +20,14 @@ from app.schemas.employer import (
     EmployerProfileUpdate,
     EmployerProfileResponse,
 )
+from app.schemas.recommendation import (
+    MatchFactorSchema,
+    RecommendationBase,
+    RecommendationCreate,
+    RecommendationUpdate,
+    RecommendationResponse,
+    RecommendationWithDetails,
+)
 
 __all__ = [
     # User schemas
@@ -49,4 +57,11 @@ __all__ = [
     "EmployerProfileCreate",
     "EmployerProfileUpdate",
     "EmployerProfileResponse",
+    # Recommendation schemas
+    "MatchFactorSchema",
+    "RecommendationBase",
+    "RecommendationCreate",
+    "RecommendationUpdate",
+    "RecommendationResponse",
+    "RecommendationWithDetails",
 ]

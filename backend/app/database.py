@@ -137,3 +137,9 @@ def get_applications_collection():
     """Get applications collection from MongoDB."""
     db = get_mongo_database()
     return db["applications"]
+
+
+def get_recommendations_collection():
+    """Get recommendations collection from MongoDB."""
+    db = get_mongo_database()
+    return db["recommendations"]
