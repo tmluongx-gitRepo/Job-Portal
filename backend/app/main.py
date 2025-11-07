@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health
+from app.api.routes import health, users
 from app.config import settings
 from app.database import close_mongo_client, get_chroma_client, ping_mongo, ping_redis
 
@@ -75,6 +75,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router, tags=["Health"])
+app.include_router(users.router, prefix="/api/users", tags=["Users"])
 
 
 @app.get("/")

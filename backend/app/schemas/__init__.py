@@ -1,12 +1,5 @@
 from app.schemas.user import UserBase, UserCreate, UserUpdate, UserResponse
 from app.schemas.job import JobBase, JobCreate, JobUpdate, JobResponse
-from app.schemas.job_seeker import (
-    JobSeekerPreferencesSchema,
-    JobSeekerProfileBase,
-    JobSeekerProfileCreate,
-    JobSeekerProfileUpdate,
-    JobSeekerProfileResponse,
-)
 from app.schemas.application import (
     StatusHistoryEntrySchema,
     ApplicationBase,
@@ -32,12 +25,6 @@ __all__ = [
     "JobCreate",
     "JobUpdate",
     "JobResponse",
-    # Job Seeker schemas
-    "JobSeekerPreferencesSchema",
-    "JobSeekerProfileBase",
-    "JobSeekerProfileCreate",
-    "JobSeekerProfileUpdate",
-    "JobSeekerProfileResponse",
     # Application schemas
     "StatusHistoryEntrySchema",
     "ApplicationBase",

@@ -106,3 +106,10 @@ async def ping_redis() -> dict:
         }
     finally:
         await redis.aclose()
+
+
+# MongoDB Collection Helpers
+def get_users_collection():
+    """Get users collection from MongoDB."""
+    db = get_mongo_database()
+    return db["users"]
