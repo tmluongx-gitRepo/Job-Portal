@@ -113,3 +113,9 @@ def get_users_collection():
     """Get users collection from MongoDB."""
     db = get_mongo_database()
     return db["users"]
+
+
+def get_job_seeker_profiles_collection():
+    """Get job_seeker_profiles collection from MongoDB."""
+    db = get_mongo_database()
+    return db["job_seeker_profiles"]
