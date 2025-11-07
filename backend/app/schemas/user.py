@@ -3,30 +3,25 @@ from pydantic import BaseModel, EmailStr, ConfigDict
 
 
 class UserBase(BaseModel):
-    """Base user schema."""
+    """Base user schema"""
     email: EmailStr
-    username: str
-    full_name: str | None = None
+    account_type: str = "job_seeker"  # or "employer"
 
 
 class UserCreate(UserBase):
-    """Schema for creating a user."""
-    password: str
+    """Schema for creating a user"""
+    pass
 
 
 class UserUpdate(BaseModel):
-    """Schema for updating a user."""
+    """Schema for updating a user"""
     email: EmailStr | None = None
-    username: str | None = None
-    full_name: str | None = None
-    password: str | None = None
+    account_type: str | None = None
 
 
 class UserResponse(UserBase):
-    """Schema for user response."""
-    id: int
-    is_active: bool
-    is_superuser: bool
+    """Schema for user response"""
+    id: str
     created_at: datetime
     updated_at: datetime
 
