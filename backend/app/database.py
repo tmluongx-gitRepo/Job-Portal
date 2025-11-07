@@ -125,3 +125,15 @@ def get_employer_profiles_collection():
     """Get employer_profiles collection from MongoDB."""
     db = get_mongo_database()
     return db["employer_profiles"]
+
+
+def get_jobs_collection():
+    """Get jobs collection from MongoDB."""
+    db = get_mongo_database()
+    return db["jobs"]
+
+
+def get_applications_collection():
+    """Get applications collection from MongoDB."""
+    db = get_mongo_database()
+    return db["applications"]
