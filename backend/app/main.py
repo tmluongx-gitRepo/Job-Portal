@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health, users, job_seeker_profiles
+from app.api.routes import health, users, job_seeker_profiles, employer_profiles
 from app.config import settings
 from app.database import close_mongo_client, get_chroma_client, ping_mongo, ping_redis
 
@@ -77,6 +77,7 @@ app.add_middleware(
 app.include_router(health.router, tags=["Health"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(job_seeker_profiles.router, prefix="/api/job-seeker-profiles", tags=["Job Seeker Profiles"])
+app.include_router(employer_profiles.router, prefix="/api/employer-profiles", tags=["Employer Profiles"])
 
 
 @app.get("/")

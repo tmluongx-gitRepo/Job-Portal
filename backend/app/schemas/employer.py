@@ -38,6 +38,7 @@ class EmployerProfileUpdate(BaseModel):
     contact_phone: str | None = None
     benefits_offered: List[str] | None = None
     company_culture: str | None = None
+    verified: bool | None = None
 
 
 class EmployerProfileResponse(EmployerProfileBase):
