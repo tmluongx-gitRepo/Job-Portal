@@ -50,25 +50,8 @@
     }
   },
 
-  "forwardPorts": [3000, 8000, 5432, 6379],
-  "portsAttributes": {
-    "3000": {
-      "label": "Frontend",
-      "onAutoForward": "notify"
-    },
-    "8000": {
-      "label": "Backend API",
-      "onAutoForward": "notify"
-    },
-    "5432": {
-      "label": "PostgreSQL",
-      "onAutoForward": "silent"
-    },
-    "6379": {
-      "label": "Redis",
-      "onAutoForward": "silent"
-    }
-  },
+  // Ports are already exposed via docker-compose.yml
+  "forwardPorts": [],
 
   "postCreateCommand": "echo '✅ Dev container ready! Run: docker compose up to start services'",
 
