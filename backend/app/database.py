@@ -106,3 +106,40 @@ async def ping_redis() -> dict:
         }
     finally:
         await redis.aclose()
+
+
+# MongoDB Collection Helpers
+def get_users_collection():
+    """Get users collection from MongoDB."""
+    db = get_mongo_database()
+    return db["users"]
+
+
+def get_job_seeker_profiles_collection():
+    """Get job_seeker_profiles collection from MongoDB."""
+    db = get_mongo_database()
+    return db["job_seeker_profiles"]
+
+
+def get_employer_profiles_collection():
+    """Get employer_profiles collection from MongoDB."""
+    db = get_mongo_database()
+    return db["employer_profiles"]
+
+
+def get_jobs_collection():
+    """Get jobs collection from MongoDB."""
+    db = get_mongo_database()
+    return db["jobs"]
+
+
+def get_applications_collection():
+    """Get applications collection from MongoDB."""
+    db = get_mongo_database()
+    return db["applications"]
+
+
+def get_recommendations_collection():
+    """Get recommendations collection from MongoDB."""
+    db = get_mongo_database()
+    return db["recommendations"]
