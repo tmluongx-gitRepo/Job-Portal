@@ -49,5 +49,5 @@ logs/
 chroma_data/
 redis_data/
 
-# Local automation scripts
-n8n_pr_review_agent/
+# AI Example Files
+ai-mockups/
