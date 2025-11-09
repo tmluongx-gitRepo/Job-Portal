@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 declare module "zod" {
   const z: any;
 
@@ -29,7 +32,9 @@ declare module "clsx" {
 }
 
 declare module "tailwind-merge" {
-  export function twMerge(...classLists: Array<string | undefined | null | false>): string;
+  export function twMerge(
+    ...classLists: Array<string | undefined | null | false>
+  ): string;
   export default twMerge;
 }
 
@@ -45,4 +50,3 @@ declare module "tailwindcss" {
 declare const process: {
   env: Record<string, string | undefined>;
 };
-

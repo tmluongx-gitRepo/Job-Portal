@@ -1,0 +1,34 @@
+#!/usr/bin/env sh
+set -e
+
+if ! command -v gh >/dev/null 2>&1; then
+  cat <<'EOF'
+⚠️ GitHub CLI (gh) is not installed in this environment.
+   Install it or run pushes from a machine that has the GitHub CLI available.
+EOF
+  exit 1
+fi
+
+while ! gh auth status >/dev/null 2>&1; do
+  echo "🔐 GitHub CLI not authenticated. Launching browser-based login..."
+  gh auth login --web --git-protocol https --skip-ssh-key
+done
+
+gh auth setup-git >/dev/null 2>&1 || true
+
+ensure_https_remote() {
+  current_remote=$(git remote get-url origin 2>/dev/null || echo "")
+  case "$current_remote" in
+    git@github.com:*)
+      repo_path=${current_remote#git@github.com:}
+      repo_path=${repo_path%.git}
+      new_remote="https://github.com/${repo_path}.git"
+      echo "🔁 Switching origin remote to HTTPS ($new_remote)..."
+      git remote set-url origin "$new_remote"
+      ;;
+  esac
+}
+
+ensure_https_remote
+
+command git push "$@"

@@ -8,6 +8,19 @@ set -e
 
 echo "🚀 Running pre-push validation..."
 
+# Ensure GitHub CLI authentication if available
+if command -v gh >/dev/null 2>&1; then
+    gh auth status || {
+        cat <<'EOF'
+❌ GitHub CLI is not authenticated.
+   Please run the following inside your devcontainer (once per machine):
+     gh auth login --web --git-protocol ssh
+     gh auth setup-git
+EOF
+        exit 1
+    }
+fi
+
 # Get current branch name
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 

@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 declare module "react" {
   export type Key = string | number;
 
@@ -9,10 +12,16 @@ declare module "react" {
     type: T;
     props: P;
     key: Key | null;
+    children?: ReactNode;
+  }
+
+  export interface ReactPortal extends ReactElement {
+    children: ReactNode;
   }
 
   export type ReactNode =
     | ReactElement
+    | ReactPortal
     | string
     | number
     | boolean
@@ -47,7 +56,25 @@ declare module "react/jsx-runtime" {
 
 declare global {
   namespace React {
-    export type ReactNode = import("react").ReactNode;
+    export type ReactNode =
+      | import("react").ReactElement
+      | string
+      | number
+      | boolean
+      | null
+      | undefined
+      | Iterable<ReactNode>;
+    export type Key = string | number;
+    export type ReactElement<P = any, T = any> = import("react").ReactElement<
+      P,
+      T
+    >;
+    export interface ReactPortal {
+      key: string | null;
+      children: ReactNode;
+      type: any;
+      props: any;
+    }
   }
 
   namespace JSX {
@@ -58,4 +85,3 @@ declare global {
     }
   }
 }
-
