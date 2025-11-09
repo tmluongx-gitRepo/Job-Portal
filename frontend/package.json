@@ -15,8 +15,8 @@
     "lint": "next lint --max-warnings=0",
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format": "bunx prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "bunx prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "prepare": "cd .. && husky"
   },
   "dependencies": {
