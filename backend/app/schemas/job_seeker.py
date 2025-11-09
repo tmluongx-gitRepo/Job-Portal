@@ -1,14 +1,15 @@
 """
 Job Seeker Profile schemas.
 """
+
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, ConfigDict
-
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class JobSeekerPreferencesSchema(BaseModel):
     """Job seeker preferences schema"""
+
     desired_salary_min: int | None = None
     desired_salary_max: int | None = None
     job_types: list[str] = []  # ["Full-time", "Part-time", "Contract"]
@@ -21,6 +22,7 @@ class JobSeekerPreferencesSchema(BaseModel):
 
 class JobSeekerProfileBase(BaseModel):
     """Base job seeker profile schema"""
+
     first_name: str
     last_name: str
     email: EmailStr
@@ -37,11 +39,13 @@ class JobSeekerProfileBase(BaseModel):
 
 class JobSeekerProfileCreate(JobSeekerProfileBase):
     """Schema for creating a job seeker profile"""
+
     user_id: str  # Links to the user account
 
 
 class JobSeekerProfileUpdate(BaseModel):
     """Schema for updating a job seeker profile"""
+
     first_name: str | None = None
     last_name: str | None = None
     email: EmailStr | None = None
@@ -58,6 +62,7 @@ class JobSeekerProfileUpdate(BaseModel):
 
 class JobSeekerProfileResponse(JobSeekerProfileBase):
     """Schema for job seeker profile response"""
+
     id: str
     user_id: str
     profile_views: int = 0
@@ -66,4 +71,3 @@ class JobSeekerProfileResponse(JobSeekerProfileBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-

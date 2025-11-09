@@ -1,12 +1,11 @@
 """
 User API routes.
 """
+
 from fastapi import APIRouter, HTTPException, status
 
-
-from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.crud import user as user_crud
-
+from app.schemas.user import UserCreate, UserResponse, UserUpdate
 
 router = APIRouter()
 
@@ -15,10 +14,7 @@ router = APIRouter()
 async def create_user(user: UserCreate):
     """Create a new user."""
     try:
-        created_user = await user_crud.create_user(
-            email=user.email,
-            account_type=user.account_type
-        )
+        created_user = await user_crud.create_user(email=user.email, account_type=user.account_type)
 
         # Convert ObjectId to string for response
         return UserResponse(
@@ -26,10 +22,10 @@ async def create_user(user: UserCreate):
             email=created_user["email"],
             account_type=created_user["account_type"],
             created_at=created_user["created_at"],
-            updated_at=created_user["updated_at"]
+            updated_at=created_user["updated_at"],
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("", response_model=list[UserResponse])
@@ -43,7 +39,7 @@ async def get_users(skip: int = 0, limit: int = 100):
             email=user["email"],
             account_type=user["account_type"],
             created_at=user["created_at"],
-            updated_at=user["updated_at"]
+            updated_at=user["updated_at"],
         )
         for user in users
     ]
@@ -62,7 +58,7 @@ async def get_user(user_id: str):
         email=user["email"],
         account_type=user["account_type"],
         created_at=user["created_at"],
-        updated_at=user["updated_at"]
+        updated_at=user["updated_at"],
     )
 
 
@@ -79,7 +75,7 @@ async def get_user_by_email(email: str):
         email=user["email"],
         account_type=user["account_type"],
         created_at=user["created_at"],
-        updated_at=user["updated_at"]
+        updated_at=user["updated_at"],
     )
 
 
@@ -102,7 +98,7 @@ async def update_user(user_id: str, user_update: UserUpdate):
         email=updated_user["email"],
         account_type=updated_user["account_type"],
         created_at=updated_user["created_at"],
-        updated_at=updated_user["updated_at"]
+        updated_at=updated_user["updated_at"],
     )
 
 
@@ -113,5 +109,3 @@ async def delete_user(user_id: str):
 
     if not deleted:
         raise HTTPException(status_code=404, detail="User not found")
-
-

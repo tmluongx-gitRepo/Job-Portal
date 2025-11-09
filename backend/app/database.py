@@ -1,5 +1,3 @@
-
-
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
@@ -24,7 +22,7 @@ def get_chroma_client() -> chromadb.ClientAPI:
             port=settings.CHROMA_PORT,
             settings=ChromaSettings(
                 anonymized_telemetry=False,
-            )
+            ),
         )
 
     return _chroma_client
@@ -35,10 +33,7 @@ def get_collection(collection_name: str | None = None):
     client = get_chroma_client()
     collection_name = collection_name or settings.CHROMA_COLLECTION_NAME
 
-    return client.get_or_create_collection(
-        name=collection_name,
-        metadata={"hnsw:space": "cosine"}
-    )
+    return client.get_or_create_collection(name=collection_name, metadata={"hnsw:space": "cosine"})
 
 
 def get_mongo_client() -> AsyncIOMotorClient:

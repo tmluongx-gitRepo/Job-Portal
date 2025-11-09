@@ -1,9 +1,8 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from bson import ObjectId
 
 from app.database import get_applications_collection
-
 
 
 async def create_application(application_data: dict, job_seeker_id: str) -> dict:
@@ -19,7 +18,7 @@ async def create_application(application_data: dict, job_seeker_id: str) -> dict
     """
     collection = get_applications_collection()
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     # Create status history entry
     initial_status = "Application Submitted"
@@ -27,7 +26,7 @@ async def create_application(application_data: dict, job_seeker_id: str) -> dict
         "status": initial_status,
         "changed_at": now,
         "notes": "Application submitted",
-        "changed_by": job_seeker_id
+        "changed_by": job_seeker_id,
     }
 
     application_doc = {
@@ -74,7 +73,7 @@ async def get_applications(
     limit: int = 100,
     job_seeker_id: str | None = None,
     job_id: str | None = None,
-    status: str | None = None
+    status: str | None = None,
 ) -> list[dict]:
     """
     Get a list of applications with optional filters.
@@ -100,15 +99,11 @@ async def get_applications(
         query["status"] = status
 
     cursor = collection.find(query).skip(skip).limit(limit).sort("applied_date", -1)
-    applications = await cursor.to_list(length=limit)
-
-    return applications
+    return await cursor.to_list(length=limit)
 
 
 async def update_application(
-    application_id: str,
-    update_data: dict,
-    changed_by: str | None = None
+    application_id: str, update_data: dict, changed_by: str | None = None
 ) -> dict | None:
     """
     Update an application.
@@ -138,31 +133,26 @@ async def update_application(
     if not update_data:
         return current_app
 
-    update_data["updated_at"] = datetime.utcnow()
+    update_data["updated_at"] = datetime.now(UTC)
 
     # If status is being changed, add to status history
     if "status" in update_data and update_data["status"] != current_app.get("status"):
         new_status_entry = {
             "status": update_data["status"],
-            "changed_at": datetime.utcnow(),
+            "changed_at": datetime.now(UTC),
             "notes": update_data.get("notes", "Status changed"),
-            "changed_by": changed_by or "system"
+            "changed_by": changed_by or "system",
         }
 
         # Add to status history
         result = await collection.find_one_and_update(
             {"_id": object_id},
-            {
-                "$set": update_data,
-                "$push": {"status_history": new_status_entry}
-            },
-            return_document=True
+            {"$set": update_data, "$push": {"status_history": new_status_entry}},
+            return_document=True,
         )
     else:
         result = await collection.find_one_and_update(
-            {"_id": object_id},
-            {"$set": update_data},
-            return_document=True
+            {"_id": object_id}, {"$set": update_data}, return_document=True
         )
 
     return result
@@ -190,9 +180,7 @@ async def delete_application(application_id: str) -> bool:
 
 
 async def get_applications_count(
-    job_seeker_id: str | None = None,
-    job_id: str | None = None,
-    status: str | None = None
+    job_seeker_id: str | None = None, job_id: str | None = None, status: str | None = None
 ) -> int:
     """
     Get the total count of applications.
@@ -231,10 +219,6 @@ async def check_duplicate_application(job_seeker_id: str, job_id: str) -> bool:
     """
     collection = get_applications_collection()
 
-    existing = await collection.find_one({
-        "job_seeker_id": job_seeker_id,
-        "job_id": job_id
-    })
+    existing = await collection.find_one({"job_seeker_id": job_seeker_id, "job_id": job_id})
 
     return existing is not None
-

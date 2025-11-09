@@ -1,9 +1,8 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from bson import ObjectId
 
 from app.database import get_jobs_collection
-
 
 
 async def create_job(job_data: dict, posted_by: str | None = None) -> dict:
@@ -25,8 +24,8 @@ async def create_job(job_data: dict, posted_by: str | None = None) -> dict:
         "is_active": True,
         "view_count": 0,
         "application_count": 0,
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC),
     }
 
     result = await collection.insert_one(job_doc)
@@ -56,9 +55,7 @@ async def get_job_by_id(job_id: str, increment_views: bool = False) -> dict | No
     if increment_views:
         # Increment view count and return updated document
         job = await collection.find_one_and_update(
-            {"_id": object_id},
-            {"$inc": {"view_count": 1}},
-            return_document=True
+            {"_id": object_id}, {"$inc": {"view_count": 1}}, return_document=True
         )
     else:
         job = await collection.find_one({"_id": object_id})
@@ -67,10 +64,7 @@ async def get_job_by_id(job_id: str, increment_views: bool = False) -> dict | No
 
 
 async def get_jobs(
-    skip: int = 0,
-    limit: int = 100,
-    is_active: bool | None = None,
-    posted_by: str | None = None
+    skip: int = 0, limit: int = 100, is_active: bool | None = None, posted_by: str | None = None
 ) -> list[dict]:
     """
     Get a list of jobs with optional filters.
@@ -93,9 +87,7 @@ async def get_jobs(
         query["posted_by"] = posted_by
 
     cursor = collection.find(query).skip(skip).limit(limit).sort("created_at", -1)
-    jobs = await cursor.to_list(length=limit)
-
-    return jobs
+    return await cursor.to_list(length=limit)
 
 
 async def search_jobs(
@@ -103,7 +95,7 @@ async def search_jobs(
     location: str | None = None,
     job_type: str | None = None,
     remote_ok: bool | None = None,
-    skills: list[str | None] = None,
+    skills: list[str | None] | None = None,
     min_salary: int | None = None,
     max_salary: int | None = None,
     experience_required: str | None = None,
@@ -111,7 +103,7 @@ async def search_jobs(
     company_size: str | None = None,
     is_active: bool = True,
     skip: int = 0,
-    limit: int = 100
+    limit: int = 100,
 ) -> list[dict]:
     """
     Search for jobs with multiple filters.
@@ -181,9 +173,7 @@ async def search_jobs(
         filters["company_size"] = company_size
 
     cursor = collection.find(filters).skip(skip).limit(limit).sort("created_at", -1)
-    jobs = await cursor.to_list(length=limit)
-
-    return jobs
+    return await cursor.to_list(length=limit)
 
 
 async def update_job(job_id: str, update_data: dict) -> dict | None:
@@ -209,15 +199,11 @@ async def update_job(job_id: str, update_data: dict) -> dict | None:
     if not update_data:
         return await get_job_by_id(job_id)
 
-    update_data["updated_at"] = datetime.utcnow()
+    update_data["updated_at"] = datetime.now(UTC)
 
-    result = await collection.find_one_and_update(
-        {"_id": object_id},
-        {"$set": update_data},
-        return_document=True
+    return await collection.find_one_and_update(
+        {"_id": object_id}, {"$set": update_data}, return_document=True
     )
-
-    return result
 
 
 async def increment_application_count(job_id: str) -> bool:
@@ -237,10 +223,7 @@ async def increment_application_count(job_id: str) -> bool:
     except Exception:
         return False
 
-    result = await collection.update_one(
-        {"_id": object_id},
-        {"$inc": {"application_count": 1}}
-    )
+    result = await collection.update_one({"_id": object_id}, {"$inc": {"application_count": 1}})
 
     return result.modified_count > 0
 
@@ -286,4 +269,3 @@ async def get_jobs_count(is_active: bool | None = None, posted_by: str | None = 
         query["posted_by"] = posted_by
 
     return await collection.count_documents(query)
-

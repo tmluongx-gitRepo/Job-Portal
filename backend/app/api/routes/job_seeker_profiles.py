@@ -1,16 +1,15 @@
 """
 Job Seeker Profile API routes.
 """
-from fastapi import APIRouter, HTTPException, status, Query
 
+from fastapi import APIRouter, HTTPException, Query, status
 
+from app.crud import job_seeker_profile as profile_crud
 from app.schemas.job_seeker import (
     JobSeekerProfileCreate,
+    JobSeekerProfileResponse,
     JobSeekerProfileUpdate,
-    JobSeekerProfileResponse
 )
-from app.crud import job_seeker_profile as profile_crud
-
 
 router = APIRouter()
 
@@ -23,8 +22,7 @@ async def create_profile(profile: JobSeekerProfileCreate):
         profile_data = profile.model_dump(exclude={"user_id"}, exclude_none=True)
 
         created_profile = await profile_crud.create_profile(
-            user_id=profile.user_id,
-            profile_data=profile_data
+            user_id=profile.user_id, profile_data=profile_data
         )
 
         return JobSeekerProfileResponse(
@@ -33,7 +31,7 @@ async def create_profile(profile: JobSeekerProfileCreate):
             **{k: v for k, v in created_profile.items() if k not in ["_id", "user_id"]},
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("", response_model=list[JobSeekerProfileResponse])
@@ -58,7 +56,7 @@ async def search_profiles(
     min_experience: int = Query(None, ge=0, description="Minimum years of experience"),
     max_experience: int = Query(None, ge=0, description="Maximum years of experience"),
     skip: int = 0,
-    limit: int = 100
+    limit: int = 100,
 ):
     """Search job seeker profiles by criteria."""
     profiles = await profile_crud.search_profiles(
@@ -67,7 +65,7 @@ async def search_profiles(
         min_experience=min_experience,
         max_experience=max_experience,
         skip=skip,
-        limit=limit
+        limit=limit,
     )
 
     return [
@@ -143,5 +141,3 @@ async def delete_profile(profile_id: str):
 
     if not deleted:
         raise HTTPException(status_code=404, detail="Profile not found")
-
-

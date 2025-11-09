@@ -3,9 +3,9 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 
-
 class JobBase(BaseModel):
     """Base job schema"""
+
     title: str
     company: str
     description: str
@@ -31,6 +31,7 @@ class JobCreate(JobBase):
 
 class JobUpdate(BaseModel):
     """Schema for updating a job"""
+
     title: str | None = None
     company: str | None = None
     description: str | None = None
@@ -53,6 +54,7 @@ class JobUpdate(BaseModel):
 
 class JobResponse(JobBase):
     """Schema for job response"""
+
     id: str
     is_active: bool = True
     view_count: int = 0

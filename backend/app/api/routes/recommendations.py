@@ -8,10 +8,9 @@ from app.crud import job as job_crud
 from app.crud import job_seeker_profile as profile_crud
 from app.crud import recommendation as recommendation_crud
 from app.schemas.recommendation import (
-
     RecommendationCreate,
+    RecommendationResponse,
     RecommendationUpdate,
-    RecommendationResponse
 )
 
 router = APIRouter()
@@ -35,26 +34,24 @@ async def create_recommendation(recommendation: RecommendationCreate):
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job seeker profile {recommendation.job_seeker_id} not found"
+            detail=f"Job seeker profile {recommendation.job_seeker_id} not found",
         )
 
     # Verify job exists
     job = await job_crud.get_job_by_id(recommendation.job_id)
     if not job:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job {recommendation.job_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Job {recommendation.job_id} not found"
         )
 
     # Check if recommendation already exists
     exists = await recommendation_crud.check_recommendation_exists(
-        recommendation.job_seeker_id,
-        recommendation.job_id
+        recommendation.job_seeker_id, recommendation.job_id
     )
     if exists:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Recommendation already exists for this job seeker and job"
+            detail="Recommendation already exists for this job seeker and job",
         )
 
     # Create recommendation
@@ -63,7 +60,7 @@ async def create_recommendation(recommendation: RecommendationCreate):
 
     return RecommendationResponse(
         id=str(created_recommendation["_id"]),
-        **{k: v for k, v in created_recommendation.items() if k != "_id"}
+        **{k: v for k, v in created_recommendation.items() if k != "_id"},
     )
 
 
@@ -75,7 +72,7 @@ async def get_recommendations_for_job_seeker(
     min_match: int = Query(0, ge=0, le=100, description="Minimum match percentage"),
     include_viewed: bool = Query(True, description="Include viewed recommendations"),
     include_dismissed: bool = Query(False, description="Include dismissed recommendations"),
-    include_applied: bool = Query(False, description="Include applied recommendations")
+    include_applied: bool = Query(False, description="Include applied recommendations"),
 ):
     """
     Get personalized job recommendations for a job seeker.
@@ -95,32 +92,34 @@ async def get_recommendations_for_job_seeker(
         min_match_percentage=min_match,
         include_viewed=include_viewed,
         include_dismissed=include_dismissed,
-        include_applied=include_applied
+        include_applied=include_applied,
     )
 
     # Format response with job details
     response = []
     for rec in recommendations:
         job_details = rec.pop("job_details", {})
-        response.append({
-            "id": str(rec["_id"]),
-            "job_seeker_id": rec["job_seeker_id"],
-            "job_id": rec["job_id"],
-            "match_percentage": rec["match_percentage"],
-            "reasoning": rec["reasoning"],
-            "factors": rec["factors"],
-            "ai_generated": rec.get("ai_generated", True),
-            "viewed": rec.get("viewed", False),
-            "dismissed": rec.get("dismissed", False),
-            "applied": rec.get("applied", False),
-            "created_at": rec["created_at"],
-            "job_title": job_details.get("title"),
-            "job_company": job_details.get("company"),
-            "job_location": job_details.get("location"),
-            "job_salary_min": job_details.get("salary_min"),
-            "job_salary_max": job_details.get("salary_max"),
-            "job_type": job_details.get("job_type"),
-        })
+        response.append(
+            {
+                "id": str(rec["_id"]),
+                "job_seeker_id": rec["job_seeker_id"],
+                "job_id": rec["job_id"],
+                "match_percentage": rec["match_percentage"],
+                "reasoning": rec["reasoning"],
+                "factors": rec["factors"],
+                "ai_generated": rec.get("ai_generated", True),
+                "viewed": rec.get("viewed", False),
+                "dismissed": rec.get("dismissed", False),
+                "applied": rec.get("applied", False),
+                "created_at": rec["created_at"],
+                "job_title": job_details.get("title"),
+                "job_company": job_details.get("company"),
+                "job_location": job_details.get("location"),
+                "job_salary_min": job_details.get("salary_min"),
+                "job_salary_max": job_details.get("salary_max"),
+                "job_type": job_details.get("job_type"),
+            }
+        )
 
     return response
 
@@ -130,7 +129,7 @@ async def get_matching_candidates_for_job(
     job_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
-    min_match: int = Query(70, ge=0, le=100, description="Minimum match percentage")
+    min_match: int = Query(70, ge=0, le=100, description="Minimum match percentage"),
 ):
     """
     Get recommended candidates for a specific job (for employers).
@@ -141,28 +140,27 @@ async def get_matching_candidates_for_job(
     Returns top matching candidates sorted by match percentage.
     """
     recommendations = await recommendation_crud.get_recommendations_for_job(
-        job_id=job_id,
-        skip=skip,
-        limit=limit,
-        min_match_percentage=min_match
+        job_id=job_id, skip=skip, limit=limit, min_match_percentage=min_match
     )
 
     # Format response
     response = []
     for rec in recommendations:
         seeker_details = rec.pop("seeker_details", {})
-        response.append({
-            "id": str(rec["_id"]),
-            "job_seeker_id": rec["job_seeker_id"],
-            "match_percentage": rec["match_percentage"],
-            "reasoning": rec["reasoning"],
-            "factors": rec["factors"],
-            "seeker_name": seeker_details.get("name"),
-            "seeker_skills": seeker_details.get("skills", []),
-            "seeker_experience_years": seeker_details.get("experience_years"),
-            "seeker_location": seeker_details.get("location"),
-            "created_at": rec["created_at"],
-        })
+        response.append(
+            {
+                "id": str(rec["_id"]),
+                "job_seeker_id": rec["job_seeker_id"],
+                "match_percentage": rec["match_percentage"],
+                "reasoning": rec["reasoning"],
+                "factors": rec["factors"],
+                "seeker_name": seeker_details.get("name"),
+                "seeker_skills": seeker_details.get("skills", []),
+                "seeker_experience_years": seeker_details.get("experience_years"),
+                "seeker_location": seeker_details.get("location"),
+                "created_at": rec["created_at"],
+            }
+        )
 
     return response
 
@@ -171,7 +169,7 @@ async def get_matching_candidates_for_job(
 async def count_recommendations(
     job_seeker_id: str,
     viewed: bool | None = Query(None, description="Filter by viewed status"),
-    dismissed: bool | None = Query(None, description="Filter by dismissed status")
+    dismissed: bool | None = Query(None, description="Filter by dismissed status"),
 ):
     """
     Get count of recommendations for a job seeker.
@@ -179,9 +177,7 @@ async def count_recommendations(
     Useful for showing notification badges like "3 new recommendations!"
     """
     count = await recommendation_crud.get_recommendations_count(
-        job_seeker_id=job_seeker_id,
-        viewed=viewed,
-        dismissed=dismissed
+        job_seeker_id=job_seeker_id, viewed=viewed, dismissed=dismissed
     )
     return {"count": count}
 
@@ -196,19 +192,17 @@ async def get_recommendation(recommendation_id: str):
     if not recommendation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Recommendation {recommendation_id} not found"
+            detail=f"Recommendation {recommendation_id} not found",
         )
 
     return RecommendationResponse(
-        id=str(recommendation["_id"]),
-        **{k: v for k, v in recommendation.items() if k != "_id"}
+        id=str(recommendation["_id"]), **{k: v for k, v in recommendation.items() if k != "_id"}
     )
 
 
 @router.put("/{recommendation_id}", response_model=RecommendationResponse)
 async def update_recommendation(
-    recommendation_id: str,
-    recommendation_update: RecommendationUpdate
+    recommendation_id: str, recommendation_update: RecommendationUpdate
 ):
     """
     Update a recommendation (mark as viewed, dismissed, or applied).
@@ -222,7 +216,7 @@ async def update_recommendation(
     if not existing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Recommendation {recommendation_id} not found"
+            detail=f"Recommendation {recommendation_id} not found",
         )
 
     # Update
@@ -232,12 +226,11 @@ async def update_recommendation(
     if not updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Recommendation {recommendation_id} not found"
+            detail=f"Recommendation {recommendation_id} not found",
         )
 
     return RecommendationResponse(
-        id=str(updated["_id"]),
-        **{k: v for k, v in updated.items() if k != "_id"}
+        id=str(updated["_id"]), **{k: v for k, v in updated.items() if k != "_id"}
     )
 
 
@@ -253,7 +246,7 @@ async def mark_recommendation_viewed(recommendation_id: str):
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Recommendation {recommendation_id} not found"
+            detail=f"Recommendation {recommendation_id} not found",
         )
 
     return {"message": "Marked as viewed"}
@@ -269,7 +262,7 @@ async def dismiss_recommendation(recommendation_id: str):
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Recommendation {recommendation_id} not found"
+            detail=f"Recommendation {recommendation_id} not found",
         )
 
     return {"message": "Recommendation dismissed"}
@@ -285,7 +278,5 @@ async def delete_recommendation(recommendation_id: str):
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Recommendation {recommendation_id} not found"
+            detail=f"Recommendation {recommendation_id} not found",
         )
-
-

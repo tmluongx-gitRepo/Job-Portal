@@ -1,12 +1,12 @@
 """
 CRUD operations for Job Seeker Profile model.
 """
-from datetime import datetime
+
+from datetime import UTC, datetime
 
 from bson import ObjectId
 
 from app.database import get_job_seeker_profiles_collection
-
 
 
 async def create_profile(user_id: str, profile_data: dict) -> dict:
@@ -22,8 +22,8 @@ async def create_profile(user_id: str, profile_data: dict) -> dict:
         "user_id": ObjectId(user_id),
         **profile_data,
         "profile_views": 0,
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC),
     }
 
     result = await collection.insert_one(profile_doc)
@@ -36,8 +36,7 @@ async def get_profile_by_id(profile_id: str) -> dict | None:
     collection = get_job_seeker_profiles_collection()
 
     try:
-        profile = await collection.find_one({"_id": ObjectId(profile_id)})
-        return profile
+        return await collection.find_one({"_id": ObjectId(profile_id)})
     except Exception:
         return None
 
@@ -47,8 +46,7 @@ async def get_profile_by_user_id(user_id: str) -> dict | None:
     collection = get_job_seeker_profiles_collection()
 
     try:
-        profile = await collection.find_one({"user_id": ObjectId(user_id)})
-        return profile
+        return await collection.find_one({"user_id": ObjectId(user_id)})
     except Exception:
         return None
 
@@ -68,7 +66,7 @@ async def search_profiles(
     min_experience: int | None = None,
     max_experience: int | None = None,
     skip: int = 0,
-    limit: int = 100
+    limit: int = 100,
 ) -> list[dict]:
     """Search profiles with various criteria."""
     collection = get_job_seeker_profiles_collection()
@@ -99,15 +97,12 @@ async def update_profile(profile_id: str, update_data: dict) -> dict | None:
     collection = get_job_seeker_profiles_collection()
 
     # Add updated_at timestamp
-    update_data["updated_at"] = datetime.utcnow()
+    update_data["updated_at"] = datetime.now(UTC)
 
     try:
-        result = await collection.find_one_and_update(
-            {"_id": ObjectId(profile_id)},
-            {"$set": update_data},
-            return_document=True
+        return await collection.find_one_and_update(
+            {"_id": ObjectId(profile_id)}, {"$set": update_data}, return_document=True
         )
-        return result
     except Exception:
         return None
 
@@ -118,12 +113,12 @@ async def increment_profile_views(profile_id: str) -> bool:
 
     try:
         result = await collection.update_one(
-            {"_id": ObjectId(profile_id)},
-            {"$inc": {"profile_views": 1}}
+            {"_id": ObjectId(profile_id)}, {"$inc": {"profile_views": 1}}
         )
-        return result.modified_count > 0
     except Exception:
         return False
+    else:
+        return result.modified_count > 0
 
 
 async def delete_profile(profile_id: str) -> bool:
@@ -132,7 +127,7 @@ async def delete_profile(profile_id: str) -> bool:
 
     try:
         result = await collection.delete_one({"_id": ObjectId(profile_id)})
-        return result.deleted_count > 0
     except Exception:
         return False
-
+    else:
+        return result.deleted_count > 0
