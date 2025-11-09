@@ -55,7 +55,9 @@ async def get_profile_by_user_id(user_id: str) -> JobSeekerProfileDocument | Non
         return None
 
 
-async def get_profiles(skip: int = 0, limit: int = 100, filters: dict[str, object] | None = None) -> list[JobSeekerProfileDocument]:
+async def get_profiles(
+    skip: int = 0, limit: int = 100, filters: dict[str, object] | None = None
+) -> list[JobSeekerProfileDocument]:
     """Get all profiles with pagination and optional filters."""
     collection = get_job_seeker_profiles_collection()
 
@@ -101,7 +103,9 @@ async def search_profiles(
     return cast(list[JobSeekerProfileDocument], results)
 
 
-async def update_profile(profile_id: str, update_data: dict[str, object]) -> JobSeekerProfileDocument | None:
+async def update_profile(
+    profile_id: str, update_data: dict[str, object]
+) -> JobSeekerProfileDocument | None:
     """Update profile."""
     collection = get_job_seeker_profiles_collection()
 

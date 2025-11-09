@@ -71,16 +71,8 @@ class User:
     @classmethod
     def from_dict(cls, data: UserMetadata) -> "User":
         """Create user from dictionary."""
-        created_at = (
-            datetime.fromisoformat(data["created_at"])
-            if "created_at" in data
-            else None
-        )
-        updated_at = (
-            datetime.fromisoformat(data["updated_at"])
-            if "updated_at" in data
-            else None
-        )
+        created_at = datetime.fromisoformat(data["created_at"]) if "created_at" in data else None
+        updated_at = datetime.fromisoformat(data["updated_at"]) if "updated_at" in data else None
         return cls(
             user_id=data.get("id"),
             email=data["email"],
