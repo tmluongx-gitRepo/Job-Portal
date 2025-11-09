@@ -1,0 +1,60 @@
+# Auto-label pull requests based on file changes
+
+frontend:
+  - changed-files:
+      - any-glob-to-any-file: 'frontend/**/*'
+
+backend:
+  - changed-files:
+      - any-glob-to-any-file: 'backend/**/*'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**/*'
+          - '**/*.md'
+          - 'README.md'
+          - 'CONTRIBUTING.md'
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.test.{ts,tsx,js,jsx}'
+          - '**/*.spec.{ts,tsx,js,jsx}'
+          - 'frontend/**/*test*/**/*'
+          - 'backend/tests/**/*'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/workflows/**/*'
+          - '.github/dependabot.yml'
+          - '.husky/**/*'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'frontend/package.json'
+          - 'frontend/bun.lock'
+          - 'backend/requirements.txt'
+          - 'backend/pyproject.toml'
+
+configuration:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.config.{js,ts,mjs,cjs}'
+          - '**/tsconfig.json'
+          - '**/.eslintrc*'
+          - '**/.prettierrc*'
+          - '**/ruff.toml'
+          - '**/pytest.ini'
+          - '**/pyproject.toml'
+          - 'docker-compose.yml'
+          - '**/Dockerfile*'
+
+docker:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docker-compose.yml'
+          - '**/Dockerfile*'
+          - '.devcontainer/**/*'
