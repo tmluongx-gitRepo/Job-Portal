@@ -53,7 +53,10 @@
   // Ports are already exposed via docker-compose.yml
   "forwardPorts": [],
 
-  "postCreateCommand": "echo '✅ Dev container ready! Run: docker compose up to start services'",
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+  "mounts": [
+    "source=${localEnv:HOME}/.config/gh,target=/root/.config/gh,type=bind"
+  ],
 
   "remoteUser": "root"
 }

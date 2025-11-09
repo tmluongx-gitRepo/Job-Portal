@@ -8,6 +8,19 @@ set -e
 
 echo "🚀 Running pre-push validation..."
 
+# Ensure GitHub CLI authentication if available
+if command -v gh >/dev/null 2>&1; then
+    gh auth status || {
+        cat <<'EOF'
+❌ GitHub CLI is not authenticated.
+   Please run the following inside your devcontainer (once per machine):
+     gh auth login --web --git-protocol ssh
+     gh auth setup-git
+EOF
+        exit 1
+    }
+fi
+
 # Get current branch name
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
@@ -90,14 +103,22 @@ if [ -n "$BACKEND_CHANGED" ]; then
     if [ -d "backend" ]; then
         cd backend
 
+        # Ensure we have a working venv with Python 3.11
+        if [ ! -f ".venv/bin/python" ] || [ ! -f ".venv/bin/ruff" ]; then
+            echo "  📦 Setting up backend environment..."
+            rm -rf .venv
+            UV_LINK_MODE=copy uv venv --python python3.11 .venv
+            UV_LINK_MODE=copy uv pip install --python .venv/bin/python -r requirements.txt
+        fi
+
         echo "  🔧 Running Ruff linting..."
-        uv run ruff check .
+        .venv/bin/ruff check .
 
         echo "  📝 Running Ruff formatting check..."
-        uv run ruff format --check .
+        .venv/bin/ruff format --check .
 
         echo "  🔷 Running MyPy type check..."
-        uv run mypy app/ --config-file=pyproject.toml
+        .venv/bin/mypy app/ --config-file=pyproject.toml
 
         # Set up test environment variables
         export REDIS_URL="redis://localhost:6379"
@@ -107,7 +128,7 @@ if [ -n "$BACKEND_CHANGED" ]; then
         export MONGODB_DB_NAME="job_portal_test"
 
         echo "  🧪 Running pytest..."
-        uv run pytest tests/ -v || {
+        .venv/bin/pytest tests/ -v || {
             echo ""
             echo "⚠️  Note: Tests failed or test suite not fully configured yet."
             echo "   This is a warning - push will continue."
