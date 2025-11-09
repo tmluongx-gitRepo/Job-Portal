@@ -1,4 +1,4 @@
-export default function JobsPage() {
+export default function JobsPage(): JSX.Element {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-7xl mx-auto">

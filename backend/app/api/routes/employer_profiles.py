@@ -1,16 +1,15 @@
 """
 Employer Profile API routes.
 """
+
 from fastapi import APIRouter, HTTPException, status
 
-
+from app.crud import employer_profile as profile_crud
 from app.schemas.employer import (
     EmployerProfileCreate,
-    EmployerProfileUpdate,
     EmployerProfileResponse,
+    EmployerProfileUpdate,
 )
-from app.crud import employer_profile as profile_crud
-
 
 router = APIRouter()
 
@@ -31,7 +30,7 @@ async def create_profile(profile: EmployerProfileCreate):
             **{k: v for k, v in created_profile.items() if k not in ["_id", "user_id"]},
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("", response_model=list[EmployerProfileResponse])

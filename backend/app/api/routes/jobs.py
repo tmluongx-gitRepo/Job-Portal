@@ -1,15 +1,16 @@
-
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.crud import job as job_crud
-from app.schemas.job import JobCreate, JobUpdate, JobResponse
-
+from app.schemas.job import JobCreate, JobResponse, JobUpdate
 
 router = APIRouter()
 
 
 @router.post("", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
-async def create_job(job: JobCreate, posted_by: str | None = Query(None, description="User ID of employer posting the job")):
+async def create_job(
+    job: JobCreate,
+    posted_by: str | None = Query(None, description="User ID of employer posting the job"),
+):
     """
     Create a new job posting.
 
@@ -20,8 +21,7 @@ async def create_job(job: JobCreate, posted_by: str | None = Query(None, descrip
     created_job = await job_crud.create_job(job_data, posted_by=posted_by)
 
     return JobResponse(
-        id=str(created_job["_id"]),
-        **{k: v for k, v in created_job.items() if k != "_id"}
+        id=str(created_job["_id"]), **{k: v for k, v in created_job.items() if k != "_id"}
     )
 
 
@@ -30,7 +30,7 @@ async def list_jobs(
     skip: int = Query(0, ge=0, description="Number of jobs to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of jobs to return"),
     is_active: bool | None = Query(None, description="Filter by active status"),
-    posted_by: str | None = Query(None, description="Filter by employer user ID")
+    posted_by: str | None = Query(None, description="Filter by employer user ID"),
 ):
     """
     List all jobs with optional filters.
@@ -43,10 +43,7 @@ async def list_jobs(
     jobs = await job_crud.get_jobs(skip=skip, limit=limit, is_active=is_active, posted_by=posted_by)
 
     return [
-        JobResponse(
-            id=str(job["_id"]),
-            **{k: v for k, v in job.items() if k != "_id"}
-        )
+        JobResponse(id=str(job["_id"]), **{k: v for k, v in job.items() if k != "_id"})
         for job in jobs
     ]
 
@@ -54,7 +51,7 @@ async def list_jobs(
 @router.get("/count")
 async def count_jobs(
     is_active: bool | None = Query(None, description="Filter by active status"),
-    posted_by: str | None = Query(None, description="Filter by employer user ID")
+    posted_by: str | None = Query(None, description="Filter by employer user ID"),
 ):
     """
     Get the total count of jobs.
@@ -80,7 +77,7 @@ async def search_jobs(
     company_size: str | None = Query(None, description="Company size filter"),
     is_active: bool = Query(True, description="Filter by active status"),
     skip: int = Query(0, ge=0, description="Number of jobs to skip"),
-    limit: int = Query(100, ge=1, le=500, description="Maximum number of jobs to return")
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of jobs to return"),
 ):
     """
     Search for jobs with multiple filters.
@@ -110,22 +107,18 @@ async def search_jobs(
         company_size=company_size,
         is_active=is_active,
         skip=skip,
-        limit=limit
+        limit=limit,
     )
 
     return [
-        JobResponse(
-            id=str(job["_id"]),
-            **{k: v for k, v in job.items() if k != "_id"}
-        )
+        JobResponse(id=str(job["_id"]), **{k: v for k, v in job.items() if k != "_id"})
         for job in jobs
     ]
 
 
 @router.get("/{job_id}", response_model=JobResponse)
 async def get_job(
-    job_id: str,
-    increment_views: bool = Query(False, description="Whether to increment view count")
+    job_id: str, increment_views: bool = Query(False, description="Whether to increment view count")
 ):
     """
     Get a specific job by ID.
@@ -137,14 +130,10 @@ async def get_job(
 
     if not job:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job with id {job_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Job with id {job_id} not found"
         )
 
-    return JobResponse(
-        id=str(job["_id"]),
-        **{k: v for k, v in job.items() if k != "_id"}
-    )
+    return JobResponse(id=str(job["_id"]), **{k: v for k, v in job.items() if k != "_id"})
 
 
 @router.put("/{job_id}", response_model=JobResponse)
@@ -159,8 +148,7 @@ async def update_job(job_id: str, job_update: JobUpdate):
     existing_job = await job_crud.get_job_by_id(job_id)
     if not existing_job:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job with id {job_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Job with id {job_id} not found"
         )
 
     # Update the job
@@ -169,13 +157,11 @@ async def update_job(job_id: str, job_update: JobUpdate):
 
     if not updated_job:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job with id {job_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Job with id {job_id} not found"
         )
 
     return JobResponse(
-        id=str(updated_job["_id"]),
-        **{k: v for k, v in updated_job.items() if k != "_id"}
+        id=str(updated_job["_id"]), **{k: v for k, v in updated_job.items() if k != "_id"}
     )
 
 
@@ -190,8 +176,5 @@ async def delete_job(job_id: str):
 
     if not deleted:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job with id {job_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Job with id {job_id} not found"
         )
-
-

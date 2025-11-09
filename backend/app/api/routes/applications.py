@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query, status
 
-
 from app.crud import application as application_crud
 from app.crud import job as job_crud
 from app.crud import job_seeker_profile as profile_crud
@@ -32,7 +31,7 @@ async def create_application(application: ApplicationCreate):
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job seeker profile with id {application.job_seeker_id} not found"
+            detail=f"Job seeker profile with id {application.job_seeker_id} not found",
         )
 
     # Check if job exists
@@ -40,32 +39,28 @@ async def create_application(application: ApplicationCreate):
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job with id {application.job_id} not found"
+            detail=f"Job with id {application.job_id} not found",
         )
 
     # Check if job is active
     if not job.get("is_active", True):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot apply to an inactive job"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot apply to an inactive job"
         )
 
     # Check for duplicate application
     is_duplicate = await application_crud.check_duplicate_application(
-        application.job_seeker_id,
-        application.job_id
+        application.job_seeker_id, application.job_id
     )
     if is_duplicate:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="You have already applied to this job"
+            status_code=status.HTTP_409_CONFLICT, detail="You have already applied to this job"
         )
 
     # Create the application
     application_data = application.model_dump()
     created_application = await application_crud.create_application(
-        application_data,
-        job_seeker_id=application.job_seeker_id
+        application_data, job_seeker_id=application.job_seeker_id
     )
 
     # Increment the job's application count
@@ -73,7 +68,7 @@ async def create_application(application: ApplicationCreate):
 
     return ApplicationResponse(
         id=str(created_application["_id"]),
-        **{k: v for k, v in created_application.items() if k != "_id"}
+        **{k: v for k, v in created_application.items() if k != "_id"},
     )
 
 
@@ -83,7 +78,7 @@ async def list_applications(
     limit: int = Query(100, ge=1, le=500, description="Maximum number of applications to return"),
     job_seeker_id: str | None = Query(None, description="Filter by job seeker ID"),
     job_id: str | None = Query(None, description="Filter by job ID"),
-    status: str | None = Query(None, description="Filter by status")
+    status: str | None = Query(None, description="Filter by status"),
 ):
     """
     List all applications with optional filters.
@@ -95,18 +90,11 @@ async def list_applications(
     - **status**: Filter by application status
     """
     applications = await application_crud.get_applications(
-        skip=skip,
-        limit=limit,
-        job_seeker_id=job_seeker_id,
-        job_id=job_id,
-        status=status
+        skip=skip, limit=limit, job_seeker_id=job_seeker_id, job_id=job_id, status=status
     )
 
     return [
-        ApplicationResponse(
-            id=str(app["_id"]),
-            **{k: v for k, v in app.items() if k != "_id"}
-        )
+        ApplicationResponse(id=str(app["_id"]), **{k: v for k, v in app.items() if k != "_id"})
         for app in applications
     ]
 
@@ -115,7 +103,7 @@ async def list_applications(
 async def count_applications(
     job_seeker_id: str | None = Query(None, description="Filter by job seeker ID"),
     job_id: str | None = Query(None, description="Filter by job ID"),
-    status: str | None = Query(None, description="Filter by status")
+    status: str | None = Query(None, description="Filter by status"),
 ):
     """
     Get the total count of applications.
@@ -125,9 +113,7 @@ async def count_applications(
     - **status**: Filter by application status
     """
     count = await application_crud.get_applications_count(
-        job_seeker_id=job_seeker_id,
-        job_id=job_id,
-        status=status
+        job_seeker_id=job_seeker_id, job_id=job_id, status=status
     )
     return {"count": count}
 
@@ -144,12 +130,11 @@ async def get_application(application_id: str):
     if not application:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Application with id {application_id} not found"
+            detail=f"Application with id {application_id} not found",
         )
 
     return ApplicationResponse(
-        id=str(application["_id"]),
-        **{k: v for k, v in application.items() if k != "_id"}
+        id=str(application["_id"]), **{k: v for k, v in application.items() if k != "_id"}
     )
 
 
@@ -157,7 +142,7 @@ async def get_application(application_id: str):
 async def update_application(
     application_id: str,
     application_update: ApplicationUpdate,
-    changed_by: str | None = Query(None, description="User ID making the change")
+    changed_by: str | None = Query(None, description="User ID making the change"),
 ):
     """
     Update an application.
@@ -173,26 +158,24 @@ async def update_application(
     if not existing_application:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Application with id {application_id} not found"
+            detail=f"Application with id {application_id} not found",
         )
 
     # Update the application
     update_data = application_update.model_dump(exclude_unset=True)
     updated_application = await application_crud.update_application(
-        application_id,
-        update_data,
-        changed_by=changed_by
+        application_id, update_data, changed_by=changed_by
     )
 
     if not updated_application:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Application with id {application_id} not found"
+            detail=f"Application with id {application_id} not found",
         )
 
     return ApplicationResponse(
         id=str(updated_application["_id"]),
-        **{k: v for k, v in updated_application.items() if k != "_id"}
+        **{k: v for k, v in updated_application.items() if k != "_id"},
     )
 
 
@@ -208,7 +191,5 @@ async def delete_application(application_id: str):
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Application with id {application_id} not found"
+            detail=f"Application with id {application_id} not found",
         )
-
-

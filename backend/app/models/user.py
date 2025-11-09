@@ -4,9 +4,9 @@ User model for ChromaDB.
 In ChromaDB, users are stored as documents with metadata.
 Each user document contains their profile information as metadata.
 """
-from datetime import datetime
-from uuid import uuid4
 
+from datetime import UTC, datetime
+from uuid import uuid4
 
 
 class User:
@@ -31,8 +31,8 @@ class User:
         self.full_name = full_name
         self.is_active = is_active
         self.is_superuser = is_superuser
-        self.created_at = created_at or datetime.utcnow()
-        self.updated_at = updated_at or datetime.utcnow()
+        self.created_at = created_at or datetime.now(UTC)
+        self.updated_at = updated_at or datetime.now(UTC)
 
     def to_dict(self) -> dict:
         """Convert user to dictionary for ChromaDB storage."""

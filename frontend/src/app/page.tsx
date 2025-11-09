@@ -1,4 +1,4 @@
-export default function Home() {
+export default function Home(): JSX.Element {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <main className="text-center space-y-8 px-4">

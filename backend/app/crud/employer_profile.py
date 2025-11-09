@@ -1,10 +1,10 @@
 """
 CRUD operations for Employer Profile model.
 """
-from datetime import datetime
+
+from datetime import UTC, datetime
 
 from bson import ObjectId
-
 
 from app.database import get_employer_profiles_collection
 
@@ -23,8 +23,8 @@ async def create_profile(user_id: str, profile_data: dict) -> dict:
         "jobs_posted_count": 0,
         "active_jobs_count": 0,
         "verified": False,
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC),
     }
 
     result = await collection.insert_one(profile_doc)
@@ -65,7 +65,7 @@ async def update_profile(profile_id: str, update_data: dict) -> dict | None:
     """Update employer profile."""
     collection = get_employer_profiles_collection()
 
-    update_data["updated_at"] = datetime.utcnow()
+    update_data["updated_at"] = datetime.now(UTC)
 
     try:
         return await collection.find_one_and_update(
@@ -83,12 +83,15 @@ async def delete_profile(profile_id: str) -> bool:
 
     try:
         result = await collection.delete_one({"_id": ObjectId(profile_id)})
-        return result.deleted_count > 0
     except Exception:
         return False
+    else:
+        return result.deleted_count > 0
 
 
-async def increment_job_counts(profile_id: str, posted_delta: int = 0, active_delta: int = 0) -> bool:
+async def increment_job_counts(
+    profile_id: str, posted_delta: int = 0, active_delta: int = 0
+) -> bool:
     """Adjust job counters for an employer profile."""
     collection = get_employer_profiles_collection()
 
@@ -103,6 +106,7 @@ async def increment_job_counts(profile_id: str, posted_delta: int = 0, active_de
             return True
 
         result = await collection.update_one({"_id": ObjectId(profile_id)}, update)
-        return result.modified_count > 0
     except Exception:
         return False
+    else:
+        return result.modified_count > 0

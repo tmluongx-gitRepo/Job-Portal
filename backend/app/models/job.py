@@ -5,9 +5,9 @@ In ChromaDB, jobs are stored as documents with embeddings for semantic search.
 Each job document contains the job description as document content and
 job metadata (title, company, salary, etc.) as metadata fields.
 """
-from datetime import datetime
-from uuid import uuid4
 
+from datetime import UTC, datetime
+from uuid import uuid4
 
 
 class Job:
@@ -38,8 +38,8 @@ class Job:
         self.salary_max = salary_max
         self.job_type = job_type  # full-time, part-time, contract
         self.is_active = is_active
-        self.created_at = created_at or datetime.utcnow()
-        self.updated_at = updated_at or datetime.utcnow()
+        self.created_at = created_at or datetime.now(UTC)
+        self.updated_at = updated_at or datetime.now(UTC)
 
     def to_document(self) -> str:
         """
@@ -93,8 +93,12 @@ class Job:
             salary_max=int(metadata["salary_max"]) if metadata.get("salary_max") else None,
             job_type=metadata["job_type"],
             is_active=metadata.get("is_active", "True") == "True",
-            created_at=datetime.fromisoformat(metadata["created_at"]) if "created_at" in metadata else None,
-            updated_at=datetime.fromisoformat(metadata["updated_at"]) if "updated_at" in metadata else None,
+            created_at=datetime.fromisoformat(metadata["created_at"])
+            if "created_at" in metadata
+            else None,
+            updated_at=datetime.fromisoformat(metadata["updated_at"])
+            if "updated_at" in metadata
+            else None,
         )
 
     def __repr__(self) -> str:

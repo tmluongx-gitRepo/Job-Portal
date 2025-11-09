@@ -3,9 +3,9 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 
-
 class EmployerProfileBase(BaseModel):
     """Base employer profile schema"""
+
     company_name: str
     company_website: str | None = None
     company_logo_url: str | None = None
@@ -22,11 +22,13 @@ class EmployerProfileBase(BaseModel):
 
 class EmployerProfileCreate(EmployerProfileBase):
     """Schema for creating an employer profile"""
+
     user_id: str  # Which user this profile belongs to
 
 
 class EmployerProfileUpdate(BaseModel):
     """Schema for updating an employer profile"""
+
     company_name: str | None = None
     company_website: str | None = None
     company_logo_url: str | None = None
@@ -44,6 +46,7 @@ class EmployerProfileUpdate(BaseModel):
 
 class EmployerProfileResponse(EmployerProfileBase):
     """Schema for employer profile response"""
+
     id: str
     user_id: str
     jobs_posted_count: int = 0
@@ -53,4 +56,3 @@ class EmployerProfileResponse(EmployerProfileBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-
