@@ -1,11 +1,14 @@
 from datetime import UTC, datetime
+from typing import cast
 
 from bson import ObjectId
+
+from app.types import ApplicationDocument
 
 from app.database import get_applications_collection
 
 
-async def create_application(application_data: dict, job_seeker_id: str) -> dict:
+async def create_application(application_data: dict[str, object], job_seeker_id: str) -> ApplicationDocument:
     """
     Create a new job application.
 
@@ -45,10 +48,10 @@ async def create_application(application_data: dict, job_seeker_id: str) -> dict
     result = await collection.insert_one(application_doc)
     application_doc["_id"] = result.inserted_id
 
-    return application_doc
+    return cast(ApplicationDocument, application_doc)
 
 
-async def get_application_by_id(application_id: str) -> dict | None:
+async def get_application_by_id(application_id: str) -> ApplicationDocument | None:
     """
     Get an application by ID.
 
@@ -65,7 +68,8 @@ async def get_application_by_id(application_id: str) -> dict | None:
     except Exception:
         return None
 
-    return await collection.find_one({"_id": object_id})
+    result = await collection.find_one({"_id": object_id})
+    return cast(ApplicationDocument, result) if result else None
 
 
 async def get_applications(
@@ -74,7 +78,7 @@ async def get_applications(
     job_seeker_id: str | None = None,
     job_id: str | None = None,
     status: str | None = None,
-) -> list[dict]:
+) -> list[ApplicationDocument]:
     """
     Get a list of applications with optional filters.
 
@@ -90,7 +94,7 @@ async def get_applications(
     """
     collection = get_applications_collection()
 
-    query = {}
+    query: dict[str, object] = {}
     if job_seeker_id:
         query["job_seeker_id"] = job_seeker_id
     if job_id:
@@ -99,12 +103,14 @@ async def get_applications(
         query["status"] = status
 
     cursor = collection.find(query).skip(skip).limit(limit).sort("applied_date", -1)
-    return await cursor.to_list(length=limit)
+    results = await cursor.to_list(length=limit)
+
+    return cast(list[ApplicationDocument], results)
 
 
 async def update_application(
-    application_id: str, update_data: dict, changed_by: str | None = None
-) -> dict | None:
+    application_id: str, update_data: dict[str, object], changed_by: str | None = None
+) -> ApplicationDocument | None:
     """
     Update an application.
 
@@ -127,16 +133,17 @@ async def update_application(
     current_app = await collection.find_one({"_id": object_id})
     if not current_app:
         return None
+    current_doc = cast(ApplicationDocument, current_app)
 
     # Remove None values
     update_data = {k: v for k, v in update_data.items() if v is not None}
     if not update_data:
-        return current_app
+        return current_doc
 
     update_data["updated_at"] = datetime.now(UTC)
 
     # If status is being changed, add to status history
-    if "status" in update_data and update_data["status"] != current_app.get("status"):
+    if "status" in update_data and update_data["status"] != current_doc.get("status"):
         new_status_entry = {
             "status": update_data["status"],
             "changed_at": datetime.now(UTC),
@@ -155,7 +162,7 @@ async def update_application(
             {"_id": object_id}, {"$set": update_data}, return_document=True
         )
 
-    return result
+    return cast(ApplicationDocument, result) if result else None
 
 
 async def delete_application(application_id: str) -> bool:
@@ -176,7 +183,7 @@ async def delete_application(application_id: str) -> bool:
         return False
 
     result = await collection.delete_one({"_id": object_id})
-    return result.deleted_count > 0
+    return bool(result.deleted_count > 0)
 
 
 async def get_applications_count(
@@ -195,7 +202,7 @@ async def get_applications_count(
     """
     collection = get_applications_collection()
 
-    query = {}
+    query: dict[str, object] = {}
     if job_seeker_id:
         query["job_seeker_id"] = job_seeker_id
     if job_id:

@@ -1,11 +1,14 @@
 from datetime import UTC, datetime
+from typing import cast
 
 from bson import ObjectId
+
+from app.types import JobDocument
 
 from app.database import get_jobs_collection
 
 
-async def create_job(job_data: dict, posted_by: str | None = None) -> dict:
+async def create_job(job_data: dict[str, object], posted_by: str | None = None) -> JobDocument:
     """
     Create a new job posting.
 
@@ -31,10 +34,10 @@ async def create_job(job_data: dict, posted_by: str | None = None) -> dict:
     result = await collection.insert_one(job_doc)
     job_doc["_id"] = result.inserted_id
 
-    return job_doc
+    return cast(JobDocument, job_doc)
 
 
-async def get_job_by_id(job_id: str, increment_views: bool = False) -> dict | None:
+async def get_job_by_id(job_id: str, increment_views: bool = False) -> JobDocument | None:
     """
     Get a job by ID.
 
@@ -60,12 +63,12 @@ async def get_job_by_id(job_id: str, increment_views: bool = False) -> dict | No
     else:
         job = await collection.find_one({"_id": object_id})
 
-    return job
+    return cast(JobDocument, job) if job else None
 
 
 async def get_jobs(
     skip: int = 0, limit: int = 100, is_active: bool | None = None, posted_by: str | None = None
-) -> list[dict]:
+) -> list[JobDocument]:
     """
     Get a list of jobs with optional filters.
 
@@ -80,14 +83,16 @@ async def get_jobs(
     """
     collection = get_jobs_collection()
 
-    query = {}
+    query: dict[str, object] = {}
     if is_active is not None:
         query["is_active"] = is_active
     if posted_by:
         query["posted_by"] = posted_by
 
     cursor = collection.find(query).skip(skip).limit(limit).sort("created_at", -1)
-    return await cursor.to_list(length=limit)
+    results = await cursor.to_list(length=limit)
+
+    return cast(list[JobDocument], results)
 
 
 async def search_jobs(
@@ -95,7 +100,7 @@ async def search_jobs(
     location: str | None = None,
     job_type: str | None = None,
     remote_ok: bool | None = None,
-    skills: list[str | None] | None = None,
+    skills: list[str] | None = None,
     min_salary: int | None = None,
     max_salary: int | None = None,
     experience_required: str | None = None,
@@ -104,7 +109,7 @@ async def search_jobs(
     is_active: bool = True,
     skip: int = 0,
     limit: int = 100,
-) -> list[dict]:
+) -> list[JobDocument]:
     """
     Search for jobs with multiple filters.
 
@@ -128,7 +133,7 @@ async def search_jobs(
     """
     collection = get_jobs_collection()
 
-    filters = {"is_active": is_active}
+    filters: dict[str, object] = {"is_active": is_active}
 
     # Text search in title, description, company
     if query:
@@ -173,10 +178,12 @@ async def search_jobs(
         filters["company_size"] = company_size
 
     cursor = collection.find(filters).skip(skip).limit(limit).sort("created_at", -1)
-    return await cursor.to_list(length=limit)
+    results = await cursor.to_list(length=limit)
+
+    return cast(list[JobDocument], results)
 
 
-async def update_job(job_id: str, update_data: dict) -> dict | None:
+async def update_job(job_id: str, update_data: dict[str, object]) -> JobDocument | None:
     """
     Update a job.
 
@@ -201,9 +208,11 @@ async def update_job(job_id: str, update_data: dict) -> dict | None:
 
     update_data["updated_at"] = datetime.now(UTC)
 
-    return await collection.find_one_and_update(
+    result = await collection.find_one_and_update(
         {"_id": object_id}, {"$set": update_data}, return_document=True
     )
+
+    return cast(JobDocument, result) if result else None
 
 
 async def increment_application_count(job_id: str) -> bool:
@@ -225,7 +234,7 @@ async def increment_application_count(job_id: str) -> bool:
 
     result = await collection.update_one({"_id": object_id}, {"$inc": {"application_count": 1}})
 
-    return result.modified_count > 0
+    return bool(result.modified_count > 0)
 
 
 async def delete_job(job_id: str) -> bool:
@@ -246,7 +255,7 @@ async def delete_job(job_id: str) -> bool:
         return False
 
     result = await collection.delete_one({"_id": object_id})
-    return result.deleted_count > 0
+    return bool(result.deleted_count > 0)
 
 
 async def get_jobs_count(is_active: bool | None = None, posted_by: str | None = None) -> int:
@@ -262,7 +271,7 @@ async def get_jobs_count(is_active: bool | None = None, posted_by: str | None = 
     """
     collection = get_jobs_collection()
 
-    query = {}
+    query: dict[str, object] = {}
     if is_active is not None:
         query["is_active"] = is_active
     if posted_by:

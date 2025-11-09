@@ -3,13 +3,16 @@ CRUD operations for Employer Profile model.
 """
 
 from datetime import UTC, datetime
+from typing import cast
 
 from bson import ObjectId
+
+from app.types import EmployerProfileDocument
 
 from app.database import get_employer_profiles_collection
 
 
-async def create_profile(user_id: str, profile_data: dict) -> dict:
+async def create_profile(user_id: str, profile_data: dict[str, object]) -> EmployerProfileDocument:
     """Create a new employer profile."""
     collection = get_employer_profiles_collection()
 
@@ -29,50 +32,55 @@ async def create_profile(user_id: str, profile_data: dict) -> dict:
 
     result = await collection.insert_one(profile_doc)
     profile_doc["_id"] = result.inserted_id
-    return profile_doc
+    return cast(EmployerProfileDocument, profile_doc)
 
 
-async def get_profile_by_id(profile_id: str) -> dict | None:
+async def get_profile_by_id(profile_id: str) -> EmployerProfileDocument | None:
     """Get employer profile by ID."""
     collection = get_employer_profiles_collection()
 
     try:
-        return await collection.find_one({"_id": ObjectId(profile_id)})
+        result = await collection.find_one({"_id": ObjectId(profile_id)})
+        return cast(EmployerProfileDocument, result) if result else None
     except Exception:
         return None
 
 
-async def get_profile_by_user_id(user_id: str) -> dict | None:
+async def get_profile_by_user_id(user_id: str) -> EmployerProfileDocument | None:
     """Get employer profile by user ID."""
     collection = get_employer_profiles_collection()
 
     try:
-        return await collection.find_one({"user_id": ObjectId(user_id)})
+        result = await collection.find_one({"user_id": ObjectId(user_id)})
+        return cast(EmployerProfileDocument, result) if result else None
     except Exception:
         return None
 
 
-async def get_profiles(skip: int = 0, limit: int = 100, filters: dict | None = None) -> list[dict]:
+async def get_profiles(skip: int = 0, limit: int = 100, filters: dict[str, object] | None = None) -> list[EmployerProfileDocument]:
     """Get all employer profiles."""
     collection = get_employer_profiles_collection()
 
-    query = filters or {}
+    query: dict[str, object] = dict(filters) if filters else {}
     cursor = collection.find(query).skip(skip).limit(limit).sort("updated_at", -1)
-    return await cursor.to_list(length=limit)
+    results = await cursor.to_list(length=limit)
+
+    return cast(list[EmployerProfileDocument], results)
 
 
-async def update_profile(profile_id: str, update_data: dict) -> dict | None:
+async def update_profile(profile_id: str, update_data: dict[str, object]) -> EmployerProfileDocument | None:
     """Update employer profile."""
     collection = get_employer_profiles_collection()
 
     update_data["updated_at"] = datetime.now(UTC)
 
     try:
-        return await collection.find_one_and_update(
+        result = await collection.find_one_and_update(
             {"_id": ObjectId(profile_id)},
             {"$set": update_data},
             return_document=True,
         )
+        return cast(EmployerProfileDocument, result) if result else None
     except Exception:
         return None
 
@@ -86,7 +94,7 @@ async def delete_profile(profile_id: str) -> bool:
     except Exception:
         return False
     else:
-        return result.deleted_count > 0
+        return bool(result.deleted_count > 0)
 
 
 async def increment_job_counts(
@@ -96,17 +104,18 @@ async def increment_job_counts(
     collection = get_employer_profiles_collection()
 
     try:
-        update = {"$inc": {}}
+        increments: dict[str, int] = {}
         if posted_delta:
-            update["$inc"]["jobs_posted_count"] = posted_delta
+            increments["jobs_posted_count"] = posted_delta
         if active_delta:
-            update["$inc"]["active_jobs_count"] = active_delta
+            increments["active_jobs_count"] = active_delta
 
-        if not update["$inc"]:
+        if not increments:
             return True
 
+        update = {"$inc": increments}
         result = await collection.update_one({"_id": ObjectId(profile_id)}, update)
     except Exception:
         return False
     else:
-        return result.modified_count > 0
+        return bool(result.modified_count > 0)

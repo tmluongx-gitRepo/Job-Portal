@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(user: UserCreate):
+async def create_user(user: UserCreate) -> UserResponse:
     """Create a new user."""
     try:
         created_user = await user_crud.create_user(email=user.email, account_type=user.account_type)
@@ -29,7 +29,7 @@ async def create_user(user: UserCreate):
 
 
 @router.get("", response_model=list[UserResponse])
-async def get_users(skip: int = 0, limit: int = 100):
+async def get_users(skip: int = 0, limit: int = 100) -> list[UserResponse]:
     """Get all users."""
     users = await user_crud.get_users(skip=skip, limit=limit)
 
@@ -46,7 +46,7 @@ async def get_users(skip: int = 0, limit: int = 100):
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-async def get_user(user_id: str):
+async def get_user(user_id: str) -> UserResponse:
     """Get user by ID."""
     user = await user_crud.get_user_by_id(user_id)
 
@@ -63,7 +63,7 @@ async def get_user(user_id: str):
 
 
 @router.get("/email/{email}", response_model=UserResponse)
-async def get_user_by_email(email: str):
+async def get_user_by_email(email: str) -> UserResponse:
     """Get user by email."""
     user = await user_crud.get_user_by_email(email)
 
@@ -80,7 +80,7 @@ async def get_user_by_email(email: str):
 
 
 @router.put("/{user_id}", response_model=UserResponse)
-async def update_user(user_id: str, user_update: UserUpdate):
+async def update_user(user_id: str, user_update: UserUpdate) -> UserResponse:
     """Update user."""
     # Build update dict (only include provided fields)
     update_data = user_update.model_dump(exclude_unset=True)
@@ -103,7 +103,7 @@ async def update_user(user_id: str, user_update: UserUpdate):
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(user_id: str):
+async def delete_user(user_id: str) -> None:
     """Delete user."""
     deleted = await user_crud.delete_user(user_id)
 

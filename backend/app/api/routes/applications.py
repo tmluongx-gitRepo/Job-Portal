@@ -1,3 +1,5 @@
+from typing import Iterable
+
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.crud import application as application_crud
@@ -7,13 +9,49 @@ from app.schemas.application import (
     ApplicationCreate,
     ApplicationResponse,
     ApplicationUpdate,
+    StatusHistoryEntrySchema,
 )
+from app.types import ApplicationDocument
 
 router = APIRouter()
 
 
+def _serialize_application(document: ApplicationDocument) -> ApplicationResponse:
+    """Convert a database document into the API response schema."""
+
+    status_history = [
+        StatusHistoryEntrySchema.model_validate(entry)
+        for entry in document.get("status_history", [])
+    ]
+
+    next_step = document["next_step"] if "next_step" in document else None
+    interview_scheduled = (
+        document["interview_scheduled_date"] if "interview_scheduled_date" in document else None
+    )
+    rejection_reason = document["rejection_reason"] if "rejection_reason" in document else None
+
+    return ApplicationResponse(
+        id=str(document["_id"]),
+        job_id=document["job_id"],
+        job_seeker_id=document["job_seeker_id"],
+        status=document["status"],
+        applied_date=document["applied_date"],
+        notes=document.get("notes"),
+        next_step=next_step,
+        interview_scheduled_date=interview_scheduled,
+        rejection_reason=rejection_reason,
+        status_history=status_history,
+        created_at=document["created_at"],
+        updated_at=document["updated_at"],
+    )
+
+
+def _serialize_applications(documents: Iterable[ApplicationDocument]) -> list[ApplicationResponse]:
+    return [_serialize_application(doc) for doc in documents]
+
+
 @router.post("", response_model=ApplicationResponse, status_code=status.HTTP_201_CREATED)
-async def create_application(application: ApplicationCreate):
+async def create_application(application: ApplicationCreate) -> ApplicationResponse:
     """
     Create a new job application.
 
@@ -66,10 +104,7 @@ async def create_application(application: ApplicationCreate):
     # Increment the job's application count
     await job_crud.increment_application_count(application.job_id)
 
-    return ApplicationResponse(
-        id=str(created_application["_id"]),
-        **{k: v for k, v in created_application.items() if k != "_id"},
-    )
+    return _serialize_application(created_application)
 
 
 @router.get("", response_model=list[ApplicationResponse])
@@ -79,7 +114,7 @@ async def list_applications(
     job_seeker_id: str | None = Query(None, description="Filter by job seeker ID"),
     job_id: str | None = Query(None, description="Filter by job ID"),
     status: str | None = Query(None, description="Filter by status"),
-):
+)-> list[ApplicationResponse]:
     """
     List all applications with optional filters.
 
@@ -93,10 +128,7 @@ async def list_applications(
         skip=skip, limit=limit, job_seeker_id=job_seeker_id, job_id=job_id, status=status
     )
 
-    return [
-        ApplicationResponse(id=str(app["_id"]), **{k: v for k, v in app.items() if k != "_id"})
-        for app in applications
-    ]
+    return _serialize_applications(applications)
 
 
 @router.get("/count")
@@ -104,7 +136,7 @@ async def count_applications(
     job_seeker_id: str | None = Query(None, description="Filter by job seeker ID"),
     job_id: str | None = Query(None, description="Filter by job ID"),
     status: str | None = Query(None, description="Filter by status"),
-):
+)-> dict[str, int]:
     """
     Get the total count of applications.
 
@@ -119,7 +151,7 @@ async def count_applications(
 
 
 @router.get("/{application_id}", response_model=ApplicationResponse)
-async def get_application(application_id: str):
+async def get_application(application_id: str) -> ApplicationResponse:
     """
     Get a specific application by ID.
 
@@ -133,9 +165,7 @@ async def get_application(application_id: str):
             detail=f"Application with id {application_id} not found",
         )
 
-    return ApplicationResponse(
-        id=str(application["_id"]), **{k: v for k, v in application.items() if k != "_id"}
-    )
+    return _serialize_application(application)
 
 
 @router.put("/{application_id}", response_model=ApplicationResponse)
@@ -143,7 +173,7 @@ async def update_application(
     application_id: str,
     application_update: ApplicationUpdate,
     changed_by: str | None = Query(None, description="User ID making the change"),
-):
+)-> ApplicationResponse:
     """
     Update an application.
 
@@ -173,14 +203,11 @@ async def update_application(
             detail=f"Application with id {application_id} not found",
         )
 
-    return ApplicationResponse(
-        id=str(updated_application["_id"]),
-        **{k: v for k, v in updated_application.items() if k != "_id"},
-    )
+    return _serialize_application(updated_application)
 
 
 @router.delete("/{application_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_application(application_id: str):
+async def delete_application(application_id: str) -> None:
     """
     Delete an application (hard delete).
 

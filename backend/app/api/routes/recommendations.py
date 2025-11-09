@@ -1,6 +1,6 @@
-"""
-API routes for recommendations.
-"""
+"""API routes for recommendations."""
+
+from typing import Iterable
 
 from fastapi import APIRouter, HTTPException, Query, status
 
@@ -8,16 +8,44 @@ from app.crud import job as job_crud
 from app.crud import job_seeker_profile as profile_crud
 from app.crud import recommendation as recommendation_crud
 from app.schemas.recommendation import (
+    MatchFactorSchema,
     RecommendationCreate,
     RecommendationResponse,
     RecommendationUpdate,
 )
+from app.types import MatchFactorDocument, RecommendationDocument
 
 router = APIRouter()
 
 
+def _convert_factors(raw_factors: Iterable[MatchFactorDocument] | None) -> list[MatchFactorSchema]:
+    """Convert stored factor dictionaries into schema objects."""
+
+    if not raw_factors:
+        return []
+    return [MatchFactorSchema.model_validate(factor) for factor in raw_factors]
+
+
+def _serialize_recommendation(document: RecommendationDocument) -> RecommendationResponse:
+    """Convert a database document into the API response schema."""
+
+    return RecommendationResponse(
+        id=str(document["_id"]),
+        job_seeker_id=document["job_seeker_id"],
+        job_id=document["job_id"],
+        match_percentage=document["match_percentage"],
+        reasoning=document["reasoning"],
+        factors=_convert_factors(document.get("factors")),
+        ai_generated=document.get("ai_generated", True),
+        viewed=document.get("viewed", False),
+        dismissed=document.get("dismissed", False),
+        applied=document.get("applied", False),
+        created_at=document["created_at"],
+    )
+
+
 @router.post("", response_model=RecommendationResponse, status_code=status.HTTP_201_CREATED)
-async def create_recommendation(recommendation: RecommendationCreate):
+async def create_recommendation(recommendation: RecommendationCreate) -> RecommendationResponse:
     """
     Create a new job recommendation.
 
@@ -58,10 +86,7 @@ async def create_recommendation(recommendation: RecommendationCreate):
     recommendation_data = recommendation.model_dump()
     created_recommendation = await recommendation_crud.create_recommendation(recommendation_data)
 
-    return RecommendationResponse(
-        id=str(created_recommendation["_id"]),
-        **{k: v for k, v in created_recommendation.items() if k != "_id"},
-    )
+    return _serialize_recommendation(created_recommendation)
 
 
 @router.get("/job-seeker/{job_seeker_id}", response_model=list[dict])
@@ -73,7 +98,7 @@ async def get_recommendations_for_job_seeker(
     include_viewed: bool = Query(True, description="Include viewed recommendations"),
     include_dismissed: bool = Query(False, description="Include dismissed recommendations"),
     include_applied: bool = Query(False, description="Include applied recommendations"),
-):
+)-> list[dict[str, object]]:
     """
     Get personalized job recommendations for a job seeker.
 
@@ -98,7 +123,7 @@ async def get_recommendations_for_job_seeker(
     # Format response with job details
     response = []
     for rec in recommendations:
-        job_details = rec.pop("job_details", {})
+        job_details = rec.get("job_details", {})
         response.append(
             {
                 "id": str(rec["_id"]),
@@ -106,7 +131,7 @@ async def get_recommendations_for_job_seeker(
                 "job_id": rec["job_id"],
                 "match_percentage": rec["match_percentage"],
                 "reasoning": rec["reasoning"],
-                "factors": rec["factors"],
+                "factors": rec.get("factors", []),
                 "ai_generated": rec.get("ai_generated", True),
                 "viewed": rec.get("viewed", False),
                 "dismissed": rec.get("dismissed", False),
@@ -130,7 +155,7 @@ async def get_matching_candidates_for_job(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     min_match: int = Query(70, ge=0, le=100, description="Minimum match percentage"),
-):
+)-> list[dict[str, object]]:
     """
     Get recommended candidates for a specific job (for employers).
 
@@ -146,14 +171,14 @@ async def get_matching_candidates_for_job(
     # Format response
     response = []
     for rec in recommendations:
-        seeker_details = rec.pop("seeker_details", {})
+        seeker_details = rec.get("seeker_details", {})
         response.append(
             {
                 "id": str(rec["_id"]),
                 "job_seeker_id": rec["job_seeker_id"],
                 "match_percentage": rec["match_percentage"],
                 "reasoning": rec["reasoning"],
-                "factors": rec["factors"],
+                "factors": rec.get("factors", []),
                 "seeker_name": seeker_details.get("name"),
                 "seeker_skills": seeker_details.get("skills", []),
                 "seeker_experience_years": seeker_details.get("experience_years"),
@@ -170,7 +195,7 @@ async def count_recommendations(
     job_seeker_id: str,
     viewed: bool | None = Query(None, description="Filter by viewed status"),
     dismissed: bool | None = Query(None, description="Filter by dismissed status"),
-):
+)-> dict[str, int]:
     """
     Get count of recommendations for a job seeker.
 
@@ -183,7 +208,7 @@ async def count_recommendations(
 
 
 @router.get("/{recommendation_id}", response_model=RecommendationResponse)
-async def get_recommendation(recommendation_id: str):
+async def get_recommendation(recommendation_id: str) -> RecommendationResponse:
     """
     Get a specific recommendation by ID.
     """
@@ -195,15 +220,13 @@ async def get_recommendation(recommendation_id: str):
             detail=f"Recommendation {recommendation_id} not found",
         )
 
-    return RecommendationResponse(
-        id=str(recommendation["_id"]), **{k: v for k, v in recommendation.items() if k != "_id"}
-    )
+    return _serialize_recommendation(recommendation)
 
 
 @router.put("/{recommendation_id}", response_model=RecommendationResponse)
 async def update_recommendation(
     recommendation_id: str, recommendation_update: RecommendationUpdate
-):
+) -> RecommendationResponse:
     """
     Update a recommendation (mark as viewed, dismissed, or applied).
 
@@ -229,13 +252,11 @@ async def update_recommendation(
             detail=f"Recommendation {recommendation_id} not found",
         )
 
-    return RecommendationResponse(
-        id=str(updated["_id"]), **{k: v for k, v in updated.items() if k != "_id"}
-    )
+    return _serialize_recommendation(updated)
 
 
 @router.post("/{recommendation_id}/view", status_code=status.HTTP_200_OK)
-async def mark_recommendation_viewed(recommendation_id: str):
+async def mark_recommendation_viewed(recommendation_id: str) -> dict[str, str]:
     """
     Mark a recommendation as viewed.
 
@@ -253,7 +274,7 @@ async def mark_recommendation_viewed(recommendation_id: str):
 
 
 @router.post("/{recommendation_id}/dismiss", status_code=status.HTTP_200_OK)
-async def dismiss_recommendation(recommendation_id: str):
+async def dismiss_recommendation(recommendation_id: str) -> dict[str, str]:
     """
     Dismiss a recommendation (user not interested).
     """
@@ -269,7 +290,7 @@ async def dismiss_recommendation(recommendation_id: str):
 
 
 @router.delete("/{recommendation_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_recommendation(recommendation_id: str):
+async def delete_recommendation(recommendation_id: str) -> None:
     """
     Delete a recommendation.
     """

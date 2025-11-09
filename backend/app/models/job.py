@@ -7,7 +7,30 @@ job metadata (title, company, salary, etc.) as metadata fields.
 """
 
 from datetime import UTC, datetime
+from typing import TypedDict
 from uuid import uuid4
+
+
+class _JobMetadataRequired(TypedDict):
+    """Required fields always persisted for a job."""
+
+    title: str
+    company: str
+    location: str
+    description: str
+    job_type: str
+
+
+class JobMetadata(_JobMetadataRequired, total=False):
+    """Additional optional metadata stored for a job."""
+
+    id: str
+    requirements: str | None
+    salary_min: str | None
+    salary_max: str | None
+    is_active: str
+    created_at: str
+    updated_at: str
 
 
 class Job:
@@ -62,7 +85,7 @@ class Job:
 
         return "\n\n".join(parts)
 
-    def to_metadata(self) -> dict:
+    def to_metadata(self) -> dict[str, object]:
         """Convert job to metadata dictionary for ChromaDB storage."""
         return {
             "id": self.id,
@@ -80,8 +103,22 @@ class Job:
         }
 
     @classmethod
-    def from_metadata(cls, metadata: dict, full_description: str | None = None) -> "Job":
+    def from_metadata(
+        cls, metadata: JobMetadata, full_description: str | None = None
+    ) -> "Job":
         """Create job from ChromaDB metadata."""
+        salary_min_raw = metadata.get("salary_min")
+        salary_max_raw = metadata.get("salary_max")
+        created_at = (
+            datetime.fromisoformat(metadata["created_at"])
+            if "created_at" in metadata
+            else None
+        )
+        updated_at = (
+            datetime.fromisoformat(metadata["updated_at"])
+            if "updated_at" in metadata
+            else None
+        )
         return cls(
             job_id=metadata.get("id"),
             title=metadata["title"],
@@ -89,16 +126,12 @@ class Job:
             location=metadata["location"],
             description=full_description or metadata["description"],
             requirements=metadata.get("requirements"),
-            salary_min=int(metadata["salary_min"]) if metadata.get("salary_min") else None,
-            salary_max=int(metadata["salary_max"]) if metadata.get("salary_max") else None,
+            salary_min=int(salary_min_raw) if salary_min_raw else None,
+            salary_max=int(salary_max_raw) if salary_max_raw else None,
             job_type=metadata["job_type"],
             is_active=metadata.get("is_active", "True") == "True",
-            created_at=datetime.fromisoformat(metadata["created_at"])
-            if "created_at" in metadata
-            else None,
-            updated_at=datetime.fromisoformat(metadata["updated_at"])
-            if "updated_at" in metadata
-            else None,
+            created_at=created_at,
+            updated_at=updated_at,
         )
 
     def __repr__(self) -> str:
