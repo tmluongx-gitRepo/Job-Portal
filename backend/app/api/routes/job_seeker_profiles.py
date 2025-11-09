@@ -1,7 +1,8 @@
 """
 Job Seeker Profile API routes.
 """
-from fastapi import APIRouter, HTTPException, status, Query
+from typing import Optional
+from fastapi import APIRouter, HTTPException, status, Query, Depends
 
 from app.schemas.job_seeker import (
     JobSeekerProfileCreate,
@@ -9,20 +10,40 @@ from app.schemas.job_seeker import (
     JobSeekerProfileResponse
 )
 from app.crud import job_seeker_profile as profile_crud
+from app.auth.dependencies import require_job_seeker, get_current_user, get_optional_user
 
 
 router = APIRouter()
 
 
 @router.post("", response_model=JobSeekerProfileResponse, status_code=status.HTTP_201_CREATED)
-async def create_profile(profile: JobSeekerProfileCreate):
-    """Create a new job seeker profile."""
+async def create_profile(
+    profile: JobSeekerProfileCreate,
+    job_seeker: dict = Depends(require_job_seeker)
+):
+    """
+    Create a new job seeker profile.
+    
+    **Requires:** Job Seeker account
+    **Limit:** One profile per user
+    
+    The profile will be automatically linked to your user account.
+    """
     try:
+        # Check if user already has a profile
+        existing_profile = await profile_crud.get_profile_by_user_id(job_seeker["id"])
+        if existing_profile:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You already have a job seeker profile"
+            )
+        
         # Convert to dict and remove None values
         profile_data = profile.model_dump(exclude={"user_id"}, exclude_none=True)
         
+        # Use authenticated user's ID
         created_profile = await profile_crud.create_profile(
-            user_id=profile.user_id,
+            user_id=job_seeker["id"],
             profile_data=profile_data
         )
         
@@ -36,8 +57,16 @@ async def create_profile(profile: JobSeekerProfileCreate):
 
 
 @router.get("", response_model=list[JobSeekerProfileResponse])
-async def get_profiles(skip: int = 0, limit: int = 100):
-    """Get all job seeker profiles."""
+async def get_profiles(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: Optional[dict] = Depends(get_optional_user)
+):
+    """
+    Get all job seeker profiles.
+    
+    **Public endpoint** - Employers can browse candidates
+    """
     profiles = await profile_crud.get_profiles(skip=skip, limit=limit)
     
     return [
@@ -115,8 +144,30 @@ async def get_profile_by_user(user_id: str):
 
 
 @router.put("/{profile_id}", response_model=JobSeekerProfileResponse)
-async def update_profile(profile_id: str, profile_update: JobSeekerProfileUpdate):
-    """Update profile."""
+async def update_profile(
+    profile_id: str,
+    profile_update: JobSeekerProfileUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Update profile.
+    
+    **Requires:** Authentication
+    **Authorization:** Owner only (or admin)
+    """
+    # Get existing profile
+    existing_profile = await profile_crud.get_profile_by_id(profile_id)
+    if not existing_profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    # Check ownership
+    from app.auth.utils import is_admin
+    if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own profile"
+        )
+    
     # Build update dict (only include provided fields)
     update_data = profile_update.model_dump(exclude_unset=True)
     
@@ -136,8 +187,29 @@ async def update_profile(profile_id: str, profile_update: JobSeekerProfileUpdate
 
 
 @router.delete("/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_profile(profile_id: str):
-    """Delete profile."""
+async def delete_profile(
+    profile_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Delete profile.
+    
+    **Requires:** Authentication
+    **Authorization:** Owner only (or admin)
+    """
+    # Get existing profile
+    existing_profile = await profile_crud.get_profile_by_id(profile_id)
+    if not existing_profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    # Check ownership
+    from app.auth.utils import is_admin
+    if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete your own profile"
+        )
+    
     deleted = await profile_crud.delete_profile(profile_id)
     
     if not deleted:

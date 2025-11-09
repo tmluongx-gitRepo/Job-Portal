@@ -1,21 +1,28 @@
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status, Depends
 from app.crud import job as job_crud
 from app.schemas.job import JobCreate, JobUpdate, JobResponse
+from app.auth.dependencies import require_employer, get_current_user, get_optional_user
 
 router = APIRouter()
 
 
 @router.post("", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
-async def create_job(job: JobCreate, posted_by: Optional[str] = Query(None, description="User ID of employer posting the job")):
+async def create_job(
+    job: JobCreate,
+    employer: dict = Depends(require_employer)
+):
     """
     Create a new job posting.
     
-    - **posted_by**: Optional user ID of the employer who posted this job
+    **Requires:** Employer account
+    
+    The job will be automatically linked to the authenticated employer.
     """
     job_data = job.model_dump()
     
-    created_job = await job_crud.create_job(job_data, posted_by=posted_by)
+    # Use authenticated user's ID as posted_by
+    created_job = await job_crud.create_job(job_data, posted_by=employer["id"])
     
     return JobResponse(
         id=str(created_job["_id"]),
@@ -28,17 +35,28 @@ async def list_jobs(
     skip: int = Query(0, ge=0, description="Number of jobs to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of jobs to return"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    posted_by: Optional[str] = Query(None, description="Filter by employer user ID")
+    posted_by: Optional[str] = Query(None, description="Filter by employer user ID"),
+    current_user: Optional[dict] = Depends(get_optional_user)
 ):
     """
     List all jobs with optional filters.
+    
+    **Public endpoint** - No authentication required.
     
     - **skip**: Number of jobs to skip (for pagination)
     - **limit**: Maximum number of jobs to return
     - **is_active**: Filter by active/inactive status
     - **posted_by**: Filter by employer user ID
+    
+    If authenticated, you can see all your posted jobs (including inactive).
+    If not authenticated, you only see active jobs.
     """
-    jobs = await job_crud.get_jobs(skip=skip, limit=limit, is_active=is_active, posted_by=posted_by)
+    # If user is authenticated and filtering their own jobs, show all statuses
+    if current_user and posted_by == current_user["id"]:
+        jobs = await job_crud.get_jobs(skip=skip, limit=limit, is_active=is_active, posted_by=posted_by)
+    else:
+        # For non-owners, only show active jobs
+        jobs = await job_crud.get_jobs(skip=skip, limit=limit, is_active=True, posted_by=posted_by)
     
     return [
         JobResponse(
@@ -146,9 +164,16 @@ async def get_job(
 
 
 @router.put("/{job_id}", response_model=JobResponse)
-async def update_job(job_id: str, job_update: JobUpdate):
+async def update_job(
+    job_id: str,
+    job_update: JobUpdate,
+    current_user: dict = Depends(get_current_user)
+):
     """
     Update a job.
+    
+    **Requires:** Authentication
+    **Authorization:** Only the employer who posted the job can update it (or admins)
     
     - **job_id**: Job ID
     - Provide only the fields you want to update
@@ -159,6 +184,14 @@ async def update_job(job_id: str, job_update: JobUpdate):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job with id {job_id} not found"
+        )
+    
+    # Check if user is the owner or admin
+    from app.auth.utils import is_admin
+    if existing_job.get("posted_by") != current_user["id"] and not is_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update jobs you posted"
         )
     
     # Update the job
@@ -178,12 +211,32 @@ async def update_job(job_id: str, job_update: JobUpdate):
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_job(job_id: str):
+async def delete_job(
+    job_id: str,
+    current_user: dict = Depends(get_current_user)
+):
     """
     Delete a job (hard delete).
     
-    - **job_id**: Job ID
+    **Requires:** Authentication
+    **Authorization:** Only the employer who posted the job can delete it (or admins)
     """
+    # Get the job to check ownership
+    existing_job = await job_crud.get_job_by_id(job_id)
+    if not existing_job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job with id {job_id} not found"
+        )
+    
+    # Check if user is the owner or admin
+    from app.auth.utils import is_admin
+    if existing_job.get("posted_by") != current_user["id"] and not is_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete jobs you posted"
+        )
+    
     deleted = await job_crud.delete_job(job_id)
     
     if not deleted:

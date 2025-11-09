@@ -2,7 +2,7 @@
 API routes for recommendations.
 """
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status, Depends
 from app.crud import recommendation as recommendation_crud
 from app.crud import job as job_crud
 from app.crud import job_seeker_profile as profile_crud
@@ -11,14 +11,20 @@ from app.schemas.recommendation import (
     RecommendationUpdate,
     RecommendationResponse
 )
+from app.auth.dependencies import get_current_user, require_admin
 
 router = APIRouter()
 
 
 @router.post("", response_model=RecommendationResponse, status_code=status.HTTP_201_CREATED)
-async def create_recommendation(recommendation: RecommendationCreate):
+async def create_recommendation(
+    recommendation: RecommendationCreate,
+    admin: dict = Depends(require_admin)
+):
     """
     Create a new job recommendation.
+    
+    **Requires:** Admin account (service-only operation)
     
     - **job_seeker_id**: ID of the job seeker
     - **job_id**: ID of the job being recommended
@@ -68,6 +74,7 @@ async def create_recommendation(recommendation: RecommendationCreate):
 @router.get("/job-seeker/{job_seeker_id}", response_model=List[dict])
 async def get_recommendations_for_job_seeker(
     job_seeker_id: str,
+    current_user: dict = Depends(get_current_user),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     min_match: int = Query(0, ge=0, le=100, description="Minimum match percentage"),
@@ -78,7 +85,10 @@ async def get_recommendations_for_job_seeker(
     """
     Get personalized job recommendations for a job seeker.
     
-    - **job_seeker_id**: Job seeker ID
+    **Requires:** Authentication
+    **Authorization:** Can only view your own recommendations (admins can view all)
+    
+    - **job_seeker_id**: Job seeker profile ID
     - **min_match**: Minimum match percentage filter
     - **include_viewed**: Show recommendations user has already viewed
     - **include_dismissed**: Show recommendations user dismissed
@@ -86,6 +96,17 @@ async def get_recommendations_for_job_seeker(
     
     Returns recommendations sorted by match percentage (highest first) with full job details.
     """
+    # Verify user can access these recommendations
+    from app.auth.utils import is_admin
+    if not is_admin(current_user):
+        # Get user's job seeker profile
+        profile = await profile_crud.get_profile_by_user_id(current_user["id"])
+        if not profile or str(profile["_id"]) != job_seeker_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view your own recommendations"
+            )
+    
     recommendations = await recommendation_crud.get_recommendations_for_job_seeker(
         job_seeker_id=job_seeker_id,
         skip=skip,
@@ -185,9 +206,15 @@ async def count_recommendations(
 
 
 @router.get("/{recommendation_id}", response_model=RecommendationResponse)
-async def get_recommendation(recommendation_id: str):
+async def get_recommendation(
+    recommendation_id: str,
+    current_user: dict = Depends(get_current_user)
+):
     """
     Get a specific recommendation by ID.
+    
+    **Requires:** Authentication
+    **Authorization:** Owner only (admins can view all)
     """
     recommendation = await recommendation_crud.get_recommendation_by_id(recommendation_id)
     
@@ -196,6 +223,16 @@ async def get_recommendation(recommendation_id: str):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Recommendation {recommendation_id} not found"
         )
+    
+    # Verify ownership
+    from app.auth.utils import is_admin
+    if not is_admin(current_user):
+        profile = await profile_crud.get_profile_by_user_id(current_user["id"])
+        if not profile or str(recommendation.get("job_seeker_id")) != str(profile["_id"]):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view your own recommendations"
+            )
     
     return RecommendationResponse(
         id=str(recommendation["_id"]),
