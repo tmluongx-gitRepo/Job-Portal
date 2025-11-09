@@ -1,6 +1,6 @@
-import type { JSX } from "react";
+import type { ReactElement } from "react";
 
-export default function JobsPage(): JSX.Element {
+export default function JobsPage(): ReactElement {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-7xl mx-auto">

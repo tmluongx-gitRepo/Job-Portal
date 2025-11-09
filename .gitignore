@@ -48,3 +48,6 @@ logs/
 # Docker volumes
 chroma_data/
 redis_data/
+
+# Local automation scripts
+n8n_pr_review_agent/
