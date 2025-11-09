@@ -6,7 +6,6 @@ Each job document contains the job description as document content and
 job metadata (title, company, salary, etc.) as metadata fields.
 """
 from datetime import datetime
-from typing import Optional
 from uuid import uuid4
 
 

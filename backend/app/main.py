@@ -10,7 +10,7 @@ from app.database import close_mongo_client, get_chroma_client, ping_mongo, ping
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     """Application lifespan events."""
     # Startup
     print(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")

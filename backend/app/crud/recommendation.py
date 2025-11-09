@@ -2,7 +2,6 @@
 CRUD operations for recommendations.
 """
 from datetime import datetime
-from typing import Optional
 
 from bson import ObjectId
 
@@ -86,7 +85,6 @@ async def get_recommendations_for_job_seeker(
     """
     recommendations_collection = get_recommendations_collection()
     jobs_collection = get_jobs_collection()
-    profiles_collection = get_job_seeker_profiles_collection()
 
     # Build query
     query = {
@@ -153,7 +151,6 @@ async def get_recommendations_for_job(
         List of recommendations with job seeker details
     """
     recommendations_collection = get_recommendations_collection()
-    profiles_collection = get_job_seeker_profiles_collection()
 
     query = {
         "job_id": job_id,

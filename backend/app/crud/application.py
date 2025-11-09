@@ -1,10 +1,8 @@
 from datetime import datetime
-from typing import Optional
 
 from bson import ObjectId
 
 from app.database import get_applications_collection
-from app.schemas.application import ApplicationCreate, ApplicationUpdate
 
 
 

@@ -28,7 +28,7 @@ async def health_check():
         await ping_mongo()
         health_status["mongodb"] = "healthy"
     except Exception as e:
-        health_status["mongodb"] = f"unhealthy: {str(e)}"
+        health_status["mongodb"] = f"unhealthy: {e!s}"
         health_status["status"] = "degraded"
 
     # Check Redis connection
@@ -38,7 +38,7 @@ async def health_check():
         await redis.aclose()
         health_status["redis"] = "healthy"
     except Exception as e:
-        health_status["redis"] = f"unhealthy: {str(e)}"
+        health_status["redis"] = f"unhealthy: {e!s}"
         health_status["status"] = "degraded"
 
     return health_status

@@ -1,7 +1,6 @@
 """
 API routes for recommendations.
 """
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 
