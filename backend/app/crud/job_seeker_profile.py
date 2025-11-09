@@ -53,7 +53,7 @@ async def get_profile_by_user_id(user_id: str) -> dict | None:
         return None
 
 
-async def get_profiles(skip: int = 0, limit: int = 100, filters: dict = None) -> list[dict]:
+async def get_profiles(skip: int = 0, limit: int = 100, filters: dict | None = None) -> list[dict]:
     """Get all profiles with pagination and optional filters."""
     collection = get_job_seeker_profiles_collection()
 
@@ -63,10 +63,10 @@ async def get_profiles(skip: int = 0, limit: int = 100, filters: dict = None) ->
 
 
 async def search_profiles(
-    skills: list[str] = None,
-    location: str = None,
-    min_experience: int = None,
-    max_experience: int = None,
+    skills: list[str] | None = None,
+    location: str | None = None,
+    min_experience: int | None = None,
+    max_experience: int | None = None,
     skip: int = 0,
     limit: int = 100
 ) -> list[dict]:

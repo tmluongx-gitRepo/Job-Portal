@@ -5,7 +5,6 @@ In ChromaDB, users are stored as documents with metadata.
 Each user document contains their profile information as metadata.
 """
 from datetime import datetime
-from typing import Optional
 from uuid import uuid4
 
 

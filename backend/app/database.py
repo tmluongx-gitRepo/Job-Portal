@@ -1,4 +1,3 @@
-from typing import Optional
 
 
 import chromadb
@@ -31,7 +30,7 @@ def get_chroma_client() -> chromadb.ClientAPI:
     return _chroma_client
 
 
-def get_collection(collection_name: str = None):
+def get_collection(collection_name: str | None = None):
     """Get or create a ChromaDB collection."""
     client = get_chroma_client()
     collection_name = collection_name or settings.CHROMA_COLLECTION_NAME

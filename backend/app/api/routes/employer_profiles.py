@@ -1,7 +1,7 @@
 """
 Employer Profile API routes.
 """
-from fastapi import APIRouter, HTTPException,, status
+from fastapi import APIRouter, HTTPException, status
 
 
 from app.schemas.employer import (
