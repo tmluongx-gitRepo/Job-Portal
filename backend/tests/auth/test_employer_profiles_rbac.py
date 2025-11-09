@@ -1,0 +1,153 @@
+"""
+RBAC tests for Employer Profiles API.
+"""
+import pytest
+from httpx import AsyncClient
+
+
+class TestEmployerProfilesRBAC:
+    """Test role-based access control for Employer Profiles API."""
+    
+    @pytest.mark.asyncio
+    async def test_unauthenticated_can_browse_profiles(self, client: AsyncClient):
+        """Unauthenticated users can browse employer profiles (public)."""
+        response = await client.get("/api/employer-profiles")
+        
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
+    
+    @pytest.mark.asyncio
+    async def test_unauthenticated_cannot_create_profile(self, client: AsyncClient):
+        """Unauthenticated users cannot create profiles."""
+        response = await client.post(
+            "/api/employer-profiles",
+            json={
+                "company_name": "Test Company",
+                "industry": "Technology"
+            }
+        )
+        
+        # FastAPI HTTPBearer returns 403 when no credentials provided
+        assert response.status_code in [401, 403]
+    
+    @pytest.mark.asyncio
+    async def test_employer_can_create_profile(self, client: AsyncClient, employer_token):
+        """Employers can create their profile."""
+        if not employer_token:
+            pytest.skip("Email confirmation required for testing")
+        
+        headers = {"Authorization": f"Bearer {employer_token}"}
+        response = await client.post(
+            "/api/employer-profiles",
+            headers=headers,
+            json={
+                "company_name": "Test Company",
+                "industry": "Technology",
+                "company_size": "50-200",
+                "website": "https://test.com",
+                "location": "SF",
+                "description": "Test"
+            }
+        )
+        
+        assert response.status_code == 201
+        data = response.json()
+        assert data["company_name"] == "Test Company"
+    
+    @pytest.mark.asyncio
+    async def test_job_seeker_cannot_create_employer_profile(self, client: AsyncClient, job_seeker_token):
+        """Job seekers cannot create employer profiles."""
+        if not job_seeker_token:
+            pytest.skip("Email confirmation required for testing")
+        
+        headers = {"Authorization": f"Bearer {job_seeker_token}"}
+        response = await client.post(
+            "/api/employer-profiles",
+            headers=headers,
+            json={
+                "company_name": "Test",
+                "industry": "Tech"
+            }
+        )
+        
+        assert response.status_code == 403
+    
+    @pytest.mark.asyncio
+    async def test_employer_can_update_own_profile(self, client: AsyncClient, employer_with_profile):
+        """Employers can update their own profile."""
+        token, user_id, profile_id = employer_with_profile
+        
+        headers = {"Authorization": f"Bearer {token}"}
+        response = await client.put(
+            f"/api/employer-profiles/{profile_id}",
+            headers=headers,
+            json={"description": "Updated description"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["description"] == "Updated description"
+    
+    @pytest.mark.asyncio
+    async def test_employer_cannot_update_other_profile(
+        self, client: AsyncClient, employer_token, employer_with_profile
+    ):
+        """Employers cannot update other employers' profiles."""
+        if not employer_token:
+            pytest.skip("Email confirmation required for testing")
+        
+        _, _, profile_id = employer_with_profile
+        
+        headers = {"Authorization": f"Bearer {employer_token}"}
+        response = await client.put(
+            f"/api/employer-profiles/{profile_id}",
+            headers=headers,
+            json={"description": "Hacked!"}
+        )
+        
+        assert response.status_code == 403
+    
+    @pytest.mark.asyncio
+    async def test_admin_can_update_any_profile(self, client: AsyncClient, admin_token, employer_with_profile):
+        """Admins can update any employer profile."""
+        if not admin_token:
+            pytest.skip("Email confirmation required for testing")
+        
+        _, _, profile_id = employer_with_profile
+        
+        headers = {"Authorization": f"Bearer {admin_token}"}
+        response = await client.put(
+            f"/api/employer-profiles/{profile_id}",
+            headers=headers,
+            json={"description": "Admin updated"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["description"] == "Admin updated"
+    
+    @pytest.mark.asyncio
+    async def test_employer_can_delete_own_profile(self, client: AsyncClient, employer_with_profile):
+        """Employers can delete their own profile."""
+        token, user_id, profile_id = employer_with_profile
+        
+        headers = {"Authorization": f"Bearer {token}"}
+        response = await client.delete(f"/api/employer-profiles/{profile_id}", headers=headers)
+        
+        assert response.status_code == 204
+    
+    @pytest.mark.asyncio
+    async def test_job_seeker_cannot_delete_employer_profile(
+        self, client: AsyncClient, job_seeker_token, employer_with_profile
+    ):
+        """Job seekers cannot delete employer profiles."""
+        if not job_seeker_token:
+            pytest.skip("Email confirmation required for testing")
+        
+        _, _, profile_id = employer_with_profile
+        
+        headers = {"Authorization": f"Bearer {job_seeker_token}"}
+        response = await client.delete(f"/api/employer-profiles/{profile_id}", headers=headers)
+        
+        assert response.status_code == 403
+
