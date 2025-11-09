@@ -2,7 +2,9 @@
 CRUD operations for Employer Profile model.
 """
 from datetime import datetime
+
 from bson import ObjectId
+
 
 from app.database import get_employer_profiles_collection
 

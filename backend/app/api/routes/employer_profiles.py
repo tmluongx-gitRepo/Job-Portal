@@ -1,7 +1,8 @@
 """
 Employer Profile API routes.
 """
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException,, status
+
 
 from app.schemas.employer import (
     EmployerProfileCreate,
@@ -105,5 +106,3 @@ async def delete_profile(profile_id: str):
 
     if not deleted:
         raise HTTPException(status_code=404, detail="Employer profile not found")
-
-    return None

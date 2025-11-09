@@ -1,6 +1,7 @@
 from fastapi import APIRouter, status
 from redis import asyncio as aioredis
 
+
 from app.config import settings
 from app.database import ping_mongo
 
