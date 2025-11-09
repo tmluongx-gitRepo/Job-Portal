@@ -11,15 +11,26 @@ echo "🚀 Running pre-push validation..."
 # Get current branch name
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
-# Prevent direct pushes to main branch
+# Prevent direct pushes to protected branches (main and dev)
 if [ "$BRANCH" = "main" ]; then
     echo "❌ ERROR: Direct pushes to 'main' branch are not allowed!"
-    echo "   Please create a feature branch and submit a Pull Request instead."
+    echo "   The 'main' branch is protected and can only be updated via Pull Requests from 'dev'."
     echo ""
-    echo "   Quick fix:"
-    echo "   1. Create a new branch: git checkout -b feature/your-feature-name"
-    echo "   2. Push your branch: git push -u origin feature/your-feature-name"
-    echo "   3. Create a Pull Request on GitHub"
+    echo "   Required workflow:"
+    echo "   1. Create a feature branch: git checkout -b feature/your-feature-name"
+    echo "   2. Push your feature branch: git push -u origin feature/your-feature-name"
+    echo "   3. Create a Pull Request to 'dev' on GitHub"
+    exit 1
+fi
+
+if [ "$BRANCH" = "dev" ]; then
+    echo "❌ ERROR: Direct pushes to 'dev' branch are not allowed!"
+    echo "   The 'dev' branch is protected and can only be updated via Pull Requests."
+    echo ""
+    echo "   Required workflow:"
+    echo "   1. Create a feature branch: git checkout -b feature/your-feature-name"
+    echo "   2. Push your feature branch: git push -u origin feature/your-feature-name"
+    echo "   3. Create a Pull Request to 'dev' on GitHub"
     exit 1
 fi
 
