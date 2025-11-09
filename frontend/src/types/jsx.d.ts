@@ -7,4 +7,3 @@ declare namespace JSX {
     [attribute: string]: unknown;
   }
 }
-
