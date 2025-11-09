@@ -2,10 +2,11 @@
  * Base API client utilities
  * Shared across all API modules
  */
-import { z } from 'zod';
+import { z } from "zod";
 
 // Get API URL from environment variable
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 /**
  * Custom error class for API errors
@@ -17,7 +18,7 @@ export class ApiError extends Error {
     public data?: unknown
   ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
@@ -30,7 +31,7 @@ export class ValidationError extends Error {
     public issues: z.ZodIssue[]
   ) {
     super(message);
-    this.name = 'ValidationError';
+    this.name = "ValidationError";
   }
 }
 
@@ -40,7 +41,7 @@ export class ValidationError extends Error {
  */
 export async function apiRequest<TResponse>(
   endpoint: string,
-  options: RequestInit & {
+  options: Omit<RequestInit, "body"> & {
     responseSchema: z.ZodSchema<TResponse>;
     requestSchema?: z.ZodSchema;
     body?: unknown;
@@ -53,7 +54,7 @@ export async function apiRequest<TResponse>(
     const validation = requestSchema.safeParse(body);
     if (!validation.success) {
       throw new ValidationError(
-        'Request validation failed',
+        "Request validation failed",
         validation.error.issues
       );
     }
@@ -63,7 +64,7 @@ export async function apiRequest<TResponse>(
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...fetchOptions,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...fetchOptions.headers,
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -94,14 +95,14 @@ export async function apiRequest<TResponse>(
   try {
     data = await response.json();
   } catch (_error) {
-    throw new ApiError('Failed to parse response JSON', response.status);
+    throw new ApiError("Failed to parse response JSON", response.status);
   }
 
   // Validate response
   const validation = responseSchema.safeParse(data);
   if (!validation.success) {
     throw new ValidationError(
-      'Response validation failed',
+      "Response validation failed",
       validation.error.issues
     );
   }
