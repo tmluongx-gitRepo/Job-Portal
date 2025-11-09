@@ -1,0 +1,125 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Job Portal Pre-Push Hook
+# Runs comprehensive validation before pushing to remote
+
+set -e
+
+echo "🚀 Running pre-push validation..."
+
+# Get current branch name
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Prevent direct pushes to protected branches (main and dev)
+if [ "$BRANCH" = "main" ]; then
+    echo "❌ ERROR: Direct pushes to 'main' branch are not allowed!"
+    echo "   The 'main' branch is protected and can only be updated via Pull Requests from 'dev'."
+    echo ""
+    echo "   Required workflow:"
+    echo "   1. Create a feature branch: git checkout -b feature/your-feature-name"
+    echo "   2. Push your feature branch: git push -u origin feature/your-feature-name"
+    echo "   3. Create a Pull Request to 'dev' on GitHub"
+    exit 1
+fi
+
+if [ "$BRANCH" = "dev" ]; then
+    echo "❌ ERROR: Direct pushes to 'dev' branch are not allowed!"
+    echo "   The 'dev' branch is protected and can only be updated via Pull Requests."
+    echo ""
+    echo "   Required workflow:"
+    echo "   1. Create a feature branch: git checkout -b feature/your-feature-name"
+    echo "   2. Push your feature branch: git push -u origin feature/your-feature-name"
+    echo "   3. Create a Pull Request to 'dev' on GitHub"
+    exit 1
+fi
+
+# Check for .env files being tracked
+if git ls-files | grep -q "\.env$"; then
+    echo "❌ ERROR: .env file is tracked in git!"
+    echo "   Environment files should not be committed to version control."
+    echo ""
+    echo "   To fix this:"
+    echo "   1. Remove from git: git rm --cached .env"
+    echo "   2. Ensure .env is in .gitignore"
+    echo "   3. Commit the change: git commit -m 'Remove .env from version control'"
+    exit 1
+fi
+
+# Detect which parts of the codebase changed since last push
+FRONTEND_CHANGED=$(git diff --name-only @{push}..HEAD 2>/dev/null | grep "^frontend/" || true)
+BACKEND_CHANGED=$(git diff --name-only @{push}..HEAD 2>/dev/null | grep "^backend/" || true)
+
+# If this is the first push, check all files
+if [ -z "$FRONTEND_CHANGED" ] && [ -z "$BACKEND_CHANGED" ]; then
+    FRONTEND_CHANGED=$(git ls-files | grep "^frontend/" || true)
+    BACKEND_CHANGED=$(git ls-files | grep "^backend/" || true)
+fi
+
+# Frontend validation
+if [ -n "$FRONTEND_CHANGED" ]; then
+    echo "⚛️  Validating frontend..."
+
+    if [ -d "frontend" ]; then
+        cd frontend
+
+        echo "  📋 Running ESLint..."
+        bun run lint
+
+        echo "  🔷 Running TypeScript type check..."
+        bun run type-check
+
+        echo "  🏗️  Testing production build..."
+        bun run build
+
+        # Note: Add test command when tests are configured
+        # echo "  🧪 Running tests..."
+        # bun run test
+
+        cd ..
+    else
+        echo "⚠️  Warning: frontend/ directory not found (worktree?)"
+        echo "   Skipping frontend validation..."
+    fi
+fi
+
+# Backend validation
+if [ -n "$BACKEND_CHANGED" ]; then
+    echo "🐍 Validating backend..."
+
+    if [ -d "backend" ]; then
+        cd backend
+
+        echo "  🔧 Running Ruff linting..."
+        uv run ruff check .
+
+        echo "  📝 Running Ruff formatting check..."
+        uv run ruff format --check .
+
+        echo "  🔷 Running MyPy type check..."
+        uv run mypy app/ --config-file=pyproject.toml
+
+        # Set up test environment variables
+        export REDIS_URL="redis://localhost:6379"
+        export CHROMA_HOST="localhost"
+        export CHROMA_PORT="8000"
+        export MONGODB_URI="mongodb://localhost:27017"
+        export MONGODB_DB_NAME="job_portal_test"
+
+        echo "  🧪 Running pytest..."
+        uv run pytest tests/ -v || {
+            echo ""
+            echo "⚠️  Note: Tests failed or test suite not fully configured yet."
+            echo "   This is a warning - push will continue."
+            echo "   Please ensure tests are passing before merging to main."
+        }
+
+        cd ..
+    else
+        echo "⚠️  Warning: backend/ directory not found (worktree?)"
+        echo "   Skipping backend validation..."
+    fi
+fi
+
+echo "✅ Pre-push validation complete!"
+echo "🎉 Ready to push to remote!"

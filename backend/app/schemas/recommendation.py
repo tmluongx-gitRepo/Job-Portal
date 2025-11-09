@@ -1,13 +1,15 @@
 """
 Recommendation schemas.
 """
+
 from datetime import datetime
-from typing import List
+
 from pydantic import BaseModel, ConfigDict
 
 
 class MatchFactorSchema(BaseModel):
     """Individual matching factor schema"""
+
     factor: str
     weight: float
     explanation: str
@@ -16,21 +18,22 @@ class MatchFactorSchema(BaseModel):
 
 class RecommendationBase(BaseModel):
     """Base recommendation schema"""
+
     job_seeker_id: str
     job_id: str
     match_percentage: int  # 0-100
     reasoning: str
-    factors: List[MatchFactorSchema]
+    factors: list[MatchFactorSchema]
     ai_generated: bool = True
 
 
 class RecommendationCreate(RecommendationBase):
     """Schema for creating a recommendation"""
-    pass
 
 
 class RecommendationUpdate(BaseModel):
     """Schema for updating a recommendation"""
+
     viewed: bool | None = None
     dismissed: bool | None = None
     applied: bool | None = None
@@ -38,6 +41,7 @@ class RecommendationUpdate(BaseModel):
 
 class RecommendationResponse(RecommendationBase):
     """Schema for recommendation response"""
+
     id: str
     viewed: bool = False
     dismissed: bool = False
@@ -49,10 +53,10 @@ class RecommendationResponse(RecommendationBase):
 
 class RecommendationWithDetails(RecommendationResponse):
     """Recommendation with embedded job and profile details"""
+
     job_title: str | None = None
     job_company: str | None = None
     job_location: str | None = None
     job_salary_min: int | None = None
     job_salary_max: int | None = None
     job_seeker_name: str | None = None
-

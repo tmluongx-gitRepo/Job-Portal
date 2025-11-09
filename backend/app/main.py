@@ -1,15 +1,24 @@
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health, users, job_seeker_profiles, employer_profiles, jobs, applications, recommendations
+from app.api.routes import (
+    applications,
+    employer_profiles,
+    health,
+    job_seeker_profiles,
+    jobs,
+    recommendations,
+    users,
+)
 from app.config import settings
 from app.database import close_mongo_client, get_chroma_client, ping_mongo, ping_redis
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan events."""
     # Startup
     print(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
@@ -76,15 +85,19 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router, tags=["Health"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
-app.include_router(job_seeker_profiles.router, prefix="/api/job-seeker-profiles", tags=["Job Seeker Profiles"])
-app.include_router(employer_profiles.router, prefix="/api/employer-profiles", tags=["Employer Profiles"])
+app.include_router(
+    job_seeker_profiles.router, prefix="/api/job-seeker-profiles", tags=["Job Seeker Profiles"]
+)
+app.include_router(
+    employer_profiles.router, prefix="/api/employer-profiles", tags=["Employer Profiles"]
+)
 app.include_router(jobs.router, prefix="/api/jobs", tags=["Jobs"])
 app.include_router(applications.router, prefix="/api/applications", tags=["Applications"])
 app.include_router(recommendations.router, prefix="/api/recommendations", tags=["Recommendations"])
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     """Root endpoint."""
     return {
         "message": f"Welcome to {settings.APP_NAME}",

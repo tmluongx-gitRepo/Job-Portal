@@ -1,20 +1,21 @@
-from typing import Optional
+from typing import Any
 
 import chromadb
+from chromadb.api import ClientAPI
 from chromadb.config import Settings as ChromaSettings
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection, AsyncIOMotorDatabase
 from redis import asyncio as aioredis
 
 from app.config import settings
 
 # Global ChromaDB client instance
-_chroma_client = None
+_chroma_client: ClientAPI | None = None
 
 # Global MongoDB client instance
-_mongo_client: Optional[AsyncIOMotorClient] = None
+_mongo_client: AsyncIOMotorClient | None = None
 
 
-def get_chroma_client() -> chromadb.ClientAPI:
+def get_chroma_client() -> ClientAPI:
     """Get or create ChromaDB client."""
     global _chroma_client
 
@@ -24,21 +25,18 @@ def get_chroma_client() -> chromadb.ClientAPI:
             port=settings.CHROMA_PORT,
             settings=ChromaSettings(
                 anonymized_telemetry=False,
-            )
+            ),
         )
 
     return _chroma_client
 
 
-def get_collection(collection_name: str = None):
+def get_collection(collection_name: str | None = None) -> Any:
     """Get or create a ChromaDB collection."""
     client = get_chroma_client()
     collection_name = collection_name or settings.CHROMA_COLLECTION_NAME
 
-    return client.get_or_create_collection(
-        name=collection_name,
-        metadata={"hnsw:space": "cosine"}
-    )
+    return client.get_or_create_collection(name=collection_name, metadata={"hnsw:space": "cosine"})
 
 
 def get_mongo_client() -> AsyncIOMotorClient:
@@ -46,7 +44,7 @@ def get_mongo_client() -> AsyncIOMotorClient:
     global _mongo_client
 
     if _mongo_client is None:
-        client_kwargs = {"uuidRepresentation": "standard"}
+        client_kwargs: dict[str, Any] = {"uuidRepresentation": "standard"}
 
         if settings.MONGO_URI.startswith("mongodb+srv"):
             client_kwargs["tls"] = True
@@ -92,7 +90,7 @@ def close_mongo_client() -> None:
         _mongo_client = None
 
 
-async def ping_redis() -> dict:
+async def ping_redis() -> dict[str, str]:
     """Ping Redis to verify connectivity and get info."""
     redis = await aioredis.from_url(settings.REDIS_URL)
     try:
@@ -109,37 +107,37 @@ async def ping_redis() -> dict:
 
 
 # MongoDB Collection Helpers
-def get_users_collection():
+def get_users_collection() -> AsyncIOMotorCollection:
     """Get users collection from MongoDB."""
     db = get_mongo_database()
     return db["users"]
 
 
-def get_job_seeker_profiles_collection():
+def get_job_seeker_profiles_collection() -> AsyncIOMotorCollection:
     """Get job_seeker_profiles collection from MongoDB."""
     db = get_mongo_database()
     return db["job_seeker_profiles"]
 
 
-def get_employer_profiles_collection():
+def get_employer_profiles_collection() -> AsyncIOMotorCollection:
     """Get employer_profiles collection from MongoDB."""
     db = get_mongo_database()
     return db["employer_profiles"]
 
 
-def get_jobs_collection():
+def get_jobs_collection() -> AsyncIOMotorCollection:
     """Get jobs collection from MongoDB."""
     db = get_mongo_database()
     return db["jobs"]
 
 
-def get_applications_collection():
+def get_applications_collection() -> AsyncIOMotorCollection:
     """Get applications collection from MongoDB."""
     db = get_mongo_database()
     return db["applications"]
 
 
-def get_recommendations_collection():
+def get_recommendations_collection() -> AsyncIOMotorCollection:
     """Get recommendations collection from MongoDB."""
     db = get_mongo_database()
     return db["recommendations"]

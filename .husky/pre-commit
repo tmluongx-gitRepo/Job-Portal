@@ -1,0 +1,60 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Job Portal Pre-Commit Hook
+# Runs fast checks on staged files before allowing commit
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+# Detect which parts of the codebase have staged changes
+FRONTEND_CHANGED=$(git diff --cached --name-only | grep "^frontend/" || true)
+BACKEND_CHANGED=$(git diff --cached --name-only | grep "^backend/" || true)
+
+# Run lint-staged for file-level formatting and linting
+echo "✨ Running lint-staged..."
+cd frontend && npx lint-staged && cd ..
+
+# Frontend checks (if frontend files are staged)
+if [ -n "$FRONTEND_CHANGED" ]; then
+    echo "⚛️  Checking frontend code..."
+
+    if [ -d "frontend" ]; then
+        cd frontend
+
+        echo "  📋 Running ESLint..."
+        bun run lint
+
+        echo "  🔷 Running TypeScript type check..."
+        bun run type-check
+
+        cd ..
+    else
+        echo "⚠️  Warning: frontend/ directory not found (worktree?)"
+    fi
+fi
+
+# Backend checks (if backend files are staged)
+if [ -n "$BACKEND_CHANGED" ]; then
+    echo "🐍 Checking backend code..."
+
+    if [ -d "backend" ]; then
+        cd backend
+
+        echo "  🔧 Running Ruff linting..."
+        uv run ruff check .
+
+        echo "  📝 Running Ruff formatting check..."
+        uv run ruff format --check .
+
+        echo "  🔷 Running MyPy type check..."
+        uv run mypy app/ --config-file=pyproject.toml
+
+        cd ..
+    else
+        echo "⚠️  Warning: backend/ directory not found (worktree?)"
+    fi
+fi
+
+echo "✅ Pre-commit checks passed!"
