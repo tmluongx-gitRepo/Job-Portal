@@ -103,21 +103,14 @@ if [ -n "$BACKEND_CHANGED" ]; then
     if [ -d "backend" ]; then
         cd backend
 
-        # Use existing venv if available, otherwise let uv create one
-        if [ -f ".venv/bin/python" ]; then
-            PYTHON_PREFIX=".venv/bin/"
-        else
-            PYTHON_PREFIX="uv run "
-        fi
-
         echo "  🔧 Running Ruff linting..."
-        ${PYTHON_PREFIX}ruff check .
+        uv run ruff check .
 
         echo "  📝 Running Ruff formatting check..."
-        ${PYTHON_PREFIX}ruff format --check .
+        uv run ruff format --check .
 
         echo "  🔷 Running MyPy type check..."
-        ${PYTHON_PREFIX}mypy app/ --config-file=pyproject.toml
+        uv run mypy app/ --config-file=pyproject.toml
 
         # Set up test environment variables
         export REDIS_URL="redis://localhost:6379"
@@ -127,7 +120,7 @@ if [ -n "$BACKEND_CHANGED" ]; then
         export MONGODB_DB_NAME="job_portal_test"
 
         echo "  🧪 Running pytest..."
-        ${PYTHON_PREFIX}pytest tests/ -v || {
+        uv run pytest tests/ -v || {
             echo ""
             echo "⚠️  Note: Tests failed or test suite not fully configured yet."
             echo "   This is a warning - push will continue."
