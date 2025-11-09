@@ -2,7 +2,9 @@
 Job Seeker Profile schemas.
 """
 from datetime import datetime
+
 from pydantic import BaseModel, EmailStr, ConfigDict
+
 
 
 class JobSeekerPreferencesSchema(BaseModel):

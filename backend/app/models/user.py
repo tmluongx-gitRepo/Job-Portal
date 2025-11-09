@@ -9,6 +9,7 @@ from typing import Optional
 from uuid import uuid4
 
 
+
 class User:
     """User model for ChromaDB."""
 
@@ -17,12 +18,12 @@ class User:
         email: str,
         username: str,
         hashed_password: str,
-        full_name: Optional[str] = None,
+        full_name: str | None = None,
         is_active: bool = True,
         is_superuser: bool = False,
-        user_id: Optional[str] = None,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
+        user_id: str | None = None,
+        created_at: datetime | None = None,
+        updated_at: datetime | None = None,
     ):
         self.id = user_id or str(uuid4())
         self.email = email

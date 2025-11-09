@@ -1,5 +1,6 @@
 from typing import Optional
 
+
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
@@ -11,7 +12,7 @@ from app.config import settings
 _chroma_client = None
 
 # Global MongoDB client instance
-_mongo_client: Optional[AsyncIOMotorClient] = None
+_mongo_client: AsyncIOMotorClient | None = None
 
 
 def get_chroma_client() -> chromadb.ClientAPI:

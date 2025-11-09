@@ -10,6 +10,7 @@ from typing import Optional
 from uuid import uuid4
 
 
+
 class Job:
     """Job model for ChromaDB."""
 
@@ -20,13 +21,13 @@ class Job:
         location: str,
         description: str,
         job_type: str,
-        requirements: Optional[str] = None,
-        salary_min: Optional[int] = None,
-        salary_max: Optional[int] = None,
+        requirements: str | None = None,
+        salary_min: int | None = None,
+        salary_max: int | None = None,
         is_active: bool = True,
-        job_id: Optional[str] = None,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
+        job_id: str | None = None,
+        created_at: datetime | None = None,
+        updated_at: datetime | None = None,
     ):
         self.id = job_id or str(uuid4())
         self.title = title
@@ -80,7 +81,7 @@ class Job:
         }
 
     @classmethod
-    def from_metadata(cls, metadata: dict, full_description: Optional[str] = None) -> "Job":
+    def from_metadata(cls, metadata: dict, full_description: str | None = None) -> "Job":
         """Create job from ChromaDB metadata."""
         return cls(
             job_id=metadata.get("id"),

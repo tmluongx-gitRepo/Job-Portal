@@ -1,6 +1,7 @@
 from datetime import datetime
-from typing import List
+
 from pydantic import BaseModel, ConfigDict
+
 
 
 class EmployerProfileBase(BaseModel):
@@ -15,7 +16,7 @@ class EmployerProfileBase(BaseModel):
     founded_year: int | None = None
     contact_email: str | None = None
     contact_phone: str | None = None
-    benefits_offered: List[str] = []
+    benefits_offered: list[str] = []
     company_culture: str | None = None
 
 
@@ -36,7 +37,7 @@ class EmployerProfileUpdate(BaseModel):
     founded_year: int | None = None
     contact_email: str | None = None
     contact_phone: str | None = None
-    benefits_offered: List[str] | None = None
+    benefits_offered: list[str] | None = None
     company_culture: str | None = None
     verified: bool | None = None
 

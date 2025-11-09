@@ -3,6 +3,7 @@ User API routes.
 """
 from fastapi import APIRouter, HTTPException, status
 
+
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.crud import user as user_crud
 
@@ -18,7 +19,7 @@ async def create_user(user: UserCreate):
             email=user.email,
             account_type=user.account_type
         )
-        
+
         # Convert ObjectId to string for response
         return UserResponse(
             id=str(created_user["_id"]),
@@ -35,7 +36,7 @@ async def create_user(user: UserCreate):
 async def get_users(skip: int = 0, limit: int = 100):
     """Get all users."""
     users = await user_crud.get_users(skip=skip, limit=limit)
-    
+
     return [
         UserResponse(
             id=str(user["_id"]),
@@ -52,10 +53,10 @@ async def get_users(skip: int = 0, limit: int = 100):
 async def get_user(user_id: str):
     """Get user by ID."""
     user = await user_crud.get_user_by_id(user_id)
-    
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     return UserResponse(
         id=str(user["_id"]),
         email=user["email"],
@@ -69,10 +70,10 @@ async def get_user(user_id: str):
 async def get_user_by_email(email: str):
     """Get user by email."""
     user = await user_crud.get_user_by_email(email)
-    
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     return UserResponse(
         id=str(user["_id"]),
         email=user["email"],
@@ -87,15 +88,15 @@ async def update_user(user_id: str, user_update: UserUpdate):
     """Update user."""
     # Build update dict (only include provided fields)
     update_data = user_update.model_dump(exclude_unset=True)
-    
+
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
-    
+
     updated_user = await user_crud.update_user(user_id, update_data)
-    
+
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     return UserResponse(
         id=str(updated_user["_id"]),
         email=updated_user["email"],
@@ -109,9 +110,8 @@ async def update_user(user_id: str, user_update: UserUpdate):
 async def delete_user(user_id: str):
     """Delete user."""
     deleted = await user_crud.delete_user(user_id)
-    
+
     if not deleted:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    return None
+
 

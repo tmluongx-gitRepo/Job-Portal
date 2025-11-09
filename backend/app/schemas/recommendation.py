@@ -2,8 +2,9 @@
 Recommendation schemas.
 """
 from datetime import datetime
-from typing import List
+
 from pydantic import BaseModel, ConfigDict
+
 
 
 class MatchFactorSchema(BaseModel):
@@ -20,13 +21,12 @@ class RecommendationBase(BaseModel):
     job_id: str
     match_percentage: int  # 0-100
     reasoning: str
-    factors: List[MatchFactorSchema]
+    factors: list[MatchFactorSchema]
     ai_generated: bool = True
 
 
 class RecommendationCreate(RecommendationBase):
     """Schema for creating a recommendation"""
-    pass
 
 
 class RecommendationUpdate(BaseModel):

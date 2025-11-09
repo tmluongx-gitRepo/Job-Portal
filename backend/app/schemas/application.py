@@ -1,6 +1,7 @@
 from datetime import datetime
-from typing import List
+
 from pydantic import BaseModel, ConfigDict
+
 
 
 class StatusHistoryEntrySchema(BaseModel):
@@ -40,7 +41,7 @@ class ApplicationResponse(ApplicationBase):
     next_step: str | None = None
     interview_scheduled_date: datetime | None = None
     rejection_reason: str | None = None
-    status_history: List[StatusHistoryEntrySchema] = []
+    status_history: list[StatusHistoryEntrySchema] = []
     created_at: datetime
     updated_at: datetime
 

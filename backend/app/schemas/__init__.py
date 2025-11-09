@@ -1,26 +1,28 @@
-from app.schemas.user import UserBase, UserCreate, UserUpdate, UserResponse
-from app.schemas.job import JobBase, JobCreate, JobUpdate, JobResponse
-from app.schemas.job_seeker import (
+    ApplicationBase,
+    ApplicationCreate,
+    ApplicationResponse,
+    ApplicationUpdate,
+    EmployerProfileBase,
+    EmployerProfileCreate,
+    EmployerProfileResponse,
+    EmployerProfileUpdate,
     JobSeekerPreferencesSchema,
     JobSeekerProfileBase,
     JobSeekerProfileCreate,
-    JobSeekerProfileUpdate,
     JobSeekerProfileResponse,
-)
-from app.schemas.application import (
+    JobSeekerProfileUpdate,
     StatusHistoryEntrySchema,
-    ApplicationBase,
-    ApplicationCreate,
-    ApplicationUpdate,
-    ApplicationResponse,
 )
+)
+)
+
+from app.schemas.application import (
 from app.schemas.employer import (
-    EmployerProfileBase,
-    EmployerProfileCreate,
-    EmployerProfileUpdate,
-    EmployerProfileResponse,
-)
+from app.schemas.job import JobBase, JobCreate, JobUpdate, JobResponse
+from app.schemas.job_seeker import (
 from app.schemas.recommendation import (
+from app.schemas.user import UserBase, UserCreate, UserUpdate, UserResponse
+
     MatchFactorSchema,
     RecommendationBase,
     RecommendationCreate,

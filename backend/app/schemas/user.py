@@ -1,5 +1,7 @@
 from datetime import datetime
+
 from pydantic import BaseModel, EmailStr, ConfigDict
+
 
 
 class UserBase(BaseModel):
@@ -10,7 +12,6 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """Schema for creating a user"""
-    pass
 
 
 class UserUpdate(BaseModel):
