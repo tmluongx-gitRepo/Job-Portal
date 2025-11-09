@@ -3,9 +3,8 @@ from typing import cast
 
 from bson import ObjectId
 
-from app.types import JobDocument
-
 from app.database import get_jobs_collection
+from app.types import JobDocument
 
 
 async def create_job(job_data: dict[str, object], posted_by: str | None = None) -> JobDocument:

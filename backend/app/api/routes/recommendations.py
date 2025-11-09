@@ -1,6 +1,6 @@
 """API routes for recommendations."""
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from fastapi import APIRouter, HTTPException, Query, status
 

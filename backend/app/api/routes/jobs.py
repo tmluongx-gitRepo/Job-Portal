@@ -1,4 +1,4 @@
-from typing import Iterable
+from collections.abc import Iterable
 
 from fastapi import APIRouter, HTTPException, Query, status
 
@@ -12,9 +12,9 @@ router = APIRouter()
 def _serialize_job(document: JobDocument) -> JobResponse:
     """Convert a job document into the API response schema."""
 
-    responsibilities = document["responsibilities"] if "responsibilities" in document else []
-    skills_required = document["skills_required"] if "skills_required" in document else []
-    benefits = document["benefits"] if "benefits" in document else []
+    responsibilities = document.get("responsibilities", [])
+    skills_required = document.get("skills_required", [])
+    benefits = document.get("benefits", [])
 
     return JobResponse(
         id=str(document["_id"]),

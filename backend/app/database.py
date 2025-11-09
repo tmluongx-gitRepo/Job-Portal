@@ -1,8 +1,9 @@
+from typing import Any
+
 import chromadb
 from chromadb.api import ClientAPI
 from chromadb.config import Settings as ChromaSettings
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection, AsyncIOMotorDatabase
-from typing import Any
 from redis import asyncio as aioredis
 
 from app.config import settings

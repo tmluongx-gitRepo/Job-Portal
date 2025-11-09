@@ -1,4 +1,4 @@
-from typing import Iterable
+from collections.abc import Iterable
 
 from fastapi import APIRouter, HTTPException, Query, status
 
@@ -24,11 +24,9 @@ def _serialize_application(document: ApplicationDocument) -> ApplicationResponse
         for entry in document.get("status_history", [])
     ]
 
-    next_step = document["next_step"] if "next_step" in document else None
-    interview_scheduled = (
-        document["interview_scheduled_date"] if "interview_scheduled_date" in document else None
-    )
-    rejection_reason = document["rejection_reason"] if "rejection_reason" in document else None
+    next_step = document.get("next_step")
+    interview_scheduled = document.get("interview_scheduled_date")
+    rejection_reason = document.get("rejection_reason")
 
     return ApplicationResponse(
         id=str(document["_id"]),
