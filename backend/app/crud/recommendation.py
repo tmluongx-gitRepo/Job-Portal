@@ -3,8 +3,11 @@ CRUD operations for recommendations.
 """
 
 from datetime import UTC, datetime
+from typing import cast
 
 from bson import ObjectId
+
+from app.types import RecommendationDocument
 
 from app.database import (
     get_job_seeker_profiles_collection,
@@ -13,7 +16,7 @@ from app.database import (
 )
 
 
-async def create_recommendation(recommendation_data: dict) -> dict:
+async def create_recommendation(recommendation_data: dict[str, object]) -> RecommendationDocument:
     """
     Create a new recommendation.
 
@@ -36,10 +39,10 @@ async def create_recommendation(recommendation_data: dict) -> dict:
     result = await collection.insert_one(recommendation_doc)
     recommendation_doc["_id"] = result.inserted_id
 
-    return recommendation_doc
+    return cast(RecommendationDocument, recommendation_doc)
 
 
-async def get_recommendation_by_id(recommendation_id: str) -> dict | None:
+async def get_recommendation_by_id(recommendation_id: str) -> RecommendationDocument | None:
     """
     Get a recommendation by ID.
 
@@ -56,7 +59,8 @@ async def get_recommendation_by_id(recommendation_id: str) -> dict | None:
     except Exception:
         return None
 
-    return await collection.find_one({"_id": object_id})
+    result = await collection.find_one({"_id": object_id})
+    return cast(RecommendationDocument, result) if result else None
 
 
 async def get_recommendations_for_job_seeker(
@@ -67,7 +71,7 @@ async def get_recommendations_for_job_seeker(
     include_viewed: bool = True,
     include_dismissed: bool = False,
     include_applied: bool = False,
-) -> list[dict]:
+) -> list[RecommendationDocument]:
     """
     Get recommendations for a job seeker with enriched details.
 
@@ -87,7 +91,10 @@ async def get_recommendations_for_job_seeker(
     jobs_collection = get_jobs_collection()
 
     # Build query
-    query = {"job_seeker_id": job_seeker_id, "match_percentage": {"$gte": min_match_percentage}}
+    query: dict[str, object] = {
+        "job_seeker_id": job_seeker_id,
+        "match_percentage": {"$gte": min_match_percentage},
+    }
 
     if not include_viewed:
         query["viewed"] = False
@@ -133,7 +140,7 @@ async def get_recommendations_for_job_seeker(
 
 async def get_recommendations_for_job(
     job_id: str, skip: int = 0, limit: int = 20, min_match_percentage: int = 70
-) -> list[dict]:
+) -> list[RecommendationDocument]:
     """
     Get top candidate recommendations for a job.
 
@@ -148,7 +155,10 @@ async def get_recommendations_for_job(
     """
     recommendations_collection = get_recommendations_collection()
 
-    query = {"job_id": job_id, "match_percentage": {"$gte": min_match_percentage}}
+    query: dict[str, object] = {
+        "job_id": job_id,
+        "match_percentage": {"$gte": min_match_percentage},
+    }
 
     cursor = (
         recommendations_collection.find(query).skip(skip).limit(limit).sort("match_percentage", -1)
@@ -179,7 +189,7 @@ async def get_recommendations_for_job(
     return enriched_recommendations
 
 
-async def update_recommendation(recommendation_id: str, update_data: dict) -> dict | None:
+async def update_recommendation(recommendation_id: str, update_data: dict[str, object]) -> RecommendationDocument | None:
     """
     Update a recommendation.
 
@@ -202,9 +212,11 @@ async def update_recommendation(recommendation_id: str, update_data: dict) -> di
     if not update_data:
         return await get_recommendation_by_id(recommendation_id)
 
-    return await collection.find_one_and_update(
+    result = await collection.find_one_and_update(
         {"_id": object_id}, {"$set": update_data}, return_document=True
     )
+
+    return cast(RecommendationDocument, result) if result else None
 
 
 async def mark_as_viewed(recommendation_id: str) -> bool:
@@ -267,7 +279,7 @@ async def delete_recommendation(recommendation_id: str) -> bool:
         return False
 
     result = await collection.delete_one({"_id": object_id})
-    return result.deleted_count > 0
+    return bool(result.deleted_count > 0)
 
 
 async def get_recommendations_count(
@@ -286,7 +298,7 @@ async def get_recommendations_count(
     """
     collection = get_recommendations_collection()
 
-    query = {"job_seeker_id": job_seeker_id}
+    query: dict[str, object] = {"job_seeker_id": job_seeker_id}
     if viewed is not None:
         query["viewed"] = viewed
     if dismissed is not None:

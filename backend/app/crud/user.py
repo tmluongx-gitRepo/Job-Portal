@@ -3,13 +3,15 @@ CRUD operations for User model.
 """
 
 from datetime import UTC, datetime
+from typing import cast
 
 from bson import ObjectId
 
 from app.database import get_users_collection
+from app.types import UserDocument
 
 
-async def create_user(email: str, account_type: str = "job_seeker") -> dict:
+async def create_user(email: str, account_type: str = "job_seeker") -> UserDocument:
     """Create a new user."""
     collection = get_users_collection()
 
@@ -27,33 +29,36 @@ async def create_user(email: str, account_type: str = "job_seeker") -> dict:
 
     result = await collection.insert_one(user_doc)
     user_doc["_id"] = result.inserted_id
-    return user_doc
+    return cast(UserDocument, user_doc)
 
 
-async def get_user_by_id(user_id: str) -> dict | None:
+async def get_user_by_id(user_id: str) -> UserDocument | None:
     """Get user by ID."""
     collection = get_users_collection()
 
     try:
-        return await collection.find_one({"_id": ObjectId(user_id)})
+        result = await collection.find_one({"_id": ObjectId(user_id)})
+        return cast(UserDocument, result) if result else None
     except Exception:
         return None
 
 
-async def get_user_by_email(email: str) -> dict | None:
+async def get_user_by_email(email: str) -> UserDocument | None:
     """Get user by email."""
     collection = get_users_collection()
-    return await collection.find_one({"email": email})
+    result = await collection.find_one({"email": email})
+    return cast(UserDocument, result) if result else None
 
 
-async def get_users(skip: int = 0, limit: int = 100) -> list[dict]:
+async def get_users(skip: int = 0, limit: int = 100) -> list[UserDocument]:
     """Get all users with pagination."""
     collection = get_users_collection()
     cursor = collection.find().skip(skip).limit(limit)
-    return await cursor.to_list(length=limit)
+    results = await cursor.to_list(length=limit)
+    return cast(list[UserDocument], results)
 
 
-async def update_user(user_id: str, update_data: dict) -> dict | None:
+async def update_user(user_id: str, update_data: dict[str, object]) -> UserDocument | None:
     """Update user."""
     collection = get_users_collection()
 
@@ -61,9 +66,10 @@ async def update_user(user_id: str, update_data: dict) -> dict | None:
     update_data["updated_at"] = datetime.now(UTC)
 
     try:
-        return await collection.find_one_and_update(
+        result = await collection.find_one_and_update(
             {"_id": ObjectId(user_id)}, {"$set": update_data}, return_document=True
         )
+        return cast(UserDocument, result) if result else None
     except Exception:
         return None
 
@@ -77,4 +83,4 @@ async def delete_user(user_id: str) -> bool:
     except Exception:
         return False
     else:
-        return result.deleted_count > 0
+        return bool(result.deleted_count > 0)

@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -17,7 +18,7 @@ from app.database import close_mongo_client, get_chroma_client, ping_mongo, ping
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan events."""
     # Startup
     print(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
@@ -96,7 +97,7 @@ app.include_router(recommendations.router, prefix="/api/recommendations", tags=[
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     """Root endpoint."""
     return {
         "message": f"Welcome to {settings.APP_NAME}",

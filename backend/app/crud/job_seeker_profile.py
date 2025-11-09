@@ -3,13 +3,16 @@ CRUD operations for Job Seeker Profile model.
 """
 
 from datetime import UTC, datetime
+from typing import cast
 
 from bson import ObjectId
+
+from app.types import JobSeekerProfileDocument
 
 from app.database import get_job_seeker_profiles_collection
 
 
-async def create_profile(user_id: str, profile_data: dict) -> dict:
+async def create_profile(user_id: str, profile_data: dict[str, object]) -> JobSeekerProfileDocument:
     """Create a new job seeker profile."""
     collection = get_job_seeker_profiles_collection()
 
@@ -28,36 +31,40 @@ async def create_profile(user_id: str, profile_data: dict) -> dict:
 
     result = await collection.insert_one(profile_doc)
     profile_doc["_id"] = result.inserted_id
-    return profile_doc
+    return cast(JobSeekerProfileDocument, profile_doc)
 
 
-async def get_profile_by_id(profile_id: str) -> dict | None:
+async def get_profile_by_id(profile_id: str) -> JobSeekerProfileDocument | None:
     """Get profile by ID."""
     collection = get_job_seeker_profiles_collection()
 
     try:
-        return await collection.find_one({"_id": ObjectId(profile_id)})
+        result = await collection.find_one({"_id": ObjectId(profile_id)})
+        return cast(JobSeekerProfileDocument, result) if result else None
     except Exception:
         return None
 
 
-async def get_profile_by_user_id(user_id: str) -> dict | None:
+async def get_profile_by_user_id(user_id: str) -> JobSeekerProfileDocument | None:
     """Get profile by user ID."""
     collection = get_job_seeker_profiles_collection()
 
     try:
-        return await collection.find_one({"user_id": ObjectId(user_id)})
+        result = await collection.find_one({"user_id": ObjectId(user_id)})
+        return cast(JobSeekerProfileDocument, result) if result else None
     except Exception:
         return None
 
 
-async def get_profiles(skip: int = 0, limit: int = 100, filters: dict | None = None) -> list[dict]:
+async def get_profiles(skip: int = 0, limit: int = 100, filters: dict[str, object] | None = None) -> list[JobSeekerProfileDocument]:
     """Get all profiles with pagination and optional filters."""
     collection = get_job_seeker_profiles_collection()
 
-    query = filters or {}
+    query: dict[str, object] = dict(filters) if filters else {}
     cursor = collection.find(query).skip(skip).limit(limit).sort("updated_at", -1)
-    return await cursor.to_list(length=limit)
+    results = await cursor.to_list(length=limit)
+
+    return cast(list[JobSeekerProfileDocument], results)
 
 
 async def search_profiles(
@@ -67,11 +74,11 @@ async def search_profiles(
     max_experience: int | None = None,
     skip: int = 0,
     limit: int = 100,
-) -> list[dict]:
+) -> list[JobSeekerProfileDocument]:
     """Search profiles with various criteria."""
     collection = get_job_seeker_profiles_collection()
 
-    query = {}
+    query: dict[str, object] = {}
 
     if skills:
         # Match any of the provided skills
@@ -82,17 +89,20 @@ async def search_profiles(
         query["location"] = {"$regex": location, "$options": "i"}
 
     if min_experience is not None or max_experience is not None:
-        query["experience_years"] = {}
+        experience_filter: dict[str, int] = {}
         if min_experience is not None:
-            query["experience_years"]["$gte"] = min_experience
+            experience_filter["$gte"] = min_experience
         if max_experience is not None:
-            query["experience_years"]["$lte"] = max_experience
+            experience_filter["$lte"] = max_experience
+        query["experience_years"] = experience_filter
 
     cursor = collection.find(query).skip(skip).limit(limit).sort("updated_at", -1)
-    return await cursor.to_list(length=limit)
+    results = await cursor.to_list(length=limit)
+
+    return cast(list[JobSeekerProfileDocument], results)
 
 
-async def update_profile(profile_id: str, update_data: dict) -> dict | None:
+async def update_profile(profile_id: str, update_data: dict[str, object]) -> JobSeekerProfileDocument | None:
     """Update profile."""
     collection = get_job_seeker_profiles_collection()
 
@@ -100,9 +110,10 @@ async def update_profile(profile_id: str, update_data: dict) -> dict | None:
     update_data["updated_at"] = datetime.now(UTC)
 
     try:
-        return await collection.find_one_and_update(
+        result = await collection.find_one_and_update(
             {"_id": ObjectId(profile_id)}, {"$set": update_data}, return_document=True
         )
+        return cast(JobSeekerProfileDocument, result) if result else None
     except Exception:
         return None
 
@@ -118,7 +129,7 @@ async def increment_profile_views(profile_id: str) -> bool:
     except Exception:
         return False
     else:
-        return result.modified_count > 0
+        return bool(result.modified_count > 0)
 
 
 async def delete_profile(profile_id: str) -> bool:
@@ -130,4 +141,4 @@ async def delete_profile(profile_id: str) -> bool:
     except Exception:
         return False
     else:
-        return result.deleted_count > 0
+        return bool(result.deleted_count > 0)
