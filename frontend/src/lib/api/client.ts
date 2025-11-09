@@ -93,7 +93,7 @@ export async function apiRequest<TResponse>(
   let data;
   try {
     data = await response.json();
-  } catch (error) {
+  } catch (_error) {
     throw new ApiError('Failed to parse response JSON', response.status);
   }
 
