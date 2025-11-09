@@ -112,7 +112,7 @@ async def list_applications(
     job_seeker_id: str | None = Query(None, description="Filter by job seeker ID"),
     job_id: str | None = Query(None, description="Filter by job ID"),
     status: str | None = Query(None, description="Filter by status"),
-)-> list[ApplicationResponse]:
+) -> list[ApplicationResponse]:
     """
     List all applications with optional filters.
 
@@ -134,7 +134,7 @@ async def count_applications(
     job_seeker_id: str | None = Query(None, description="Filter by job seeker ID"),
     job_id: str | None = Query(None, description="Filter by job ID"),
     status: str | None = Query(None, description="Filter by status"),
-)-> dict[str, int]:
+) -> dict[str, int]:
     """
     Get the total count of applications.
 
@@ -171,7 +171,7 @@ async def update_application(
     application_id: str,
     application_update: ApplicationUpdate,
     changed_by: str | None = Query(None, description="User ID making the change"),
-)-> ApplicationResponse:
+) -> ApplicationResponse:
     """
     Update an application.
 

@@ -98,7 +98,7 @@ async def get_recommendations_for_job_seeker(
     include_viewed: bool = Query(True, description="Include viewed recommendations"),
     include_dismissed: bool = Query(False, description="Include dismissed recommendations"),
     include_applied: bool = Query(False, description="Include applied recommendations"),
-)-> list[dict[str, object]]:
+) -> list[dict[str, object]]:
     """
     Get personalized job recommendations for a job seeker.
 
@@ -155,7 +155,7 @@ async def get_matching_candidates_for_job(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     min_match: int = Query(70, ge=0, le=100, description="Minimum match percentage"),
-)-> list[dict[str, object]]:
+) -> list[dict[str, object]]:
     """
     Get recommended candidates for a specific job (for employers).
 
@@ -195,7 +195,7 @@ async def count_recommendations(
     job_seeker_id: str,
     viewed: bool | None = Query(None, description="Filter by viewed status"),
     dismissed: bool | None = Query(None, description="Filter by dismissed status"),
-)-> dict[str, int]:
+) -> dict[str, int]:
     """
     Get count of recommendations for a job seeker.
 

@@ -103,21 +103,15 @@ class Job:
         }
 
     @classmethod
-    def from_metadata(
-        cls, metadata: JobMetadata, full_description: str | None = None
-    ) -> "Job":
+    def from_metadata(cls, metadata: JobMetadata, full_description: str | None = None) -> "Job":
         """Create job from ChromaDB metadata."""
         salary_min_raw = metadata.get("salary_min")
         salary_max_raw = metadata.get("salary_max")
         created_at = (
-            datetime.fromisoformat(metadata["created_at"])
-            if "created_at" in metadata
-            else None
+            datetime.fromisoformat(metadata["created_at"]) if "created_at" in metadata else None
         )
         updated_at = (
-            datetime.fromisoformat(metadata["updated_at"])
-            if "updated_at" in metadata
-            else None
+            datetime.fromisoformat(metadata["updated_at"]) if "updated_at" in metadata else None
         )
         return cls(
             job_id=metadata.get("id"),

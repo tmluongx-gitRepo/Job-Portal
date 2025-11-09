@@ -52,7 +52,7 @@ def _serialize_jobs(documents: Iterable[JobDocument]) -> list[JobResponse]:
 async def create_job(
     job: JobCreate,
     posted_by: str | None = Query(None, description="User ID of employer posting the job"),
-)-> JobResponse:
+) -> JobResponse:
     """
     Create a new job posting.
 
@@ -71,7 +71,7 @@ async def list_jobs(
     limit: int = Query(100, ge=1, le=500, description="Maximum number of jobs to return"),
     is_active: bool | None = Query(None, description="Filter by active status"),
     posted_by: str | None = Query(None, description="Filter by employer user ID"),
-)-> list[JobResponse]:
+) -> list[JobResponse]:
     """
     List all jobs with optional filters.
 
@@ -89,7 +89,7 @@ async def list_jobs(
 async def count_jobs(
     is_active: bool | None = Query(None, description="Filter by active status"),
     posted_by: str | None = Query(None, description="Filter by employer user ID"),
-)-> dict[str, int]:
+) -> dict[str, int]:
     """
     Get the total count of jobs.
 
@@ -115,7 +115,7 @@ async def search_jobs(
     is_active: bool = Query(True, description="Filter by active status"),
     skip: int = Query(0, ge=0, description="Number of jobs to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of jobs to return"),
-)-> list[JobResponse]:
+) -> list[JobResponse]:
     """
     Search for jobs with multiple filters.
 
@@ -153,7 +153,7 @@ async def search_jobs(
 @router.get("/{job_id}", response_model=JobResponse)
 async def get_job(
     job_id: str, increment_views: bool = Query(False, description="Whether to increment view count")
-)-> JobResponse:
+) -> JobResponse:
     """
     Get a specific job by ID.
 

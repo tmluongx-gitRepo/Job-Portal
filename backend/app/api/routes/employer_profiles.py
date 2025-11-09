@@ -57,7 +57,9 @@ def _serialize_profile(document: EmployerProfileDocument) -> EmployerProfileResp
     )
 
 
-def _serialize_profiles(documents: Iterable[EmployerProfileDocument]) -> list[EmployerProfileResponse]:
+def _serialize_profiles(
+    documents: Iterable[EmployerProfileDocument],
+) -> list[EmployerProfileResponse]:
     return [_serialize_profile(doc) for doc in documents]
 
 
@@ -107,7 +109,9 @@ async def get_profile_by_user(user_id: str) -> EmployerProfileResponse:
 
 
 @router.put("/{profile_id}", response_model=EmployerProfileResponse)
-async def update_profile(profile_id: str, profile_update: EmployerProfileUpdate) -> EmployerProfileResponse:
+async def update_profile(
+    profile_id: str, profile_update: EmployerProfileUpdate
+) -> EmployerProfileResponse:
     """Update employer profile."""
     update_data = profile_update.model_dump(exclude_unset=True)
 

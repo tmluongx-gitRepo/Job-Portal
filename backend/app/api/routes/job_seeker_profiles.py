@@ -54,7 +54,9 @@ def _serialize_profile(document: JobSeekerProfileDocument) -> JobSeekerProfileRe
     )
 
 
-def _serialize_profiles(documents: Iterable[JobSeekerProfileDocument]) -> list[JobSeekerProfileResponse]:
+def _serialize_profiles(
+    documents: Iterable[JobSeekerProfileDocument],
+) -> list[JobSeekerProfileResponse]:
     return [_serialize_profile(doc) for doc in documents]
 
 
@@ -90,7 +92,7 @@ async def search_profiles(
     max_experience: int | None = Query(None, ge=0, description="Maximum years of experience"),
     skip: int = 0,
     limit: int = 100,
-)-> list[JobSeekerProfileResponse]:
+) -> list[JobSeekerProfileResponse]:
     """Search job seeker profiles by criteria."""
     profiles = await profile_crud.search_profiles(
         skills=skills,
@@ -134,7 +136,9 @@ async def get_profile_by_user(user_id: str) -> JobSeekerProfileResponse:
 
 
 @router.put("/{profile_id}", response_model=JobSeekerProfileResponse)
-async def update_profile(profile_id: str, profile_update: JobSeekerProfileUpdate) -> JobSeekerProfileResponse:
+async def update_profile(
+    profile_id: str, profile_update: JobSeekerProfileUpdate
+) -> JobSeekerProfileResponse:
     """Update profile."""
     # Build update dict (only include provided fields)
     update_data = profile_update.model_dump(exclude_unset=True)

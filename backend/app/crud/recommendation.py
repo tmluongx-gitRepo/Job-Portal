@@ -188,7 +188,9 @@ async def get_recommendations_for_job(
     return enriched_recommendations
 
 
-async def update_recommendation(recommendation_id: str, update_data: dict[str, object]) -> RecommendationDocument | None:
+async def update_recommendation(
+    recommendation_id: str, update_data: dict[str, object]
+) -> RecommendationDocument | None:
     """
     Update a recommendation.
 

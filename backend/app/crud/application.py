@@ -7,7 +7,9 @@ from app.database import get_applications_collection
 from app.types import ApplicationDocument
 
 
-async def create_application(application_data: dict[str, object], job_seeker_id: str) -> ApplicationDocument:
+async def create_application(
+    application_data: dict[str, object], job_seeker_id: str
+) -> ApplicationDocument:
     """
     Create a new job application.
 
