@@ -7,13 +7,12 @@ from typing import cast
 
 from bson import ObjectId
 
-from app.types import RecommendationDocument
-
 from app.database import (
     get_job_seeker_profiles_collection,
     get_jobs_collection,
     get_recommendations_collection,
 )
+from app.types import RecommendationDocument
 
 
 async def create_recommendation(recommendation_data: dict[str, object]) -> RecommendationDocument:

@@ -1,6 +1,6 @@
 """Job Seeker Profile API routes."""
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from fastapi import APIRouter, HTTPException, Query, status
 
@@ -19,18 +19,14 @@ router = APIRouter()
 def _serialize_profile(document: JobSeekerProfileDocument) -> JobSeekerProfileResponse:
     """Convert a job seeker document into the response schema."""
 
-    skills = document["skills"] if "skills" in document else []
-    raw_preferences = document["preferences"] if "preferences" in document else None
-    resume_url = document["resume_url"] if "resume_url" in document else None
-    resume_file_url = document["resume_file_url"] if "resume_file_url" in document else None
-    resume_file_name = document["resume_file_name"] if "resume_file_name" in document else None
-    education_level = document["education_level"] if "education_level" in document else None
-    profile_views = document["profile_views"] if "profile_views" in document else 0
-    profile_completion = (
-        document["profile_completion_percentage"]
-        if "profile_completion_percentage" in document
-        else None
-    )
+    skills = document.get("skills", [])
+    raw_preferences = document.get("preferences")
+    resume_url = document.get("resume_url")
+    resume_file_url = document.get("resume_file_url")
+    resume_file_name = document.get("resume_file_name")
+    education_level = document.get("education_level")
+    profile_views = document.get("profile_views", 0)
+    profile_completion = document.get("profile_completion_percentage")
 
     return JobSeekerProfileResponse(
         id=str(document["_id"]),

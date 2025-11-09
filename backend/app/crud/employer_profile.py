@@ -7,9 +7,8 @@ from typing import cast
 
 from bson import ObjectId
 
-from app.types import EmployerProfileDocument
-
 from app.database import get_employer_profiles_collection
+from app.types import EmployerProfileDocument
 
 
 async def create_profile(user_id: str, profile_data: dict[str, object]) -> EmployerProfileDocument:

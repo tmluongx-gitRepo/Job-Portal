@@ -1,6 +1,6 @@
 """Employer Profile API routes."""
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from fastapi import APIRouter, HTTPException, status
 
@@ -18,23 +18,21 @@ router = APIRouter()
 def _serialize_profile(document: EmployerProfileDocument) -> EmployerProfileResponse:
     """Convert a database document to the response schema."""
 
-    company_name = document["company_name"] if "company_name" in document else ""
-    company_website = document["website"] if "website" in document else None
-    company_logo_url = document["logo_url"] if "logo_url" in document else None
-    industry = document["industry"] if "industry" in document else None
-    company_size = document["company_size"] if "company_size" in document else None
-    location = document["location"] if "location" in document else None
-    company_description = (
-        document["company_description"] if "company_description" in document else None
-    )
-    founded_year = document["founded_year"] if "founded_year" in document else None
-    contact_email = document["contact_email"] if "contact_email" in document else None
-    contact_phone = document["contact_phone"] if "contact_phone" in document else None
-    benefits = document["benefits_offered"] if "benefits_offered" in document else []
-    company_culture = document["company_culture"] if "company_culture" in document else None
-    jobs_posted_count = document["jobs_posted_count"] if "jobs_posted_count" in document else 0
-    active_jobs_count = document["active_jobs_count"] if "active_jobs_count" in document else 0
-    verified = document["verified"] if "verified" in document else False
+    company_name = document.get("company_name", "")
+    company_website = document.get("website")
+    company_logo_url = document.get("logo_url")
+    industry = document.get("industry")
+    company_size = document.get("company_size")
+    location = document.get("location")
+    company_description = document.get("company_description")
+    founded_year = document.get("founded_year")
+    contact_email = document.get("contact_email")
+    contact_phone = document.get("contact_phone")
+    benefits = document.get("benefits_offered", [])
+    company_culture = document.get("company_culture")
+    jobs_posted_count = document.get("jobs_posted_count", 0)
+    active_jobs_count = document.get("active_jobs_count", 0)
+    verified = document.get("verified", False)
 
     return EmployerProfileResponse(
         id=str(document["_id"]),
