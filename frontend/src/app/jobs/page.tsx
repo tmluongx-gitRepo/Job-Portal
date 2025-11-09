@@ -409,10 +409,12 @@ export default function JobsPage() {
               Rejections don't automatically mean you're a bad candidate. You
               have value.
             </p>
-            <p className="text-sm text-green-600 mt-1">
-              Showing {startIndex + 1}-{Math.min(endIndex, totalJobs)} of{" "}
-              {totalJobs} results
-            </p>
+            {totalJobs > 0 && (
+              <p className="text-sm text-green-600 mt-1">
+                Showing {startIndex + 1}-{Math.min(endIndex, totalJobs)} of{" "}
+                {totalJobs} results
+              </p>
+            )}
           </div>
 
           <select className="px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 bg-white/80 shadow-lg border-b-2 border-b-green-300">
