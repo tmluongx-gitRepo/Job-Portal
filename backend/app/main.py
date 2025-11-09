@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import health, users, job_seeker_profiles, employer_profiles, jobs, applications, recommendations
+from app.auth import routes as auth_routes
 from app.config import settings
 from app.database import close_mongo_client, get_chroma_client, ping_mongo, ping_redis
 
@@ -48,6 +49,17 @@ async def lifespan(app: FastAPI):
         error_msg = str(e).split("\n")[0] if "\n" in str(e) else str(e)
         print(f"⚠️  Failed to connect to Redis: {error_msg}")
 
+    # Initialize Supabase connection
+    try:
+        from app.auth.supabase_client import supabase
+        if supabase:
+            print(f"✅ Supabase authentication configured")
+            print(f"✅ Supabase URL: {settings.SUPABASE_URL}")
+        else:
+            print("⚠️  Supabase: Not configured (set SUPABASE_URL and keys in .env)")
+    except Exception as e:
+        print(f"⚠️  Supabase: {e}")
+
     yield
 
     # Shutdown
@@ -75,6 +87,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router, tags=["Health"])
+app.include_router(auth_routes.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(job_seeker_profiles.router, prefix="/api/job-seeker-profiles", tags=["Job Seeker Profiles"])
 app.include_router(employer_profiles.router, prefix="/api/employer-profiles", tags=["Employer Profiles"])

@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # Supabase Authentication
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://frontend:3000"]
 
