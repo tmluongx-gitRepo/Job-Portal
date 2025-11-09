@@ -1,5 +1,6 @@
 {
   "extends": ["next/core-web-vitals", "next/typescript"],
+  "ignorePatterns": ["src/types/**/*.d.ts"],
   "parserOptions": {
     "project": "./tsconfig.json"
   },
