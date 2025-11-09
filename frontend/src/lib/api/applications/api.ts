@@ -1,14 +1,18 @@
 /**
  * Application API functions
  */
-import { z } from 'zod';
-import { apiRequest } from '../client';
-import { ApplicationCreateSchema, ApplicationUpdateSchema, ApplicationResponseSchema } from './schemas';
+import { z } from "zod";
+import { apiRequest } from "../client";
+import {
+  ApplicationCreateSchema,
+  ApplicationUpdateSchema,
+  ApplicationResponseSchema,
+} from "./schemas";
 
 export const applicationApi = {
   async create(data: z.infer<typeof ApplicationCreateSchema>) {
-    return apiRequest('/applications', {
-      method: 'POST',
+    return apiRequest("/applications", {
+      method: "POST",
       requestSchema: ApplicationCreateSchema,
       responseSchema: ApplicationResponseSchema,
       body: data,
@@ -23,21 +27,21 @@ export const applicationApi = {
     status?: string;
   }) {
     const query = new URLSearchParams();
-    if (params?.skip) query.set('skip', params.skip.toString());
-    if (params?.limit) query.set('limit', params.limit.toString());
-    if (params?.job_seeker_id) query.set('job_seeker_id', params.job_seeker_id);
-    if (params?.job_id) query.set('job_id', params.job_id);
-    if (params?.status) query.set('status', params.status);
+    if (params?.skip) query.set("skip", params.skip.toString());
+    if (params?.limit) query.set("limit", params.limit.toString());
+    if (params?.job_seeker_id) query.set("job_seeker_id", params.job_seeker_id);
+    if (params?.job_id) query.set("job_id", params.job_id);
+    if (params?.status) query.set("status", params.status);
 
     return apiRequest(`/applications?${query}`, {
-      method: 'GET',
+      method: "GET",
       responseSchema: z.array(ApplicationResponseSchema),
     });
   },
 
   async getById(applicationId: string) {
     return apiRequest(`/applications/${applicationId}`, {
-      method: 'GET',
+      method: "GET",
       responseSchema: ApplicationResponseSchema,
     });
   },
@@ -47,9 +51,9 @@ export const applicationApi = {
     data: z.infer<typeof ApplicationUpdateSchema>,
     changedBy?: string
   ) {
-    const query = changedBy ? `?changed_by=${changedBy}` : '';
+    const query = changedBy ? `?changed_by=${changedBy}` : "";
     return apiRequest(`/applications/${applicationId}${query}`, {
-      method: 'PUT',
+      method: "PUT",
       requestSchema: ApplicationUpdateSchema,
       responseSchema: ApplicationResponseSchema,
       body: data,
@@ -58,7 +62,7 @@ export const applicationApi = {
 
   async delete(applicationId: string) {
     return apiRequest(`/applications/${applicationId}`, {
-      method: 'DELETE',
+      method: "DELETE",
       responseSchema: z.null(),
     });
   },
@@ -69,12 +73,12 @@ export const applicationApi = {
     status?: string;
   }) {
     const query = new URLSearchParams();
-    if (params?.job_seeker_id) query.set('job_seeker_id', params.job_seeker_id);
-    if (params?.job_id) query.set('job_id', params.job_id);
-    if (params?.status) query.set('status', params.status);
+    if (params?.job_seeker_id) query.set("job_seeker_id", params.job_seeker_id);
+    if (params?.job_id) query.set("job_id", params.job_id);
+    if (params?.status) query.set("status", params.status);
 
     return apiRequest(`/applications/count?${query}`, {
-      method: 'GET',
+      method: "GET",
       responseSchema: z.object({ count: z.number() }),
     });
   },

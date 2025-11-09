@@ -2,7 +2,7 @@
  * Application Zod schemas
  * Matches backend Pydantic models
  */
-import { z } from 'zod';
+import { z } from "zod";
 
 export const StatusHistoryEntrySchema = z.object({
   status: z.string(),

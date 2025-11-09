@@ -5,13 +5,15 @@
 ## 🎯 Quick Start
 
 ### Step 1: Import the API
+
 ```typescript
-import { api } from '@/lib/api';
-import type { Job, User, Application } from '@/lib/api';
-import { ApiError, ValidationError } from '@/lib/api';
+import { api } from "@/lib/api";
+import type { Job, User, Application } from "@/lib/api";
+import { ApiError, ValidationError } from "@/lib/api";
 ```
 
 ### Step 2: Make Your First Request
+
 ```typescript
 const jobs = await api.jobs.getAll({ limit: 10 });
 ```
@@ -25,51 +27,50 @@ const jobs = await api.jobs.getAll({ limit: 10 });
 **⚠️ IMPORTANT**: Every API call MUST include proper error handling. Never make API calls without try/catch.
 
 ### ✅ Correct Pattern (ALWAYS USE THIS)
+
 ```typescript
-import { api, ApiError, ValidationError } from '@/lib/api';
+import { api, ApiError, ValidationError } from "@/lib/api";
 
 try {
   const result = await api.jobs.create(jobData);
 
   // ✅ Success - handle the result
-  console.log('Job created:', result);
+  console.log("Job created:", result);
   return result;
-
 } catch (error) {
   // ❌ Handle errors properly
   if (error instanceof ValidationError) {
     // Data validation failed (request or response)
-    console.error('❌ Validation Error:');
-    error.issues.forEach(issue => {
-      console.error(`  - ${issue.path.join('.')}: ${issue.message}`);
+    console.error("❌ Validation Error:");
+    error.issues.forEach((issue) => {
+      console.error(`  - ${issue.path.join(".")}: ${issue.message}`);
     });
     // Show user-friendly error
-    throw new Error('Invalid data provided');
-
+    throw new Error("Invalid data provided");
   } else if (error instanceof ApiError) {
     // Backend returned an error (400, 404, 500, etc.)
     console.error(`❌ API Error (${error.status}):`, error.message);
-    console.error('Details:', error.data);
+    console.error("Details:", error.data);
 
     // Handle specific status codes
     if (error.status === 404) {
-      throw new Error('Resource not found');
+      throw new Error("Resource not found");
     } else if (error.status === 409) {
-      throw new Error('Duplicate entry');
+      throw new Error("Duplicate entry");
     } else if (error.status >= 500) {
-      throw new Error('Server error, please try again later');
+      throw new Error("Server error, please try again later");
     }
     throw new Error(error.message);
-
   } else {
     // Network error or unexpected error
-    console.error('❌ Unexpected Error:', error);
-    throw new Error('An unexpected error occurred');
+    console.error("❌ Unexpected Error:", error);
+    throw new Error("An unexpected error occurred");
   }
 }
 ```
 
 ### ❌ WRONG Pattern (NEVER DO THIS)
+
 ```typescript
 // ❌ NO ERROR HANDLING - WILL CRASH YOUR APP
 const jobs = await api.jobs.getAll();
@@ -78,7 +79,7 @@ const jobs = await api.jobs.getAll();
 try {
   const jobs = await api.jobs.getAll();
 } catch (error) {
-  console.log('Error'); // ❌ Not helpful!
+  console.log("Error"); // ❌ Not helpful!
 }
 ```
 
@@ -89,81 +90,86 @@ try {
 ### 1. Users API
 
 #### Create User
-```typescript
-import { api, ApiError, ValidationError } from '@/lib/api';
-import type { User, UserCreate } from '@/lib/api';
 
-async function createUser(email: string, accountType: 'job_seeker' | 'employer'): Promise<User> {
+```typescript
+import { api, ApiError, ValidationError } from "@/lib/api";
+import type { User, UserCreate } from "@/lib/api";
+
+async function createUser(
+  email: string,
+  accountType: "job_seeker" | "employer"
+): Promise<User> {
   try {
     const userData: UserCreate = {
       email: email,
-      account_type: accountType
+      account_type: accountType,
     };
 
     const user = await api.users.create(userData);
 
     // ✅ Success
-    console.log('✅ User created:', user.id);
+    console.log("✅ User created:", user.id);
     return user;
-
   } catch (error) {
     if (error instanceof ValidationError) {
       // Invalid email or account_type
-      console.error('❌ Validation failed:', error.issues);
-      throw new Error('Invalid user data');
-
+      console.error("❌ Validation failed:", error.issues);
+      throw new Error("Invalid user data");
     } else if (error instanceof ApiError) {
       if (error.status === 400) {
         // User already exists
-        throw new Error('User with this email already exists');
+        throw new Error("User with this email already exists");
       }
-      throw new Error('Failed to create user');
+      throw new Error("Failed to create user");
     }
     throw error;
   }
 }
 
 // Usage
-const user = await createUser('john@example.com', 'job_seeker');
+const user = await createUser("john@example.com", "job_seeker");
 ```
 
 #### Get User by ID
+
 ```typescript
 async function getUserById(userId: string): Promise<User> {
   try {
     const user = await api.users.getById(userId);
     return user;
-
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
-    throw new Error('Failed to get user');
+    throw new Error("Failed to get user");
   }
 }
 ```
 
 #### Update User
-```typescript
-import type { UserUpdate } from '@/lib/api';
 
-async function updateUserEmail(userId: string, newEmail: string): Promise<User> {
+```typescript
+import type { UserUpdate } from "@/lib/api";
+
+async function updateUserEmail(
+  userId: string,
+  newEmail: string
+): Promise<User> {
   try {
     const updateData: UserUpdate = {
-      email: newEmail
+      email: newEmail,
     };
 
     const user = await api.users.update(userId, updateData);
-    console.log('✅ User updated successfully');
+    console.log("✅ User updated successfully");
     return user;
-
   } catch (error) {
     if (error instanceof ValidationError) {
-      throw new Error('Invalid email format');
+      throw new Error("Invalid email format");
     } else if (error instanceof ApiError && error.status === 404) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
-    throw new Error('Failed to update user');
+    throw new Error("Failed to update user");
   }
 }
 ```
@@ -173,8 +179,9 @@ async function updateUserEmail(userId: string, newEmail: string): Promise<User> 
 ### 2. Jobs API
 
 #### Search Jobs (Most Common Use Case)
+
 ```typescript
-import type { Job } from '@/lib/api';
+import type { Job } from "@/lib/api";
 
 async function searchJobs(
   searchQuery: string,
@@ -193,76 +200,84 @@ async function searchJobs(
       skills: filters?.skills,
       min_salary: filters?.minSalary,
       is_active: true,
-      limit: 20
+      limit: 20,
     });
 
     console.log(`✅ Found ${jobs.length} jobs`);
     return jobs;
-
   } catch (error) {
     if (error instanceof ValidationError) {
-      console.error('❌ Invalid search parameters:', error.issues);
-      throw new Error('Invalid search parameters');
+      console.error("❌ Invalid search parameters:", error.issues);
+      throw new Error("Invalid search parameters");
     }
-    throw new Error('Failed to search jobs');
+    throw new Error("Failed to search jobs");
   }
 }
 
 // Usage
-const jobs = await searchJobs('software engineer', {
-  location: 'San Francisco',
+const jobs = await searchJobs("software engineer", {
+  location: "San Francisco",
   remote: true,
-  skills: ['TypeScript', 'React'],
-  minSalary: 100000
+  skills: ["TypeScript", "React"],
+  minSalary: 100000,
 });
 ```
 
 #### Create Job Posting
-```typescript
-import type { JobCreate, Job } from '@/lib/api';
 
-async function createJobPosting(jobData: JobCreate, employerId: string): Promise<Job> {
+```typescript
+import type { JobCreate, Job } from "@/lib/api";
+
+async function createJobPosting(
+  jobData: JobCreate,
+  employerId: string
+): Promise<Job> {
   try {
     const job = await api.jobs.create(jobData, employerId);
 
-    console.log('✅ Job posted successfully:', job.id);
+    console.log("✅ Job posted successfully:", job.id);
     return job;
-
   } catch (error) {
     if (error instanceof ValidationError) {
       // Show which fields are invalid
-      console.error('❌ Invalid job data:');
-      error.issues.forEach(issue => {
-        console.error(`  - ${issue.path.join('.')}: ${issue.message}`);
+      console.error("❌ Invalid job data:");
+      error.issues.forEach((issue) => {
+        console.error(`  - ${issue.path.join(".")}: ${issue.message}`);
       });
-      throw new Error('Please fix the invalid fields');
-
+      throw new Error("Please fix the invalid fields");
     } else if (error instanceof ApiError && error.status === 404) {
-      throw new Error('Employer not found');
+      throw new Error("Employer not found");
     }
-    throw new Error('Failed to create job posting');
+    throw new Error("Failed to create job posting");
   }
 }
 
 // Usage
-const newJob = await createJobPosting({
-  title: 'Senior TypeScript Developer',
-  company: 'Tech Corp',
-  description: 'We are looking for...',
-  location: 'San Francisco, CA',
-  job_type: 'Full-time',
-  remote_ok: true,
-  salary_min: 120000,
-  salary_max: 180000,
-  skills_required: ['TypeScript', 'React', 'Node.js'],
-  responsibilities: ['Build features', 'Review code'],
-  benefits: ['Health insurance', '401k']
-}, 'employer-user-id-123');
+const newJob = await createJobPosting(
+  {
+    title: "Senior TypeScript Developer",
+    company: "Tech Corp",
+    description: "We are looking for...",
+    location: "San Francisco, CA",
+    job_type: "Full-time",
+    remote_ok: true,
+    salary_min: 120000,
+    salary_max: 180000,
+    skills_required: ["TypeScript", "React", "Node.js"],
+    responsibilities: ["Build features", "Review code"],
+    benefits: ["Health insurance", "401k"],
+  },
+  "employer-user-id-123"
+);
 ```
 
 #### Get Job with View Count
+
 ```typescript
-async function getJobDetails(jobId: string, trackView: boolean = true): Promise<Job> {
+async function getJobDetails(
+  jobId: string,
+  trackView: boolean = true
+): Promise<Job> {
   try {
     // incrementViews=true will track this as a view
     const job = await api.jobs.getById(jobId, trackView);
@@ -270,12 +285,11 @@ async function getJobDetails(jobId: string, trackView: boolean = true): Promise<
     console.log(`✅ Job: ${job.title}`);
     console.log(`   Views: ${job.view_count}`);
     return job;
-
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
-      throw new Error('Job not found');
+      throw new Error("Job not found");
     }
-    throw new Error('Failed to get job details');
+    throw new Error("Failed to get job details");
   }
 }
 ```
@@ -285,8 +299,9 @@ async function getJobDetails(jobId: string, trackView: boolean = true): Promise<
 ### 3. Applications API
 
 #### Apply to Job
+
 ```typescript
-import type { ApplicationCreate, Application } from '@/lib/api';
+import type { ApplicationCreate, Application } from "@/lib/api";
 
 async function applyToJob(
   jobSeekerId: string,
@@ -297,62 +312,65 @@ async function applyToJob(
     const applicationData: ApplicationCreate = {
       job_seeker_id: jobSeekerId,
       job_id: jobId,
-      notes: coverLetter
+      notes: coverLetter,
     };
 
     const application = await api.applications.create(applicationData);
 
-    console.log('✅ Application submitted successfully!');
+    console.log("✅ Application submitted successfully!");
     console.log(`   Status: ${application.status}`);
     console.log(`   Applied: ${application.applied_date.toLocaleDateString()}`);
     return application;
-
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 409) {
         // Already applied
-        throw new Error('You have already applied to this job');
+        throw new Error("You have already applied to this job");
       } else if (error.status === 404) {
-        throw new Error('Job or profile not found');
+        throw new Error("Job or profile not found");
       } else if (error.status === 400) {
         // Job might be inactive
-        throw new Error('Cannot apply to this job');
+        throw new Error("Cannot apply to this job");
       }
     }
-    throw new Error('Failed to submit application');
+    throw new Error("Failed to submit application");
   }
 }
 ```
 
 #### Get User's Applications
+
 ```typescript
 async function getMyApplications(jobSeekerId: string): Promise<Application[]> {
   try {
     const applications = await api.applications.getAll({
       job_seeker_id: jobSeekerId,
-      limit: 50
+      limit: 50,
     });
 
     console.log(`✅ Found ${applications.length} applications`);
 
     // Group by status
-    const byStatus = applications.reduce((acc, app) => {
-      acc[app.status] = (acc[app.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const byStatus = applications.reduce(
+      (acc, app) => {
+        acc[app.status] = (acc[app.status] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
-    console.log('   Status breakdown:', byStatus);
+    console.log("   Status breakdown:", byStatus);
     return applications;
-
   } catch (error) {
-    throw new Error('Failed to get applications');
+    throw new Error("Failed to get applications");
   }
 }
 ```
 
 #### Update Application Status (Employer Action)
+
 ```typescript
-import type { ApplicationUpdate } from '@/lib/api';
+import type { ApplicationUpdate } from "@/lib/api";
 
 async function updateApplicationStatus(
   applicationId: string,
@@ -363,7 +381,7 @@ async function updateApplicationStatus(
   try {
     const updateData: ApplicationUpdate = {
       status: status,
-      notes: notes
+      notes: notes,
     };
 
     const application = await api.applications.update(
@@ -372,22 +390,23 @@ async function updateApplicationStatus(
       changedBy
     );
 
-    console.log('✅ Application status updated');
+    console.log("✅ Application status updated");
     console.log(`   New status: ${application.status}`);
 
     // Status history is automatically tracked
-    console.log('   History:');
-    application.status_history.forEach(entry => {
-      console.log(`     - ${entry.status} at ${entry.changed_at.toLocaleString()}`);
+    console.log("   History:");
+    application.status_history.forEach((entry) => {
+      console.log(
+        `     - ${entry.status} at ${entry.changed_at.toLocaleString()}`
+      );
     });
 
     return application;
-
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
-      throw new Error('Application not found');
+      throw new Error("Application not found");
     }
-    throw new Error('Failed to update application');
+    throw new Error("Failed to update application");
   }
 }
 ```
@@ -397,60 +416,60 @@ async function updateApplicationStatus(
 ### 4. Job Seeker Profiles API
 
 #### Create Profile
+
 ```typescript
-import type { JobSeekerProfileCreate, JobSeekerProfile } from '@/lib/api';
+import type { JobSeekerProfileCreate, JobSeekerProfile } from "@/lib/api";
 
 async function createJobSeekerProfile(
   userId: string,
-  profileData: Omit<JobSeekerProfileCreate, 'user_id'>
+  profileData: Omit<JobSeekerProfileCreate, "user_id">
 ): Promise<JobSeekerProfile> {
   try {
     const profile = await api.jobSeekerProfiles.create({
       user_id: userId,
-      ...profileData
+      ...profileData,
     });
 
-    console.log('✅ Profile created successfully');
+    console.log("✅ Profile created successfully");
     console.log(`   Completion: ${profile.profile_completion_percentage}%`);
     return profile;
-
   } catch (error) {
     if (error instanceof ValidationError) {
-      console.error('❌ Invalid profile data:');
-      error.issues.forEach(issue => {
-        console.error(`  - ${issue.path.join('.')}: ${issue.message}`);
+      console.error("❌ Invalid profile data:");
+      error.issues.forEach((issue) => {
+        console.error(`  - ${issue.path.join(".")}: ${issue.message}`);
       });
-      throw new Error('Please provide valid profile information');
-
+      throw new Error("Please provide valid profile information");
     } else if (error instanceof ApiError && error.status === 400) {
-      throw new Error('Profile already exists for this user');
+      throw new Error("Profile already exists for this user");
     }
-    throw new Error('Failed to create profile');
+    throw new Error("Failed to create profile");
   }
 }
 
 // Usage
-const profile = await createJobSeekerProfile('user-123', {
-  first_name: 'John',
-  last_name: 'Doe',
-  email: 'john@example.com',
-  phone: '+1-555-0123',
-  location: 'San Francisco, CA',
-  bio: 'Experienced software engineer...',
-  skills: ['TypeScript', 'React', 'Node.js'],
+const profile = await createJobSeekerProfile("user-123", {
+  first_name: "John",
+  last_name: "Doe",
+  email: "john@example.com",
+  phone: "+1-555-0123",
+  location: "San Francisco, CA",
+  bio: "Experienced software engineer...",
+  skills: ["TypeScript", "React", "Node.js"],
   experience_years: 5,
   education_level: "Bachelor's Degree",
   preferences: {
     desired_salary_min: 100000,
     desired_salary_max: 150000,
-    job_types: ['Full-time'],
+    job_types: ["Full-time"],
     remote_ok: true,
-    preferred_locations: ['San Francisco', 'Remote']
-  }
+    preferred_locations: ["San Francisco", "Remote"],
+  },
 });
 ```
 
 #### Search Profiles (Employer Use Case)
+
 ```typescript
 async function searchCandidates(
   requiredSkills: string[],
@@ -462,21 +481,20 @@ async function searchCandidates(
       skills: requiredSkills,
       location: location,
       min_experience: minExperience,
-      limit: 20
+      limit: 20,
     });
 
     console.log(`✅ Found ${profiles.length} matching candidates`);
     return profiles;
-
   } catch (error) {
-    throw new Error('Failed to search candidates');
+    throw new Error("Failed to search candidates");
   }
 }
 
 // Usage
 const candidates = await searchCandidates(
-  ['React', 'TypeScript'],
-  'San Francisco',
+  ["React", "TypeScript"],
+  "San Francisco",
   3
 );
 ```
@@ -486,6 +504,7 @@ const candidates = await searchCandidates(
 ### 5. Recommendations API
 
 #### Get Job Recommendations for User
+
 ```typescript
 async function getJobRecommendations(
   jobSeekerId: string,
@@ -499,7 +518,7 @@ async function getJobRecommendations(
         include_viewed: false, // Only show new recommendations
         include_dismissed: false,
         include_applied: false,
-        limit: 10
+        limit: 10,
       }
     );
 
@@ -512,23 +531,24 @@ async function getJobRecommendations(
     });
 
     return recommendations;
-
   } catch (error) {
-    throw new Error('Failed to get recommendations');
+    throw new Error("Failed to get recommendations");
   }
 }
 ```
 
 #### Mark Recommendation as Viewed
+
 ```typescript
-async function trackRecommendationView(recommendationId: string): Promise<void> {
+async function trackRecommendationView(
+  recommendationId: string
+): Promise<void> {
   try {
     await api.recommendations.markViewed(recommendationId);
-    console.log('✅ Recommendation view tracked');
-
+    console.log("✅ Recommendation view tracked");
   } catch (error) {
     // Non-critical error, just log it
-    console.warn('Failed to track recommendation view');
+    console.warn("Failed to track recommendation view");
   }
 }
 ```
@@ -538,6 +558,7 @@ async function trackRecommendationView(recommendationId: string): Promise<void> 
 ## 🎨 React Component Examples
 
 ### Server Component (Next.js App Router)
+
 ```typescript
 import { api } from '@/lib/api';
 import { ApiError } from '@/lib/api';
@@ -584,6 +605,7 @@ export default async function JobsPage() {
 ```
 
 ### Client Component with Form
+
 ```typescript
 'use client';
 
@@ -663,6 +685,7 @@ export function JobSearchForm() {
 ```
 
 ### Client Component with Mutations
+
 ```typescript
 'use client';
 
@@ -772,6 +795,7 @@ export function CreateJobForm({ employerId }: { employerId: string }) {
 ## ⚡ Best Practices Checklist
 
 ### ✅ DO
+
 - **Always use try/catch** for error handling
 - **Check error types** (ValidationError vs ApiError)
 - **Log errors** with console.error for debugging
@@ -783,6 +807,7 @@ export function CreateJobForm({ employerId }: { employerId: string }) {
 - **Test error scenarios** in development
 
 ### ❌ DON'T
+
 - **Don't ignore errors** or use empty catch blocks
 - **Don't expose raw error messages** to users
 - **Don't make API calls without error handling**
@@ -796,6 +821,7 @@ export function CreateJobForm({ employerId }: { employerId: string }) {
 ## 🐛 Debugging & Troubleshooting
 
 ### Issue: "Request validation failed"
+
 ```typescript
 // ❌ Error: ValidationError
 // Cause: Data doesn't match schema
@@ -814,6 +840,7 @@ catch (error) {
 ```
 
 ### Issue: "Response validation failed"
+
 ```typescript
 // This means the backend sent unexpected data
 // 1. Check if backend schema matches frontend schema
@@ -822,6 +849,7 @@ catch (error) {
 ```
 
 ### Issue: "API Error 404"
+
 ```typescript
 // Resource not found
 catch (error) {
@@ -833,6 +861,7 @@ catch (error) {
 ```
 
 ### Issue: CORS errors
+
 ```typescript
 // Make sure NEXT_PUBLIC_API_URL is set correctly
 // Check .env file:
@@ -846,25 +875,28 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 ## 🧪 Testing Your API Calls
 
 ### Test in Browser Console
+
 ```typescript
 // Open browser console on your Next.js page
-import('/lib/api').then(({ api }) => {
-  api.jobs.getAll({ limit: 5 })
-    .then(jobs => console.log('✅ Jobs:', jobs))
-    .catch(err => console.error('❌ Error:', err));
+import("/lib/api").then(({ api }) => {
+  api.jobs
+    .getAll({ limit: 5 })
+    .then((jobs) => console.log("✅ Jobs:", jobs))
+    .catch((err) => console.error("❌ Error:", err));
 });
 ```
 
 ### Test Error Scenarios
+
 ```typescript
 // Test validation error
 api.users.create({
-  email: 'invalid-email', // ❌ Will fail validation
-  account_type: 'hacker' // ❌ Invalid enum
+  email: "invalid-email", // ❌ Will fail validation
+  account_type: "hacker", // ❌ Invalid enum
 });
 
 // Test 404 error
-api.jobs.getById('non-existent-id');
+api.jobs.getById("non-existent-id");
 
 // Test duplicate error
 // Create user, then try creating same user again
@@ -897,34 +929,38 @@ When a human asks you to make API calls in this project:
 ### Example Task: "Create a component that searches jobs"
 
 **Step 1**: Import dependencies
+
 ```typescript
-import { api, ApiError, ValidationError } from '@/lib/api';
-import type { Job } from '@/lib/api';
+import { api, ApiError, ValidationError } from "@/lib/api";
+import type { Job } from "@/lib/api";
 ```
 
 **Step 2**: Add state
+
 ```typescript
 const [jobs, setJobs] = useState<Job[]>([]);
 const [error, setError] = useState<string | null>(null);
 ```
 
 **Step 3**: Make API call with error handling
+
 ```typescript
 try {
-  const results = await api.jobs.search({ query: 'engineer' });
+  const results = await api.jobs.search({ query: "engineer" });
   setJobs(results);
 } catch (err) {
   if (err instanceof ValidationError) {
-    setError('Invalid search parameters');
+    setError("Invalid search parameters");
   } else if (err instanceof ApiError) {
     setError(`Search failed: ${err.message}`);
   } else {
-    setError('An unexpected error occurred');
+    setError("An unexpected error occurred");
   }
 }
 ```
 
 **Step 4**: Render with error/loading states
+
 ```typescript
 if (error) return <div>Error: {error}</div>;
 return <div>{jobs.map(job => ...)}</div>;
@@ -936,8 +972,8 @@ return <div>{jobs.map(job => ...)}</div>;
 
 ```typescript
 // Import
-import { api, ApiError, ValidationError } from '@/lib/api';
-import type { Job, User, Application } from '@/lib/api';
+import { api, ApiError, ValidationError } from "@/lib/api";
+import type { Job, User, Application } from "@/lib/api";
 
 // Error Handling Template
 try {
@@ -954,11 +990,11 @@ try {
 }
 
 // Common Patterns
-api.jobs.search({ query: '...' })           // Search
-api.users.create(data)                      // Create
-api.applications.getAll({ job_id: '...' }) // Filter
-api.jobSeekerProfiles.update(id, data)     // Update
-api.jobs.delete(id)                         // Delete
+api.jobs.search({ query: "..." }); // Search
+api.users.create(data); // Create
+api.applications.getAll({ job_id: "..." }); // Filter
+api.jobSeekerProfiles.update(id, data); // Update
+api.jobs.delete(id); // Delete
 ```
 
 ---

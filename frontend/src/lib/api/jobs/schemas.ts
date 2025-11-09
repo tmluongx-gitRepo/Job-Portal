@@ -2,7 +2,7 @@
  * Job Zod schemas
  * Matches backend Pydantic models
  */
-import { z } from 'zod';
+import { z } from "zod";
 
 export const JobBaseSchema = z.object({
   title: z.string().min(1),

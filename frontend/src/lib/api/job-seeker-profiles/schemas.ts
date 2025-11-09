@@ -2,7 +2,7 @@
  * Job Seeker Profile Zod schemas
  * Matches backend Pydantic models
  */
-import { z } from 'zod';
+import { z } from "zod";
 
 export const JobSeekerPreferencesSchema = z.object({
   desired_salary_min: z.number().int().nonnegative().nullable().optional(),
@@ -49,11 +49,19 @@ export const JobSeekerProfileUpdateSchema = z.object({
   preferences: JobSeekerPreferencesSchema.nullable().optional(),
 });
 
-export const JobSeekerProfileResponseSchema = JobSeekerProfileBaseSchema.extend({
-  id: z.string(),
-  user_id: z.string(),
-  profile_views: z.number().int().nonnegative().default(0),
-  profile_completion_percentage: z.number().int().min(0).max(100).nullable().optional(),
-  created_at: z.coerce.date(),
-  updated_at: z.coerce.date(),
-});
+export const JobSeekerProfileResponseSchema = JobSeekerProfileBaseSchema.extend(
+  {
+    id: z.string(),
+    user_id: z.string(),
+    profile_views: z.number().int().nonnegative().default(0),
+    profile_completion_percentage: z
+      .number()
+      .int()
+      .min(0)
+      .max(100)
+      .nullable()
+      .optional(),
+    created_at: z.coerce.date(),
+    updated_at: z.coerce.date(),
+  }
+);

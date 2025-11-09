@@ -50,26 +50,31 @@ src/lib/api/
 ## 🏗️ Architecture Benefits
 
 ### ✅ Scalability
+
 - Each domain can grow independently
 - Add new features without touching existing code
 - Easy to split into micro-frontends later
 
 ### ✅ Maintainability
+
 - Clear domain boundaries
 - Easy to find user-related code vs job-related code
 - Single Responsibility Principle
 
 ### ✅ Performance
+
 - Better tree-shaking (only import what you need)
 - Smaller bundle sizes
 - Code-splitting friendly
 
 ### ✅ Team Collaboration
+
 - Multiple developers can work on different domains
 - Fewer merge conflicts
 - Clear code ownership
 
 ### ✅ Testing
+
 - Test each domain in isolation
 - Mock dependencies easily
 - Better test organization
@@ -92,59 +97,62 @@ docker compose restart frontend
 
 ```typescript
 // Import the API client and types
-import { api } from '@/lib/api';
-import type { Job, User, Application } from '@/lib/api';
+import { api } from "@/lib/api";
+import type { Job, User, Application } from "@/lib/api";
 
 // Use the API
-const jobs = await api.jobs.search({ query: 'engineer' });
-const user = await api.users.getById('123');
+const jobs = await api.jobs.search({ query: "engineer" });
+const user = await api.users.getById("123");
 ```
 
 ### Import from Specific Modules (Tree-Shaking)
 
 ```typescript
 // Only import what you need - better for bundle size
-import { jobApi } from '@/lib/api/jobs';
-import type { Job } from '@/lib/api/jobs';
+import { jobApi } from "@/lib/api/jobs";
+import type { Job } from "@/lib/api/jobs";
 
-const jobs = await jobApi.search({ query: 'engineer' });
+const jobs = await jobApi.search({ query: "engineer" });
 ```
 
 ## 🎯 What You Get
 
 ### 1. Request Validation (Before Sending to Backend)
+
 ```typescript
-import { api } from '@/lib/api';
+import { api } from "@/lib/api";
 
 // ❌ This will FAIL before even making the API call
 await api.users.create({
-  email: 'not-an-email',  // Invalid email format
-  account_type: 'hacker'  // Not 'job_seeker' or 'employer'
+  email: "not-an-email", // Invalid email format
+  account_type: "hacker", // Not 'job_seeker' or 'employer'
 });
 // Throws ValidationError with detailed issues
 ```
 
 ### 2. Response Validation (After Receiving from Backend)
+
 ```typescript
 // ✅ Backend response is automatically validated
-const jobs = await api.jobs.search({ query: 'engineer' });
+const jobs = await api.jobs.search({ query: "engineer" });
 
 // If backend sends unexpected data, you'll get a ValidationError
 // This protects your frontend from breaking when backend changes
 ```
 
 ### 3. Full TypeScript Type Safety
+
 ```typescript
 const user = await api.users.create({
-  email: 'test@example.com',
-  account_type: 'job_seeker'
+  email: "test@example.com",
+  account_type: "job_seeker",
 });
 
 // TypeScript knows the exact type
-user.id          // string
-user.email       // string
-user.created_at  // Date (automatically parsed from ISO string)
-user.updated_at  // Date
+user.id; // string
+user.email; // string
+user.created_at; // Date (automatically parsed from ISO string)
+user.updated_at; // Date
 ```
 
 ## 📚 Available APIs
@@ -152,73 +160,80 @@ user.updated_at  // Date
 All APIs are available through the `api` object:
 
 ### Users API
+
 ```typescript
-api.users.create(data)
-api.users.getAll(params)
-api.users.getById(id)
-api.users.getByEmail(email)
-api.users.update(id, data)
-api.users.delete(id)
+api.users.create(data);
+api.users.getAll(params);
+api.users.getById(id);
+api.users.getByEmail(email);
+api.users.update(id, data);
+api.users.delete(id);
 ```
 
 ### Jobs API
+
 ```typescript
-api.jobs.create(data, postedBy)
-api.jobs.getAll(params)
-api.jobs.search(params)
-api.jobs.getById(id, incrementViews)
-api.jobs.update(id, data)
-api.jobs.delete(id)
-api.jobs.getCount(params)
+api.jobs.create(data, postedBy);
+api.jobs.getAll(params);
+api.jobs.search(params);
+api.jobs.getById(id, incrementViews);
+api.jobs.update(id, data);
+api.jobs.delete(id);
+api.jobs.getCount(params);
 ```
 
 ### Applications API
+
 ```typescript
-api.applications.create(data)
-api.applications.getAll(params)
-api.applications.getById(id)
-api.applications.update(id, data, changedBy)
-api.applications.delete(id)
-api.applications.getCount(params)
+api.applications.create(data);
+api.applications.getAll(params);
+api.applications.getById(id);
+api.applications.update(id, data, changedBy);
+api.applications.delete(id);
+api.applications.getCount(params);
 ```
 
 ### Job Seeker Profiles API
+
 ```typescript
-api.jobSeekerProfiles.create(data)
-api.jobSeekerProfiles.getAll(params)
-api.jobSeekerProfiles.search(params)
-api.jobSeekerProfiles.getById(id, incrementViews)
-api.jobSeekerProfiles.getByUserId(userId)
-api.jobSeekerProfiles.update(id, data)
-api.jobSeekerProfiles.delete(id)
+api.jobSeekerProfiles.create(data);
+api.jobSeekerProfiles.getAll(params);
+api.jobSeekerProfiles.search(params);
+api.jobSeekerProfiles.getById(id, incrementViews);
+api.jobSeekerProfiles.getByUserId(userId);
+api.jobSeekerProfiles.update(id, data);
+api.jobSeekerProfiles.delete(id);
 ```
 
 ### Employer Profiles API
+
 ```typescript
-api.employerProfiles.create(data)
-api.employerProfiles.getAll(params)
-api.employerProfiles.getById(id)
-api.employerProfiles.getByUserId(userId)
-api.employerProfiles.update(id, data)
-api.employerProfiles.delete(id)
+api.employerProfiles.create(data);
+api.employerProfiles.getAll(params);
+api.employerProfiles.getById(id);
+api.employerProfiles.getByUserId(userId);
+api.employerProfiles.update(id, data);
+api.employerProfiles.delete(id);
 ```
 
 ### Recommendations API
+
 ```typescript
-api.recommendations.create(data)
-api.recommendations.getForJobSeeker(id, params)
-api.recommendations.getCandidatesForJob(id, params)
-api.recommendations.getById(id)
-api.recommendations.update(id, data)
-api.recommendations.markViewed(id)
-api.recommendations.dismiss(id)
-api.recommendations.delete(id)
-api.recommendations.getCount(id, params)
+api.recommendations.create(data);
+api.recommendations.getForJobSeeker(id, params);
+api.recommendations.getCandidatesForJob(id, params);
+api.recommendations.getById(id);
+api.recommendations.update(id, data);
+api.recommendations.markViewed(id);
+api.recommendations.dismiss(id);
+api.recommendations.delete(id);
+api.recommendations.getCount(id, params);
 ```
 
 ## 💻 Code Examples
 
 ### Server Component (Next.js 15)
+
 ```typescript
 import { api } from '@/lib/api';
 
@@ -239,28 +254,29 @@ export default async function JobsPage() {
 ```
 
 ### Client Component with Error Handling
-```typescript
-'use client';
 
-import { useState } from 'react';
-import { api, ApiError, ValidationError } from '@/lib/api';
+```typescript
+"use client";
+
+import { useState } from "react";
+import { api, ApiError, ValidationError } from "@/lib/api";
 
 export function JobSearchForm() {
   const [results, setResults] = useState([]);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSearch = async (query: string) => {
     try {
       const jobs = await api.jobs.search({ query });
       setResults(jobs);
-      setError('');
+      setError("");
     } catch (err) {
       if (err instanceof ValidationError) {
-        setError('Invalid search parameters');
+        setError("Invalid search parameters");
       } else if (err instanceof ApiError) {
         setError(`Error: ${err.message}`);
       } else {
-        setError('An unexpected error occurred');
+        setError("An unexpected error occurred");
       }
     }
   };
@@ -270,42 +286,46 @@ export function JobSearchForm() {
 ```
 
 ### Creating a Job Application
+
 ```typescript
-import { api } from '@/lib/api';
+import { api } from "@/lib/api";
 
 async function applyToJob(jobSeekerId: string, jobId: string) {
   try {
     const application = await api.applications.create({
       job_seeker_id: jobSeekerId,
       job_id: jobId,
-      notes: 'I am very interested in this position!'
+      notes: "I am very interested in this position!",
     });
 
-    console.log('Application submitted!', application);
+    console.log("Application submitted!", application);
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
-      console.error('Already applied to this job!');
+      console.error("Already applied to this job!");
     }
   }
 }
 ```
 
 ### Using Individual Modules (Tree-Shaking)
+
 ```typescript
 // Import only what you need - smaller bundle size
-import { jobApi } from '@/lib/api/jobs';
-import { userApi } from '@/lib/api/users';
-import type { Job, User } from '@/lib/api';
+import { jobApi } from "@/lib/api/jobs";
+import { userApi } from "@/lib/api/users";
+import type { Job, User } from "@/lib/api";
 
 // Use them
-const jobs = await jobApi.search({ query: 'engineer' });
-const user = await userApi.getById('123');
+const jobs = await jobApi.search({ query: "engineer" });
+const user = await userApi.getById("123");
 ```
 
 ## 🔒 Error Types
 
 ### ValidationError
+
 Thrown when data doesn't match the schema (before sending or after receiving):
+
 ```typescript
 import { ValidationError } from '@/lib/api';
 
@@ -320,7 +340,9 @@ catch (error) {
 ```
 
 ### ApiError
+
 Thrown when the API returns an error status (400, 404, 500, etc.):
+
 ```typescript
 import { ApiError } from '@/lib/api';
 
@@ -343,41 +365,45 @@ import type {
   Application,
   JobSeekerProfile,
   EmployerProfile,
-  Recommendation
-} from '@/lib/api';
+  Recommendation,
+} from "@/lib/api";
 
 // Use in your components
-const job: Job = await api.jobs.getById('123');
+const job: Job = await api.jobs.getById("123");
 ```
 
 ## 🛠️ Advanced Usage
 
 ### Access Zod Schemas Directly
+
 ```typescript
-import { JobSchemas } from '@/lib/api';
+import { JobSchemas } from "@/lib/api";
 
 // Use for custom validation
 const result = JobSchemas.JobCreateSchema.safeParse(data);
 ```
 
 ### Extend a Module
+
 Create `src/lib/api/jobs/custom-api.ts`:
+
 ```typescript
-import { apiRequest } from '../client';
-import { JobResponseSchema } from './schemas';
-import { z } from 'zod';
+import { apiRequest } from "../client";
+import { JobResponseSchema } from "./schemas";
+import { z } from "zod";
 
 export async function getFeaturedJobs() {
-  return apiRequest('/jobs/featured', {
-    method: 'GET',
+  return apiRequest("/jobs/featured", {
+    method: "GET",
     responseSchema: z.array(JobResponseSchema),
   });
 }
 ```
 
 Then export it in `src/lib/api/jobs/index.ts`:
+
 ```typescript
-export * from './custom-api';
+export * from "./custom-api";
 ```
 
 ## 🔧 Environment Variables
@@ -402,10 +428,12 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 ### Bundle Size Comparison
 
 **Before (Monolithic):**
+
 - Import one schema → load ALL schemas (300+ lines)
 - Import one API → load ALL APIs (600+ lines)
 
 **After (Feature-Based):**
+
 - Import `api.jobs` → load ONLY jobs module (~100 lines)
 - Import `api.users` → load ONLY users module (~50 lines)
 - Better code-splitting and lazy loading
@@ -421,24 +449,26 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 ## 🎓 Best Practices
 
 ### ✅ DO
+
 ```typescript
 // Import from main barrel export for convenience
-import { api } from '@/lib/api';
+import { api } from "@/lib/api";
 const jobs = await api.jobs.getAll();
 
 // Or import specific modules for better tree-shaking
-import { jobApi } from '@/lib/api/jobs';
+import { jobApi } from "@/lib/api/jobs";
 const jobs = await jobApi.getAll();
 ```
 
 ### ❌ DON'T
+
 ```typescript
 // Don't import internal files
-import { jobApi } from '@/lib/api/jobs/api'; // ❌ Bad
-import { JobResponseSchema } from '@/lib/api/jobs/schemas'; // ❌ Bad
+import { jobApi } from "@/lib/api/jobs/api"; // ❌ Bad
+import { JobResponseSchema } from "@/lib/api/jobs/schemas"; // ❌ Bad
 
 // Use barrel exports instead
-import { jobApi, JobResponseSchema } from '@/lib/api/jobs'; // ✅ Good
+import { jobApi, JobResponseSchema } from "@/lib/api/jobs"; // ✅ Good
 ```
 
 ## 📝 Migration from Old Setup
@@ -447,13 +477,13 @@ If you were using the old monolithic files:
 
 ```typescript
 // OLD (monolithic)
-import { api } from '@/lib/api-client';
+import { api } from "@/lib/api-client";
 
 // NEW (feature-based) - same usage!
-import { api } from '@/lib/api';
+import { api } from "@/lib/api";
 
 // API usage is IDENTICAL
-const jobs = await api.jobs.search({ query: 'engineer' });
+const jobs = await api.jobs.search({ query: "engineer" });
 ```
 
 The old files (`schemas.ts`, `api-client.ts`, `api-examples.ts`) can be deleted.

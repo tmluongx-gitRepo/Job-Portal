@@ -2,7 +2,7 @@
  * Recommendation Zod schemas
  * Matches backend Pydantic models
  */
-import { z } from 'zod';
+import { z } from "zod";
 
 export const RecommendationFactorsSchema = z.object({
   skills_match: z.number().min(0).max(100).optional(),
