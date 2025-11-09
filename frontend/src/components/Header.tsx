@@ -21,24 +21,24 @@ export default function Header() {
           </Link>
 
           <nav className="hidden md:flex items-center space-x-8">
-            <a
-              href="#solutions"
+            <Link
+              href="/#solutions"
               className="text-green-700 hover:text-green-800 font-medium transition-colors"
             >
               Solutions
-            </a>
+            </Link>
             <Link
               href="/jobs"
               className="text-green-700 hover:text-green-800 font-medium transition-colors"
             >
               Career Search
             </Link>
-            <a
-              href="#AboutUs"
+            <Link
+              href="/about"
               className="text-green-700 hover:text-green-800 font-medium transition-colors"
             >
               About Us
-            </a>
+            </Link>
           </nav>
 
           <div className="flex items-center space-x-4">
