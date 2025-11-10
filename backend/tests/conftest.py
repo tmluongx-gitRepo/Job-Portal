@@ -42,24 +42,91 @@ from httpx import ASGITransport, AsyncClient
 from app.config import settings
 from app.database import get_mongo_database
 from app.main import app
-from tests.constants import HTTP_CREATED, HTTP_OK
+from tests.constants import HTTP_CREATED, HTTP_OK, TEST_USERS
 
 # ============================================================================
-# PERMANENT TEST USERS (created once, reused across all tests)
+# SECURITY: Test Account Management
 # ============================================================================
 
-TEST_USERS = {
-    "job_seeker": {
-        "email": "test.jobseeker@yourapp.com",
-        "password": "TestJobSeeker123!",
-        "account_type": "job_seeker",
-    },
-    "employer": {
-        "email": "test.employer@yourapp.com",
-        "password": "TestEmployer123!",
-        "account_type": "employer",
-    },
-}
+
+async def _disable_test_accounts() -> None:
+    """
+    Disable all test accounts in Supabase after test session.
+
+    SECURITY: This prevents test accounts (especially admin) from being used
+    outside of test sessions, even if credentials are exposed.
+    """
+    from supabase import create_client
+
+    try:
+        admin_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+
+        print("\n🔒 Disabling test accounts in Supabase...")
+
+        # Get all users
+        users_response = admin_client.auth.admin.list_users()
+
+        disabled_count = 0
+        for user in users_response:
+            # Check if this is a test user
+            if user.email in [u["email"] for u in TEST_USERS.values()]:
+                try:
+                    # Ban the user (prevents login)
+                    admin_client.auth.admin.update_user_by_id(
+                        user.id,
+                        {"ban_duration": "876000h"},  # ~100 years
+                    )
+                    print(f"   🔒 Disabled: {user.email}")
+                    disabled_count += 1
+                except Exception as e:
+                    print(f"   ⚠️  Failed to disable {user.email}: {e}")
+
+        if disabled_count > 0:
+            print(f"✅ Disabled {disabled_count} test account(s)")
+            print("   Test accounts will be re-enabled on next test run")
+        else:
+            print("ℹ  No test accounts found to disable")  # noqa: RUF001
+
+    except Exception as e:
+        print(f"⚠️  Failed to disable test accounts: {e}")
+        print("   (This is not critical - tests completed successfully)")
+
+
+async def _enable_test_accounts() -> None:
+    """
+    Enable all test accounts in Supabase before test session.
+
+    This re-enables accounts that were disabled after the previous test session.
+    """
+    from supabase import create_client
+
+    try:
+        admin_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+
+        print("🔓 Enabling test accounts in Supabase...")
+
+        # Get all users
+        users_response = admin_client.auth.admin.list_users()
+
+        enabled_count = 0
+        for user in users_response:
+            # Check if this is a test user
+            if user.email in [u["email"] for u in TEST_USERS.values()]:
+                try:
+                    # Unban the user
+                    admin_client.auth.admin.update_user_by_id(user.id, {"ban_duration": "none"})
+                    print(f"   🔓 Enabled: {user.email}")
+                    enabled_count += 1
+                except Exception as e:
+                    print(f"   ⚠️  Failed to enable {user.email}: {e}")
+
+        if enabled_count > 0:
+            print(f"✅ Enabled {enabled_count} test account(s)\n")
+
+    except Exception as e:
+        print(f"⚠️  Failed to enable test accounts: {e}")
+        print("   Tests may fail if accounts are disabled\n")
+
 
 # ============================================================================
 # CORE FIXTURES
@@ -98,8 +165,19 @@ async def session_client() -> AsyncGenerator[AsyncClient, None]:
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 def _configure_test_database() -> Generator[None, None, None]:
-    """Configure the application to use test database for all tests."""
+    """
+    Configure the application to use test database for all tests.
+
+    SECURITY: Also enables test accounts at session start.
+    """
+    import asyncio
     import os
+
+    # SECURITY: Enable test accounts before tests run
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(_enable_test_accounts())
+    loop.close()
 
     # Override database name for tests
     original_db_name = os.environ.get("MONGO_DB_NAME")
@@ -236,6 +314,8 @@ def session_cleanup() -> Generator[None, None, None]:
 
     This catches any orphaned test data that wasn't cleaned up during tests.
     Particularly important for tokens/auth data from skipped or failed tests.
+
+    SECURITY: Also disables test accounts in Supabase to prevent unauthorized access.
     """
     yield
 
@@ -246,6 +326,9 @@ def session_cleanup() -> Generator[None, None, None]:
         print("\n" + "=" * 60)
         print("🧹 Final Test Session Cleanup")
         print("=" * 60)
+
+        # SECURITY: Disable test accounts in Supabase
+        await _disable_test_accounts()
 
         db = get_mongo_database()
         total_cleaned = 0
@@ -310,16 +393,31 @@ def session_cleanup() -> Generator[None, None, None]:
 # ============================================================================
 
 
-@pytest_asyncio.fixture
-async def admin_token(_client: Any = None) -> str:
+@pytest_asyncio.fixture(scope="session")
+async def admin_token(session_client: AsyncClient) -> str:
     """
-    Login as permanent test admin user.
+    Login as permanent test admin (session-scoped).
 
-    Note: Admin users cannot be created via /api/auth/register.
-    This fixture is kept for compatibility but will fail until
-    an admin user is manually created in Supabase.
+    Token is created once per test session and reused across all tests.
+    This avoids token conflicts and improves test performance.
+
+    Note: Admin user must exist in Supabase (created manually or via setup script).
     """
-    pytest.skip("Admin users must be created manually in Supabase dashboard")
+    user = TEST_USERS["admin"]
+
+    login_response = await session_client.post(
+        "/api/auth/login", json={"email": user["email"], "password": user["password"]}
+    )
+
+    if login_response.status_code == HTTP_OK:
+        token: str = login_response.json()["access_token"]
+        return token
+
+    pytest.fail(
+        f"Failed to login test admin: {login_response.status_code}\n"
+        f"Response: {login_response.json()}\n"
+        f"Admin user must be created manually in Supabase or via setup script."
+    )
 
 
 @pytest_asyncio.fixture(scope="session")

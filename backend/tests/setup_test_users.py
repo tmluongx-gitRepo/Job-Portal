@@ -13,20 +13,7 @@ import asyncio
 from supabase import create_client
 
 from app.config import settings
-
-# Permanent test users for all tests
-TEST_USERS = [
-    {
-        "email": "test.jobseeker@yourapp.com",
-        "password": "TestJobSeeker123!",
-        "account_type": "job_seeker",
-    },
-    {
-        "email": "test.employer@yourapp.com",
-        "password": "TestEmployer123!",
-        "account_type": "employer",
-    },
-]
+from tests.constants import TEST_USERS
 
 
 async def setup_test_users() -> None:
@@ -48,7 +35,7 @@ async def setup_test_users() -> None:
     print("=" * 60)
     print()
 
-    for user_data in TEST_USERS:
+    for user_data in TEST_USERS.values():
         try:
             admin_client.auth.admin.create_user(
                 {

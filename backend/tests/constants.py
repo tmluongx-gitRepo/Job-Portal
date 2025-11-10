@@ -22,6 +22,25 @@ DEFAULT_ADMIN_PASSWORD = "AdminPass123!"
 DEFAULT_EMPLOYER_PASSWORD = "EmpPass123!"
 DEFAULT_JOB_SEEKER_PASSWORD = "JSPass123!"
 
+# Permanent Test Users (created once in Supabase, reused across all tests)
+TEST_USERS = {
+    "job_seeker": {
+        "email": "test.jobseeker@yourapp.com",
+        "password": "TestJobSeeker123!",
+        "account_type": "job_seeker",
+    },
+    "employer": {
+        "email": "test.employer@yourapp.com",
+        "password": "TestEmployer123!",
+        "account_type": "employer",
+    },
+    "admin": {
+        "email": "test.admin@yourapp.com",
+        "password": "TestAdmin123!",
+        "account_type": "admin",
+    },
+}
+
 # Pagination
 DEFAULT_SKIP = 0
 DEFAULT_LIMIT = 100
