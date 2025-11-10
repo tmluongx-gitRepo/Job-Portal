@@ -1,5 +1,6 @@
 import React from 'react';
 
+
 interface SolutionCardProps {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   title: string;

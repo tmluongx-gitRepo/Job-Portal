@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+
 import Link from 'next/link';
 import { User, Mail, Lock, Eye, EyeOff, Heart, Users } from 'lucide-react';
 
-export default function SignupPage() {
+export default function SignupPage(): React.ReactElement {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -61,7 +62,7 @@ export default function SignupPage() {
               {/* Account Type Selection */}
               <div>
                 <label className="block text-sm font-medium text-green-800 mb-3">
-                  I'm looking to...
+                  I&apos;m looking to...
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <label className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
@@ -290,7 +291,7 @@ export default function SignupPage() {
             <h3 className="font-semibold text-green-800 mb-2">Our Community Promise</h3>
             <p className="text-sm text-green-700">
               We respect your privacy, honor your worth, and believe your well-being matters more than profit. 
-              Your data won't be sold, and you'll always be treated as a whole human being.
+              Your data won&apos;t be sold, and you&apos;ll always be treated as a whole human being.
             </p>
           </div>
         </div>

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+
 import {
-  Save,
   Eye,
   Plus,
   X,
@@ -45,14 +45,14 @@ export default function JobApplicationSetupPage() {
   const totalSteps = 4;
 
   const handleInputChange = (field: keyof ApplicationSettings, value: any) => {
-    setApplicationSettings((prev) => ({
+    setApplicationSettings((prev: any) => ({
       ...prev,
       [field]: value,
     }));
   };
 
   const handleQuestionChange = (index: number, value: string) => {
-    setApplicationSettings((prev) => ({
+    setApplicationSettings((prev: any) => ({
       ...prev,
       screeningQuestions: prev.screeningQuestions.map((q, i) =>
         i === index ? value : q
@@ -60,33 +60,33 @@ export default function JobApplicationSetupPage() {
     }));
   };
 
-  const addScreeningQuestion = () => {
-    setApplicationSettings((prev) => ({
+  const addScreeningQuestion = (): void => {
+    setApplicationSettings((prev: any) => ({
       ...prev,
       screeningQuestions: [...prev.screeningQuestions, ''],
     }));
   };
 
   const removeScreeningQuestion = (index: number) => {
-    setApplicationSettings((prev) => ({
+    setApplicationSettings((prev: any) => ({
       ...prev,
       screeningQuestions: prev.screeningQuestions.filter((_, i) => i !== index),
     }));
   };
 
-  const nextStep = () => {
+  const nextStep = (): void => {
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     }
   };
 
-  const prevStep = () => {
+  const prevStep = (): void => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
   };
 
-  const renderStep = () => {
+  const renderStep = (): void => {
     switch (currentStep) {
       case 1:
         return (
@@ -144,7 +144,7 @@ export default function JobApplicationSetupPage() {
                       Redirect to Company Website
                     </div>
                     <div className="text-sm text-green-600">
-                      Send candidates to your company's application page
+                      Send candidates to your company&apos;s application page
                     </div>
                   </div>
                 </label>
@@ -191,7 +191,7 @@ export default function JobApplicationSetupPage() {
                   placeholder="https://yourcompany.com/careers/apply"
                 />
                 <p className="text-xs text-green-600 mt-2">
-                  Candidates will be redirected here when they click "Apply"
+                  Candidates will be redirected here when they click &quot;Apply&quot;
                 </p>
               </div>
             )}
@@ -276,12 +276,12 @@ export default function JobApplicationSetupPage() {
                 </h3>
                 <p className="text-gray-600 mb-4">
                   Custom screening questions are only available when candidates
-                  apply "Through Career Harmony"
+                  apply &quot;Through Career Harmony&quot;
                 </p>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-700">
                     💡 To add custom questions, go back and select{' '}
-                    <strong>"Through Career Harmony (Recommended)"</strong> as
+                    <strong>&quot;Through Career Harmony (Recommended)&quot;</strong> as
                     your application method.
                   </p>
                 </div>
@@ -537,7 +537,7 @@ export default function JobApplicationSetupPage() {
                       Application preview will show here
                     </p>
                     <p className="text-gray-500 text-xs mt-1">
-                      Click "Preview Application Form" to see how candidates will
+                      Click &quot;Preview Application Form&quot; to see how candidates will
                       experience your application
                     </p>
                   </div>

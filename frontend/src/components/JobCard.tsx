@@ -1,5 +1,6 @@
 import React from 'react';
 
+
 interface JobCardProps {
   title: string;
   company: string;

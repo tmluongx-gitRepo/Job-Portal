@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 
+
 const healthyReminders = [
   'Your worth is not defined by your job title or salary.',
   'Rejection is redirection—the right opportunity is waiting for you.',
@@ -21,10 +22,10 @@ const healthyReminders = [
   'Your path is uniquely yours—comparison robs you of joy.'
 ];
 
-export default function HealthyReminders() {
+export default function HealthyReminders(): React.ReactElement {
   const [currentReminder, setCurrentReminder] = useState(healthyReminders[0]);
 
-  const generateReminder = () => {
+  const generateReminder = (): void => {
     const randomIndex = Math.floor(Math.random() * healthyReminders.length);
     setCurrentReminder(healthyReminders[randomIndex]);
   };

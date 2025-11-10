@@ -1,18 +1,11 @@
 "use client";
 
 import { useState } from "react";
+
 import {
   Search,
   MapPin,
-  DollarSign,
-  Bookmark,
-  BookmarkCheck,
-  Building2,
-  Clock,
   SlidersHorizontal,
-  Heart,
-  Sparkles,
-  Users,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -206,23 +199,23 @@ export default function JobsPage() {
   // TODO: Replace with API call
   const jobs = sampleJobs;
 
-  const handleSaveJob = (jobId: number) => {
-    setSavedJobs((prev) => {
+  const handleSaveJob = (jobId: number): void => {
+    setSavedJobs((prev: any) => {
       const newSaved = new Set(prev);
       if (newSaved.has(jobId)) {
         newSaved.delete(jobId);
-        setSaveMessages((prev) => ({
+        setSaveMessages((prev: any) => ({
           ...prev,
           [jobId]: "Job removed from saved",
         }));
       } else {
         newSaved.add(jobId);
-        setSaveMessages((prev) => ({ ...prev, [jobId]: "Job saved!" }));
+        setSaveMessages((prev: any) => ({ ...prev, [jobId]: "Job saved!" }));
       }
 
       // Clear message after 2 seconds
       setTimeout(() => {
-        setSaveMessages((prev) => {
+        setSaveMessages((prev: any) => {
           const newMessages = { ...prev };
           delete newMessages[jobId];
           return newMessages;
@@ -233,8 +226,8 @@ export default function JobsPage() {
     });
   };
 
-  const toggleJobExpansion = (jobId: number) => {
-    setExpandedJobs((prev) => {
+  const toggleJobExpansion = (jobId: number): void => {
+    setExpandedJobs((prev: any) => {
       const newExpanded = new Set(prev);
       if (newExpanded.has(jobId)) {
         newExpanded.delete(jobId);
@@ -257,13 +250,13 @@ export default function JobsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const goToPreviousPage = () => {
+  const goToPreviousPage = (): void => {
     if (currentPage > 1) {
       goToPage(currentPage - 1);
     }
   };
 
-  const goToNextPage = () => {
+  const goToNextPage = (): void => {
     if (currentPage < totalPages) {
       goToPage(currentPage + 1);
     }
@@ -406,7 +399,7 @@ export default function JobsPage() {
               found
             </p>
             <p className="text-sm text-green-600">
-              Rejections don't automatically mean you're a bad candidate. You
+              Rejections don&apos;t automatically mean you&apos;re a bad candidate. You
               have value.
             </p>
             {totalJobs > 0 && (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+
 import Link from 'next/link';
 import { 
   Leaf, Heart, Search, FileText, Star, Calendar, TrendingUp, Plus, 
@@ -75,7 +76,7 @@ export default function DashboardPage() {
   
   const [currentReminder, setCurrentReminder] = useState(healthyReminders[0]);
 
-  const generateReminder = () => {
+  const generateReminder = (): void => {
     const randomIndex = Math.floor(Math.random() * healthyReminders.length);
     setCurrentReminder(healthyReminders[randomIndex]);
   };
@@ -152,7 +153,7 @@ export default function DashboardPage() {
             </div>
             <p className="text-2xl font-bold text-green-900">{stats.interviewsScheduled}</p>
             <p className="text-xs text-green-600 mb-4 flex items-center">
-              You've got this!
+              You&apos;ve got this!
               <Calendar className="w-3 h-3 ml-1 text-green-500" />
             </p>
             <Link href="/applications" className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-2 px-4 rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center text-sm">

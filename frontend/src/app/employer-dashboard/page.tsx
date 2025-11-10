@@ -1,15 +1,12 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useState } from "react";
+
 import {
   Building2,
   Users,
   TrendingUp,
   Plus,
-  Bell,
-  Settings,
-  User,
   Briefcase,
   Clock,
   Calendar,
@@ -17,16 +14,16 @@ import {
   Sparkles,
   Eye,
   Star,
-} from 'lucide-react';
+} from "lucide-react";
 
 // TODO: Replace with API call to fetch employer info
 const employerInfo = {
-  name: 'Sarah Martinez',
-  role: 'Senior Recruiter',
+  name: "Sarah Martinez",
+  role: "Senior Recruiter",
   companies: [
-    { id: 'techflow', name: 'TechFlow Solutions', role: 'Lead Recruiter' },
-    { id: 'innovate', name: 'InnovateNow Corp', role: 'HR Consultant' },
-    { id: 'datacore', name: 'DataCore Industries', role: 'Talent Acquisition' },
+    { id: "techflow", name: "TechFlow Solutions", role: "Lead Recruiter" },
+    { id: "innovate", name: "InnovateNow Corp", role: "HR Consultant" },
+    { id: "datacore", name: "DataCore Industries", role: "Talent Acquisition" },
   ],
 };
 
@@ -34,42 +31,42 @@ const employerInfo = {
 const jobPostings = [
   {
     id: 1,
-    title: 'Marketing Coordinator',
-    company: 'TechFlow Solutions',
-    status: 'Active',
-    posted: '2 weeks ago',
+    title: "Marketing Coordinator",
+    company: "TechFlow Solutions",
+    status: "Active",
+    posted: "2 weeks ago",
     applications: 28,
     newApplications: 5,
     interviews: 3,
     hired: 0,
-    location: 'Phoenix, AZ',
-    salary: '$45,000 - $55,000',
+    location: "Phoenix, AZ",
+    salary: "$45,000 - $55,000",
   },
   {
     id: 2,
-    title: 'Senior Developer',
-    company: 'InnovateNow Corp',
-    status: 'Active',
-    posted: '1 week ago',
+    title: "Senior Developer",
+    company: "InnovateNow Corp",
+    status: "Active",
+    posted: "1 week ago",
     applications: 45,
     newApplications: 12,
     interviews: 8,
     hired: 1,
-    location: 'Remote',
-    salary: '$85,000 - $105,000',
+    location: "Remote",
+    salary: "$85,000 - $105,000",
   },
   {
     id: 3,
-    title: 'Business Analyst',
-    company: 'DataCore Industries',
-    status: 'Paused',
-    posted: '3 weeks ago',
+    title: "Business Analyst",
+    company: "DataCore Industries",
+    status: "Paused",
+    posted: "3 weeks ago",
     applications: 67,
     newApplications: 2,
     interviews: 15,
     hired: 2,
-    location: 'Scottsdale, AZ',
-    salary: '$65,000 - $75,000',
+    location: "Scottsdale, AZ",
+    salary: "$65,000 - $75,000",
   },
 ];
 
@@ -77,36 +74,36 @@ const jobPostings = [
 const recentApplications = [
   {
     id: 1,
-    candidateName: 'Alex Johnson',
-    jobTitle: 'Marketing Coordinator',
-    company: 'TechFlow Solutions',
-    appliedDate: '2 hours ago',
-    status: 'Unreviewed',
+    candidateName: "Alex Johnson",
+    jobTitle: "Marketing Coordinator",
+    company: "TechFlow Solutions",
+    appliedDate: "2 hours ago",
+    status: "Unreviewed",
     matchScore: 89,
-    experience: '3 years',
-    location: 'Phoenix, AZ',
+    experience: "3 years",
+    location: "Phoenix, AZ",
   },
   {
     id: 2,
-    candidateName: 'Maria Garcia',
-    jobTitle: 'Senior Developer',
-    company: 'InnovateNow Corp',
-    appliedDate: '5 hours ago',
-    status: 'Unreviewed',
+    candidateName: "Maria Garcia",
+    jobTitle: "Senior Developer",
+    company: "InnovateNow Corp",
+    appliedDate: "5 hours ago",
+    status: "Unreviewed",
     matchScore: 94,
-    experience: '7 years',
-    location: 'Remote',
+    experience: "7 years",
+    location: "Remote",
   },
   {
     id: 3,
-    candidateName: 'David Chen',
-    jobTitle: 'Business Analyst',
-    company: 'DataCore Industries',
-    appliedDate: '1 day ago',
-    status: 'Reviewed',
+    candidateName: "David Chen",
+    jobTitle: "Business Analyst",
+    company: "DataCore Industries",
+    appliedDate: "1 day ago",
+    status: "Reviewed",
     matchScore: 76,
-    experience: '4 years',
-    location: 'Tempe, AZ',
+    experience: "4 years",
+    location: "Tempe, AZ",
   },
 ];
 
@@ -114,64 +111,62 @@ const recentApplications = [
 const upcomingInterviews = [
   {
     id: 1,
-    candidateName: 'Jessica Williams',
-    jobTitle: 'Marketing Coordinator',
-    company: 'TechFlow Solutions',
-    interviewDate: 'Today at 2:00 PM',
-    interviewType: 'Phone Screen',
-    interviewer: 'Sarah Martinez',
+    candidateName: "Jessica Williams",
+    jobTitle: "Marketing Coordinator",
+    company: "TechFlow Solutions",
+    interviewDate: "Today at 2:00 PM",
+    interviewType: "Phone Screen",
+    interviewer: "Sarah Martinez",
   },
   {
     id: 2,
-    candidateName: 'Robert Kumar',
-    jobTitle: 'Senior Developer',
-    company: 'InnovateNow Corp',
-    interviewDate: 'Tomorrow at 10:00 AM',
-    interviewType: 'Technical Interview',
-    interviewer: 'Mike Thompson',
+    candidateName: "Robert Kumar",
+    jobTitle: "Senior Developer",
+    company: "InnovateNow Corp",
+    interviewDate: "Tomorrow at 10:00 AM",
+    interviewType: "Technical Interview",
+    interviewer: "Mike Thompson",
   },
 ];
 
 // Employer-focused healthy reminders
 const healthyReminders = [
   "Remember: Great hires take time. Focus on finding the right cultural fit, not just filling positions quickly.",
-  "Every candidate deserves respectful communication, even if they're not the right fit.",
+  "Every candidate deserves respectful communication, even if they&apos;re not the right fit.",
   "Diverse hiring practices lead to stronger, more innovative teams.",
   "A candidate's worth isn't determined by a single interview performance.",
   "Small companies can compete with big ones through authentic culture and growth opportunities.",
   "Hiring is about finding mutual fit, not just evaluating candidates.",
   "Transparency about salary and expectations attracts better candidates.",
   "Every 'no' you give respectfully maintains your company's reputation.",
-  "Good hiring practices create ambassadors, even among candidates you don't hire.",
+  "Good hiring practices create ambassadors, even among candidates you don&apos;t hire.",
   "Your hiring process reflects your company values—make it count.",
 ];
 
 const getStatusBadge = (status: string) => {
   const statusConfig: Record<string, { bg: string; text: string }> = {
-    Active: { bg: 'bg-green-100', text: 'text-green-800' },
-    Paused: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
-    Closed: { bg: 'bg-gray-100', text: 'text-gray-800' },
-    Unreviewed: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
-    Reviewed: { bg: 'bg-blue-100', text: 'text-blue-800' },
-    'Interview Scheduled': { bg: 'bg-purple-100', text: 'text-purple-800' },
+    Active: { bg: "bg-green-100", text: "text-green-800" },
+    Paused: { bg: "bg-yellow-100", text: "text-yellow-800" },
+    Closed: { bg: "bg-gray-100", text: "text-gray-800" },
+    Unreviewed: { bg: "bg-yellow-100", text: "text-yellow-800" },
+    Reviewed: { bg: "bg-blue-100", text: "text-blue-800" },
+    "Interview Scheduled": { bg: "bg-purple-100", text: "text-purple-800" },
   };
-  return statusConfig[status] || { bg: 'bg-gray-100', text: 'text-gray-800' };
+  return statusConfig[status] || { bg: "bg-gray-100", text: "text-gray-800" };
 };
 
 export default function EmployerDashboard() {
-  const [selectedCompany, setSelectedCompany] = useState('all');
-  const [currentReminder, setCurrentReminder] = useState(
-    healthyReminders[0]
-  );
+  const [selectedCompany, setSelectedCompany] = useState("all");
+  const [currentReminder, setCurrentReminder] = useState(healthyReminders[0]);
 
-  const generateReminder = () => {
+  const generateReminder = (): void => {
     const randomIndex = Math.floor(Math.random() * healthyReminders.length);
     setCurrentReminder(healthyReminders[randomIndex]);
   };
 
   // Filter data based on selected company
   const filteredJobPostings =
-    selectedCompany === 'all'
+    selectedCompany === "all"
       ? jobPostings
       : jobPostings.filter((job) => {
           const company = employerInfo.companies.find(
@@ -181,7 +176,7 @@ export default function EmployerDashboard() {
         });
 
   const filteredApplications =
-    selectedCompany === 'all'
+    selectedCompany === "all"
       ? recentApplications
       : recentApplications.filter((app) => {
           const company = employerInfo.companies.find(
@@ -191,7 +186,7 @@ export default function EmployerDashboard() {
         });
 
   const filteredInterviews =
-    selectedCompany === 'all'
+    selectedCompany === "all"
       ? upcomingInterviews
       : upcomingInterviews.filter((interview) => {
           const company = employerInfo.companies.find(
@@ -202,7 +197,7 @@ export default function EmployerDashboard() {
 
   // Calculate summary metrics based on filtered data
   const totalActiveJobs = filteredJobPostings.filter(
-    (job) => job.status === 'Active'
+    (job) => job.status === "Active"
   ).length;
   const totalApplications = filteredJobPostings.reduce(
     (sum, job) => sum + job.applications,
@@ -402,7 +397,9 @@ export default function EmployerDashboard() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <span
-                        className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusBadge(job.status).bg} ${getStatusBadge(job.status).text}`}
+                        className={`text-xs px-2 py-1 rounded-full font-medium ${
+                          getStatusBadge(job.status).bg
+                        } ${getStatusBadge(job.status).text}`}
                       >
                         {job.status}
                       </span>
@@ -443,9 +440,13 @@ export default function EmployerDashboard() {
               <div className="text-center py-8">
                 <Briefcase className="w-12 h-12 mx-auto text-green-300 mb-4" />
                 <p className="text-green-600">
-                  {selectedCompany === 'all'
-                    ? 'No job postings found across all companies'
-                    : `No job postings found for ${employerInfo.companies.find((c) => c.id === selectedCompany)?.name}`}
+                  {selectedCompany === "all"
+                    ? "No job postings found across all companies"
+                    : `No job postings found for ${
+                        employerInfo.companies.find(
+                          (c) => c.id === selectedCompany
+                        )?.name
+                      }`}
                 </p>
               </div>
             )}
@@ -499,7 +500,9 @@ export default function EmployerDashboard() {
                       <span>{application.location}</span>
                     </div>
                     <span
-                      className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusBadge(application.status).bg} ${getStatusBadge(application.status).text}`}
+                      className={`text-xs px-2 py-1 rounded-full font-medium ${
+                        getStatusBadge(application.status).bg
+                      } ${getStatusBadge(application.status).text}`}
                     >
                       {application.status}
                     </span>
@@ -521,9 +524,13 @@ export default function EmployerDashboard() {
               <div className="text-center py-8">
                 <Users className="w-12 h-12 mx-auto text-green-300 mb-4" />
                 <p className="text-green-600">
-                  {selectedCompany === 'all'
-                    ? 'No recent applications across all companies'
-                    : `No recent applications for ${employerInfo.companies.find((c) => c.id === selectedCompany)?.name}`}
+                  {selectedCompany === "all"
+                    ? "No recent applications across all companies"
+                    : `No recent applications for ${
+                        employerInfo.companies.find(
+                          (c) => c.id === selectedCompany
+                        )?.name
+                      }`}
                 </p>
               </div>
             )}
@@ -564,15 +571,15 @@ export default function EmployerDashboard() {
 
                 <div className="space-y-1 text-sm text-green-700">
                   <p>
-                    <span className="font-medium">When:</span>{' '}
+                    <span className="font-medium">When:</span>{" "}
                     {interview.interviewDate}
                   </p>
                   <p>
-                    <span className="font-medium">Type:</span>{' '}
+                    <span className="font-medium">Type:</span>{" "}
                     {interview.interviewType}
                   </p>
                   <p>
-                    <span className="font-medium">Interviewer:</span>{' '}
+                    <span className="font-medium">Interviewer:</span>{" "}
                     {interview.interviewer}
                   </p>
                 </div>
@@ -593,9 +600,13 @@ export default function EmployerDashboard() {
             <div className="text-center py-8">
               <Calendar className="w-12 h-12 mx-auto text-green-300 mb-4" />
               <p className="text-green-600">
-                {selectedCompany === 'all'
-                  ? 'No upcoming interviews across all companies'
-                  : `No upcoming interviews for ${employerInfo.companies.find((c) => c.id === selectedCompany)?.name}`}
+                {selectedCompany === "all"
+                  ? "No upcoming interviews across all companies"
+                  : `No upcoming interviews for ${
+                      employerInfo.companies.find(
+                        (c) => c.id === selectedCompany
+                      )?.name
+                    }`}
               </p>
             </div>
           )}
@@ -604,4 +615,3 @@ export default function EmployerDashboard() {
     </div>
   );
 }
-
