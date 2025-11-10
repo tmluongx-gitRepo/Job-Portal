@@ -7,7 +7,7 @@ import pytest
 from bson import ObjectId
 from httpx import AsyncClient
 
-from tests.conftest import TestDataCleaner
+from tests.conftest import DataCleaner
 from tests.constants import (
     EXTENDED_SKILLS_COUNT,
     HTTP_CREATED,
@@ -24,7 +24,7 @@ class TestE2EWorkflows:
 
     @pytest.mark.asyncio
     async def test_complete_job_application_workflow(  # noqa: PLR0915
-        self, client: AsyncClient, test_cleaner: TestDataCleaner
+        self, client: AsyncClient, test_cleaner: DataCleaner
     ) -> None:
         """Test entire flow: register → profile → post job → apply → review."""
 

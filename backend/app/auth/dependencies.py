@@ -5,6 +5,7 @@ FastAPI dependencies for authentication and authorization.
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.auth import user_service
 from app.auth.auth_utils import (
     ExpiredTokenError,
     InvalidTokenError,
@@ -14,7 +15,6 @@ from app.auth.auth_utils import (
     is_employer,
     is_job_seeker,
 )
-from app.crud import user as user_crud
 
 
 def _raise_invalid_token_payload() -> None:
@@ -65,21 +65,20 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         if not user.get("id") or not user.get("email"):
             _raise_invalid_token_payload()
 
-        # Just-In-Time (JIT) user provisioning:
-        # Create MongoDB user if doesn't exist
-        existing_user = await user_crud.get_user_by_supabase_id(user["id"])
-        if not existing_user:
-            # Create user in MongoDB with Supabase ID
-            mongo_user = await user_crud.create_user(
-                email=user["email"],
-                account_type=user.get("account_type", "job_seeker"),
-                supabase_id=user["id"],
-            )
-            # Update user dict with MongoDB ID for downstream use
-            user["mongo_id"] = str(mongo_user["_id"])
-        else:
-            # User exists, add MongoDB ID to user dict
-            user["mongo_id"] = str(existing_user["_id"])
+        # Just-In-Time (JIT) user provisioning via service layer
+        # Converts Supabase UUID to MongoDB ObjectId
+        user_doc = await user_service.get_or_create_user_by_supabase_id(
+            supabase_id=user["id"],
+            email=user["email"],
+            account_type=user.get("account_type", "job_seeker"),
+        )
+
+        # Return user info with MongoDB ObjectId as primary ID
+        return {
+            "id": str(user_doc["_id"]),  # MongoDB ObjectId (primary ID)
+            "email": user_doc["email"],
+            "account_type": user_doc["account_type"],
+        }
 
     except ExpiredTokenError as e:
         raise HTTPException(
@@ -99,8 +98,6 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
-    else:
-        return user
 
 
 async def get_optional_user(

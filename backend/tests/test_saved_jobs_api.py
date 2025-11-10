@@ -5,7 +5,7 @@ Tests for Saved Jobs API endpoints.
 import pytest
 from httpx import AsyncClient
 
-from tests.conftest import TestDataCleaner
+from tests.conftest import DataCleaner
 from tests.constants import (
     HTTP_CONFLICT,
     HTTP_CREATED,
@@ -33,39 +33,33 @@ class TestSavedJobsAPI:
         response = await client.get("/api/saved-jobs")
         assert response.status_code == HTTP_FORBIDDEN
 
-    async def test_employer_cannot_save_job(
-        self, client: AsyncClient, employer_with_profile: tuple[dict, str]
-    ) -> None:
+    async def test_employer_cannot_save_job(self, client: AsyncClient, employer_token: str) -> None:
         """Employers cannot save jobs."""
-        employer, token = employer_with_profile
-
         response = await client.post(
             "/api/saved-jobs",
-            json={"job_id": "507f1f77bcf86cd799439011", "job_seeker_id": employer["id"]},
-            headers={"Authorization": f"Bearer {token}"},
+            json={"job_id": "507f1f77bcf86cd799439011", "job_seeker_id": "test"},
+            headers={"Authorization": f"Bearer {employer_token}"},
         )
         assert response.status_code == HTTP_FORBIDDEN
 
     async def test_job_seeker_can_list_saved_jobs_empty(
-        self, client: AsyncClient, job_seeker_with_profile: tuple[dict, str]
+        self, client: AsyncClient, job_seeker_token: str
     ) -> None:
         """Job seeker can list their saved jobs (initially empty)."""
-        job_seeker, token = job_seeker_with_profile
-
-        response = await client.get("/api/saved-jobs", headers={"Authorization": f"Bearer {token}"})
+        response = await client.get(
+            "/api/saved-jobs", headers={"Authorization": f"Bearer {job_seeker_token}"}
+        )
         assert response.status_code == HTTP_OK
         assert isinstance(response.json(), list)
         assert len(response.json()) == 0
 
     async def test_job_seeker_can_check_if_job_saved(
-        self, client: AsyncClient, job_seeker_with_profile: tuple[dict, str]
+        self, client: AsyncClient, job_seeker_token: str
     ) -> None:
         """Job seeker can check if a job is saved."""
-        job_seeker, token = job_seeker_with_profile
-
         response = await client.get(
             "/api/saved-jobs/check/507f1f77bcf86cd799439011",
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {job_seeker_token}"},
         )
         assert response.status_code == HTTP_OK
         data = response.json()
@@ -73,13 +67,11 @@ class TestSavedJobsAPI:
         assert data["is_saved"] is False
 
     async def test_job_seeker_can_count_saved_jobs(
-        self, client: AsyncClient, job_seeker_with_profile: tuple[dict, str]
+        self, client: AsyncClient, job_seeker_token: str
     ) -> None:
         """Job seeker can count their saved jobs."""
-        job_seeker, token = job_seeker_with_profile
-
         response = await client.get(
-            "/api/saved-jobs/count", headers={"Authorization": f"Bearer {token}"}
+            "/api/saved-jobs/count", headers={"Authorization": f"Bearer {job_seeker_token}"}
         )
         assert response.status_code == HTTP_OK
         data = response.json()
@@ -87,56 +79,50 @@ class TestSavedJobsAPI:
         assert data["count"] == 0
 
     async def test_cannot_save_nonexistent_job(
-        self, client: AsyncClient, job_seeker_with_profile: tuple[dict, str]
+        self, client: AsyncClient, job_seeker_with_profile: tuple[str, str, str]
     ) -> None:
         """Cannot save a job that doesn't exist."""
-        job_seeker, token = job_seeker_with_profile
+        js_token, js_user_id, js_profile_id = job_seeker_with_profile
 
         response = await client.post(
             "/api/saved-jobs",
             json={
                 "job_id": "507f1f77bcf86cd799439011",  # Non-existent job
-                "job_seeker_id": job_seeker["id"],
+                "job_seeker_id": js_user_id,
             },
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {js_token}"},
         )
         assert response.status_code == HTTP_NOT_FOUND
         assert "not found" in response.json()["detail"].lower()
 
     async def test_get_nonexistent_saved_job(
-        self, client: AsyncClient, job_seeker_with_profile: tuple[dict, str]
+        self, client: AsyncClient, job_seeker_token: str
     ) -> None:
         """Getting a non-existent saved job returns 404."""
-        job_seeker, token = job_seeker_with_profile
-
         response = await client.get(
             "/api/saved-jobs/507f1f77bcf86cd799439011",
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {job_seeker_token}"},
         )
         assert response.status_code == HTTP_NOT_FOUND
 
     async def test_update_nonexistent_saved_job(
-        self, client: AsyncClient, job_seeker_with_profile: tuple[dict, str]
+        self, client: AsyncClient, job_seeker_token: str
     ) -> None:
         """Updating a non-existent saved job returns 404."""
-        job_seeker, token = job_seeker_with_profile
-
         response = await client.put(
             "/api/saved-jobs/507f1f77bcf86cd799439011",
             json={"notes": "Updated notes"},
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {job_seeker_token}"},
         )
         assert response.status_code == HTTP_NOT_FOUND
 
     async def test_delete_nonexistent_saved_job(
-        self, client: AsyncClient, job_seeker_with_profile: tuple[dict, str]
+        self, client: AsyncClient, job_seeker_token: str
     ) -> None:
         """Deleting a non-existent saved job returns 404."""
-        job_seeker, token = job_seeker_with_profile
-
         response = await client.delete(
             "/api/saved-jobs/507f1f77bcf86cd799439011",
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {job_seeker_token}"},
         )
         assert response.status_code == HTTP_NOT_FOUND
 
@@ -148,13 +134,13 @@ class TestSavedJobsAPIIntegration:
     async def test_complete_saved_jobs_workflow(
         self,
         client: AsyncClient,
-        job_seeker_with_profile: tuple[dict, str],
-        employer_with_profile: tuple[dict, str],
-        test_cleaner: TestDataCleaner,
+        job_seeker_with_profile: tuple[str, str, str],
+        employer_with_profile: tuple[str, str, str],
+        test_cleaner: DataCleaner,
     ) -> None:
         """Test complete workflow: create job, save it, update notes, delete."""
-        job_seeker, js_token = job_seeker_with_profile
-        employer, emp_token = employer_with_profile
+        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        emp_token, emp_user_id, emp_profile_id = employer_with_profile
 
         # 1. Employer creates a job
         job_response = await client.post(
@@ -178,7 +164,7 @@ class TestSavedJobsAPIIntegration:
             "/api/saved-jobs",
             json={
                 "job_id": job_id,
-                "job_seeker_id": job_seeker["id"],
+                "job_seeker_id": js_user_id,
                 "notes": "Looks interesting!",
             },
             headers={"Authorization": f"Bearer {js_token}"},
@@ -234,7 +220,7 @@ class TestSavedJobsAPIIntegration:
         # 8. Try to save the same job again (should fail with 409)
         duplicate_response = await client.post(
             "/api/saved-jobs",
-            json={"job_id": job_id, "job_seeker_id": job_seeker["id"]},
+            json={"job_id": job_id, "job_seeker_id": js_user_id},
             headers={"Authorization": f"Bearer {js_token}"},
         )
         assert duplicate_response.status_code == HTTP_CONFLICT

@@ -54,10 +54,21 @@ async def create_job(job: JobCreate, employer: dict = Depends(require_employer))
     """
     Create a new job posting.
 
-    **Requires:** Employer account
+    **Requires:** Employer account with profile
 
     The job will be automatically linked to the authenticated employer.
+    Employers must have a profile before posting jobs.
     """
+    # Check if employer has a profile
+    from app.crud import employer_profile as profile_crud
+
+    employer_profile = await profile_crud.get_profile_by_user_id(employer["id"])
+    if not employer_profile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You must create an employer profile before posting jobs",
+        )
+
     job_data = job.model_dump()
 
     # Use authenticated user's ID as posted_by

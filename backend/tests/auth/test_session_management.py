@@ -7,7 +7,7 @@ import pytest
 from bson import ObjectId
 from httpx import AsyncClient
 
-from tests.conftest import TestDataCleaner
+from tests.conftest import DataCleaner
 from tests.constants import (
     HTTP_NOT_FOUND,
     HTTP_OK,
@@ -20,7 +20,7 @@ class TestSessionManagement:
 
     @pytest.mark.asyncio
     async def test_multiple_concurrent_sessions_allowed(
-        self, client: AsyncClient, test_cleaner: TestDataCleaner
+        self, client: AsyncClient, test_cleaner: DataCleaner
     ) -> None:
         """Users can login from multiple devices simultaneously."""
         email = f"multidevice_test_{ObjectId()}@example.com"
@@ -72,7 +72,7 @@ class TestSessionManagement:
 
     @pytest.mark.asyncio
     async def test_logout_invalidates_current_session(
-        self, client: AsyncClient, test_cleaner: TestDataCleaner
+        self, client: AsyncClient, test_cleaner: DataCleaner
     ) -> None:
         """Logging out should invalidate the current session."""
         email = f"logout_test_{ObjectId()}@example.com"
@@ -147,7 +147,7 @@ class TestSessionManagement:
 
     @pytest.mark.asyncio
     async def test_login_creates_new_session(
-        self, client: AsyncClient, test_cleaner: TestDataCleaner
+        self, client: AsyncClient, test_cleaner: DataCleaner
     ) -> None:
         """Each login should create a fresh session."""
         email = f"login_test_{ObjectId()}@example.com"

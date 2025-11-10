@@ -2,6 +2,8 @@
 RBAC tests for Jobs API.
 """
 
+from typing import Any
+
 import pytest
 from httpx import AsyncClient
 
@@ -54,19 +56,21 @@ class TestJobsRBAC:
             headers=headers,
             json={
                 "title": "Software Engineer",
+                "company": "Test Company",
                 "description": "Great opportunity",
                 "location": "San Francisco, CA",
-                "job_type": "full-time",
-                "experience_level": "mid",
-                "salary_range": {"min": 100000, "max": 150000},
-                "required_skills": ["Python", "FastAPI"],
+                "job_type": "Full-time",
+                "experience_required": "3-5 years",
+                "salary_min": 100000,
+                "salary_max": 150000,
+                "skills_required": ["Python", "FastAPI"],
             },
         )
 
         assert response.status_code == HTTP_CREATED
         data = response.json()
         assert data["title"] == "Software Engineer"
-        assert data["posted_by"] == profile_id
+        assert data["posted_by"] == user_id  # posted_by is user_id, not profile_id
 
     @pytest.mark.asyncio
     async def test_job_seeker_cannot_create_job(
@@ -98,12 +102,14 @@ class TestJobsRBAC:
             headers=headers,
             json={
                 "title": "Original Title",
+                "company": "Test Company",
                 "description": "Test",
                 "location": "SF",
-                "job_type": "full-time",
-                "experience_level": "mid",
+                "job_type": "Full-time",
+                "experience_required": "3-5 years",
             },
         )
+        assert create_response.status_code == HTTP_CREATED
         job_id = create_response.json()["id"]
 
         # Update job
@@ -117,12 +123,12 @@ class TestJobsRBAC:
 
     @pytest.mark.asyncio
     async def test_employer_cannot_update_other_employer_job(
-        self, client: AsyncClient, employer_token: str, employer_with_profile: tuple[str, str, str]
+        self,
+        client: AsyncClient,
+        employer_with_profile: tuple[str, str, str],
+        create_temp_user: Any,
     ) -> None:
         """Employers cannot update other employers' job postings."""
-        if not employer_token:
-            pytest.skip("Email confirmation required for testing")
-
         token, user_id, profile_id = employer_with_profile
 
         # Create job as first employer
@@ -132,16 +138,23 @@ class TestJobsRBAC:
             headers=headers1,
             json={
                 "title": "Original Job",
+                "company": "Test Company",
                 "description": "Test",
                 "location": "SF",
-                "job_type": "full-time",
-                "experience_level": "mid",
+                "job_type": "Full-time",
+                "experience_required": "3-5 years",
             },
         )
+        assert create_response.status_code == HTTP_CREATED
         job_id = create_response.json()["id"]
 
+        # Create a second employer to test cross-user authorization
+        token2, user_id2 = await create_temp_user("employer", "temp.employer.jobs@test.com")
+        if not token2:
+            pytest.skip("Failed to create temporary employer user")
+
         # Try to update as second employer
-        headers2 = {"Authorization": f"Bearer {employer_token}"}
+        headers2 = {"Authorization": f"Bearer {token2}"}
         response = await client.put(
             f"/api/jobs/{job_id}", headers=headers2, json={"title": "Hacked!"}
         )
@@ -165,12 +178,14 @@ class TestJobsRBAC:
             headers=emp_headers,
             json={
                 "title": "Original Job",
+                "company": "Test Company",
                 "description": "Test",
                 "location": "SF",
-                "job_type": "full-time",
-                "experience_level": "mid",
+                "job_type": "Full-time",
+                "experience_required": "3-5 years",
             },
         )
+        assert create_response.status_code == HTTP_CREATED
         job_id = create_response.json()["id"]
 
         # Update as admin
@@ -198,12 +213,14 @@ class TestJobsRBAC:
             headers=headers,
             json={
                 "title": "To Delete",
+                "company": "Test Company",
                 "description": "Test",
                 "location": "SF",
-                "job_type": "full-time",
-                "experience_level": "mid",
+                "job_type": "Full-time",
+                "experience_required": "3-5 years",
             },
         )
+        assert create_response.status_code == HTTP_CREATED
         job_id = create_response.json()["id"]
 
         # Delete job
@@ -231,12 +248,14 @@ class TestJobsRBAC:
             headers=emp_headers,
             json={
                 "title": "Protected Job",
+                "company": "Test Company",
                 "description": "Test",
                 "location": "SF",
-                "job_type": "full-time",
-                "experience_level": "mid",
+                "job_type": "Full-time",
+                "experience_required": "3-5 years",
             },
         )
+        assert create_response.status_code == HTTP_CREATED
         job_id = create_response.json()["id"]
 
         # Try to delete as job seeker

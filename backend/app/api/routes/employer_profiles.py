@@ -21,12 +21,13 @@ router = APIRouter()
 def _serialize_profile(document: EmployerProfileDocument) -> EmployerProfileResponse:
     """Convert a database document to the response schema."""
     company_name = document.get("company_name", "")
-    company_website = document.get("website")
-    company_logo_url = document.get("logo_url")
+    company_website = document.get("website") or document.get("company_website")
+    company_logo_url = document.get("logo_url") or document.get("company_logo_url")
     industry = document.get("industry")
     company_size = document.get("company_size")
     location = document.get("location")
-    company_description = document.get("company_description")
+    # Support both 'description' and 'company_description' for backwards compatibility
+    description = document.get("description") or document.get("company_description")
     founded_year = document.get("founded_year")
     contact_email = document.get("contact_email")
     contact_phone = document.get("contact_phone")
@@ -40,12 +41,12 @@ def _serialize_profile(document: EmployerProfileDocument) -> EmployerProfileResp
         id=str(document["_id"]),
         user_id=str(document["user_id"]),
         company_name=company_name,
-        company_website=company_website,
-        company_logo_url=company_logo_url,
+        company_website=company_website,  # type: ignore[arg-type]
+        company_logo_url=company_logo_url,  # type: ignore[arg-type]
         industry=industry,
         company_size=company_size,
         location=location,
-        description=company_description,
+        description=description,  # type: ignore[arg-type]
         founded_year=founded_year,
         contact_email=contact_email,
         contact_phone=contact_phone,

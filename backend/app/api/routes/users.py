@@ -6,8 +6,9 @@ from collections.abc import Iterable
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.auth import user_service
 from app.auth.dependencies import get_current_user, require_admin
-from app.crud import user as user_crud
+from app.crud import user as user_crud  # Admin-only functions
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.type_definitions import UserDocument
 
@@ -20,6 +21,7 @@ def _serialize_user(document: UserDocument) -> UserResponse:
     account_type = document.get("account_type", "job_seeker")
 
     return UserResponse(
+        # Return MongoDB ObjectId as the primary ID
         id=str(document["_id"]),
         email=email,
         account_type=account_type,
@@ -77,9 +79,8 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)) 
 
     Convenient endpoint to get your own account details.
     """
-    # Use MongoDB ID if available (from JIT provisioning), otherwise try Supabase ID
-    user_id = current_user.get("mongo_id") or current_user["id"]
-    user = await user_crud.get_user_by_id(user_id)
+    # current_user["id"] is now MongoDB ObjectId
+    user = await user_service.get_user(current_user["id"])
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -105,7 +106,7 @@ async def get_user(user_id: str, current_user: dict = Depends(get_current_user))
             status_code=status.HTTP_403_FORBIDDEN, detail="You can only view your own account"
         )
 
-    user = await user_crud.get_user_by_id(user_id)
+    user = await user_service.get_user(user_id)
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -197,7 +198,7 @@ async def update_user(
             status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can change account type"
         )
 
-    updated_user = await user_crud.update_user(user_id, update_data)
+    updated_user = await user_service.update_user(user_id, update_data)
 
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -215,7 +216,7 @@ async def delete_current_user(current_user: dict = Depends(get_current_user)) ->
     Permanently deletes your account and all associated data.
     This action cannot be undone.
     """
-    deleted = await user_crud.delete_user(current_user["id"])
+    deleted = await user_service.delete_user(current_user["id"])
 
     if not deleted:
         raise HTTPException(status_code=404, detail="User not found")
@@ -243,7 +244,7 @@ async def delete_user(user_id: str, current_user: dict = Depends(get_current_use
             status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete your own account"
         )
 
-    deleted = await user_crud.delete_user(user_id)
+    deleted = await user_service.delete_user(user_id)
 
     if not deleted:
         raise HTTPException(status_code=404, detail="User not found")

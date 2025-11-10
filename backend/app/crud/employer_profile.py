@@ -15,12 +15,15 @@ async def create_profile(user_id: str, profile_data: dict[str, object]) -> Emplo
     """Create a new employer profile."""
     collection = get_employer_profiles_collection()
 
-    existing_profile = await collection.find_one({"user_id": ObjectId(user_id)})
+    # Convert user_id string (MongoDB ObjectId) to ObjectId
+    user_object_id = ObjectId(user_id)
+
+    existing_profile = await collection.find_one({"user_id": user_object_id})
     if existing_profile:
         raise ValueError(f"Employer profile already exists for user {user_id}")
 
     profile_doc = {
-        "user_id": ObjectId(user_id),
+        "user_id": user_object_id,  # Store as ObjectId
         **profile_data,
         "jobs_posted_count": 0,
         "active_jobs_count": 0,
@@ -46,11 +49,12 @@ async def get_profile_by_id(profile_id: str) -> EmployerProfileDocument | None:
 
 
 async def get_profile_by_user_id(user_id: str) -> EmployerProfileDocument | None:
-    """Get employer profile by user ID."""
+    """Get employer profile by user ID (MongoDB ObjectId)."""
     collection = get_employer_profiles_collection()
 
     try:
-        result = await collection.find_one({"user_id": ObjectId(user_id)})
+        user_object_id = ObjectId(user_id)
+        result = await collection.find_one({"user_id": user_object_id})
         return cast(EmployerProfileDocument, result) if result else None
     except Exception:
         return None

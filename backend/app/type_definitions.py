@@ -16,6 +16,7 @@ class UserDocument(TypedDict):
     _id: ObjectId
     email: str
     account_type: str
+    supabase_id: NotRequired[str]  # Supabase UUID - only for auth lookup
     created_at: datetime
     updated_at: datetime
 
