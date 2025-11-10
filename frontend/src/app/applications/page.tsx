@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 
 import Link from "next/link";
 import {
@@ -254,7 +254,9 @@ const sampleApplicants = [
   },
 ];
 
-const getStatusBadge = (status: string) => {
+const getStatusBadge = (
+  status: string
+): { bg: string; text: string; label: string } => {
   const statusConfig: Record<
     string,
     { bg: string; text: string; label: string }
@@ -281,7 +283,9 @@ const getStatusBadge = (status: string) => {
   return statusConfig[status] || statusConfig.unreviewed;
 };
 
-const getStatusDropdownOptions = (currentStatus: string) => {
+const getStatusDropdownOptions = (
+  currentStatus: string
+): Array<{ value: string; label: string }> => {
   const allStatuses = [
     { value: "unreviewed", label: "Unreviewed" },
     { value: "reviewed", label: "Reviewed" },
@@ -305,7 +309,7 @@ function StatusDropdown({
   isOpen,
   onToggle,
   onUpdateStatus,
-}: StatusDropdownProps) {
+}: StatusDropdownProps): ReactElement {
   const statusConfig = getStatusBadge(applicant.status);
   const dropdownOptions = getStatusDropdownOptions(applicant.status);
 
@@ -357,7 +361,7 @@ function StatusDropdown({
   );
 }
 
-export default function ApplicationsPage() {
+export default function ApplicationsPage(): ReactElement {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("newest");
@@ -416,8 +420,8 @@ export default function ApplicationsPage() {
     return statusMatch && searchMatch;
   });
 
-  const handleSelectApplicant = (applicantId: number) => {
-    setSelectedApplicants((prev: any) => {
+  const handleSelectApplicant = (applicantId: number): void => {
+    setSelectedApplicants((prev: Set<number>) => {
       const newSelected = new Set(prev);
       if (newSelected.has(applicantId)) {
         newSelected.delete(applicantId);
@@ -428,8 +432,8 @@ export default function ApplicationsPage() {
     });
   };
 
-  const toggleCardExpansion = (applicantId: number) => {
-    setExpandedCards((prev: any) => {
+  const toggleCardExpansion = (applicantId: number): void => {
+    setExpandedCards((prev: Set<number>) => {
       const newExpanded = new Set(prev);
       if (newExpanded.has(applicantId)) {
         newExpanded.delete(applicantId);
@@ -440,8 +444,8 @@ export default function ApplicationsPage() {
     });
   };
 
-  const toggleStatusDropdown = (applicantId: number) => {
-    setOpenStatusDropdowns((prev: any) => {
+  const toggleStatusDropdown = (applicantId: number): void => {
+    setOpenStatusDropdowns((prev: Set<number>) => {
       const newOpen = new Set(prev);
       if (newOpen.has(applicantId)) {
         newOpen.delete(applicantId);
@@ -452,10 +456,13 @@ export default function ApplicationsPage() {
     });
   };
 
-  const updateApplicantStatus = (applicantId: number, newStatus: string) => {
+  const updateApplicantStatus = (
+    applicantId: number,
+    newStatus: string
+  ): void => {
     // TODO: Implement API call to update status
     console.log(`Updating applicant ${applicantId} status to ${newStatus}`);
-    setOpenStatusDropdowns((prev: any) => {
+    setOpenStatusDropdowns((prev: Set<number>) => {
       const newOpen = new Set(prev);
       newOpen.delete(applicantId);
       return newOpen;

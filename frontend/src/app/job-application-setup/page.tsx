@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState, type ReactElement } from "react";
 
 import {
   Eye,
@@ -11,18 +11,18 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle,
-} from 'lucide-react';
+} from "lucide-react";
 
 // TODO: Replace with API call to fetch job data (would come from previous job posting form)
 const jobData = {
-  title: 'Marketing Coordinator',
-  company: 'TechFlow Solutions',
-  location: 'Phoenix, AZ',
-  type: 'Full-time',
+  title: "Marketing Coordinator",
+  company: "TechFlow Solutions",
+  location: "Phoenix, AZ",
+  type: "Full-time",
 };
 
 interface ApplicationSettings {
-  applicationMethod: 'Internal' | 'External' | 'Email';
+  applicationMethod: "Internal" | "External" | "Email";
   externalUrl: string;
   applicationEmail: string;
   requireCoverLetter: boolean;
@@ -30,29 +30,32 @@ interface ApplicationSettings {
   equalOpportunityEnabled: boolean;
 }
 
-export default function JobApplicationSetupPage() {
+export default function JobApplicationSetupPage(): ReactElement {
   const [applicationSettings, setApplicationSettings] =
     useState<ApplicationSettings>({
-      applicationMethod: 'Internal',
-      externalUrl: '',
-      applicationEmail: '',
+      applicationMethod: "Internal",
+      externalUrl: "",
+      applicationEmail: "",
       requireCoverLetter: true,
-      screeningQuestions: [''],
+      screeningQuestions: [""],
       equalOpportunityEnabled: true,
     });
 
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
 
-  const handleInputChange = (field: keyof ApplicationSettings, value: any) => {
-    setApplicationSettings((prev: any) => ({
+  const handleInputChange = (
+    field: keyof ApplicationSettings,
+    value: string | boolean
+  ): void => {
+    setApplicationSettings((prev: ApplicationSettings) => ({
       ...prev,
       [field]: value,
     }));
   };
 
-  const handleQuestionChange = (index: number, value: string) => {
-    setApplicationSettings((prev: any) => ({
+  const handleQuestionChange = (index: number, value: string): void => {
+    setApplicationSettings((prev: ApplicationSettings) => ({
       ...prev,
       screeningQuestions: prev.screeningQuestions.map((q, i) =>
         i === index ? value : q
@@ -61,14 +64,14 @@ export default function JobApplicationSetupPage() {
   };
 
   const addScreeningQuestion = (): void => {
-    setApplicationSettings((prev: any) => ({
+    setApplicationSettings((prev: ApplicationSettings) => ({
       ...prev,
-      screeningQuestions: [...prev.screeningQuestions, ''],
+      screeningQuestions: [...prev.screeningQuestions, ""],
     }));
   };
 
-  const removeScreeningQuestion = (index: number) => {
-    setApplicationSettings((prev: any) => ({
+  const removeScreeningQuestion = (index: number): void => {
+    setApplicationSettings((prev: ApplicationSettings) => ({
       ...prev,
       screeningQuestions: prev.screeningQuestions.filter((_, i) => i !== index),
     }));
@@ -86,7 +89,7 @@ export default function JobApplicationSetupPage() {
     }
   };
 
-  const renderStep = (): void => {
+  const renderStep = (): ReactElement | null => {
     switch (currentStep) {
       case 1:
         return (
@@ -105,11 +108,13 @@ export default function JobApplicationSetupPage() {
                     type="radio"
                     name="applicationMethod"
                     value="Internal"
-                    checked={applicationSettings.applicationMethod === 'Internal'}
+                    checked={
+                      applicationSettings.applicationMethod === "Internal"
+                    }
                     onChange={(e) =>
                       handleInputChange(
-                        'applicationMethod',
-                        e.target.value as 'Internal'
+                        "applicationMethod",
+                        e.target.value as "Internal"
                       )
                     }
                     className="w-4 h-4 text-green-600 border-green-300 focus:ring-green-500"
@@ -130,11 +135,13 @@ export default function JobApplicationSetupPage() {
                     type="radio"
                     name="applicationMethod"
                     value="External"
-                    checked={applicationSettings.applicationMethod === 'External'}
+                    checked={
+                      applicationSettings.applicationMethod === "External"
+                    }
                     onChange={(e) =>
                       handleInputChange(
-                        'applicationMethod',
-                        e.target.value as 'External'
+                        "applicationMethod",
+                        e.target.value as "External"
                       )
                     }
                     className="w-4 h-4 text-green-600 border-green-300 focus:ring-green-500"
@@ -154,11 +161,11 @@ export default function JobApplicationSetupPage() {
                     type="radio"
                     name="applicationMethod"
                     value="Email"
-                    checked={applicationSettings.applicationMethod === 'Email'}
+                    checked={applicationSettings.applicationMethod === "Email"}
                     onChange={(e) =>
                       handleInputChange(
-                        'applicationMethod',
-                        e.target.value as 'Email'
+                        "applicationMethod",
+                        e.target.value as "Email"
                       )
                     }
                     className="w-4 h-4 text-green-600 border-green-300 focus:ring-green-500"
@@ -176,7 +183,7 @@ export default function JobApplicationSetupPage() {
               </div>
             </div>
 
-            {applicationSettings.applicationMethod === 'External' && (
+            {applicationSettings.applicationMethod === "External" && (
               <div>
                 <label className="block text-sm font-medium text-green-800 mb-2">
                   External Application URL *
@@ -185,18 +192,19 @@ export default function JobApplicationSetupPage() {
                   type="url"
                   value={applicationSettings.externalUrl}
                   onChange={(e) =>
-                    handleInputChange('externalUrl', e.target.value)
+                    handleInputChange("externalUrl", e.target.value)
                   }
                   className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                   placeholder="https://yourcompany.com/careers/apply"
                 />
                 <p className="text-xs text-green-600 mt-2">
-                  Candidates will be redirected here when they click &quot;Apply&quot;
+                  Candidates will be redirected here when they click
+                  &quot;Apply&quot;
                 </p>
               </div>
             )}
 
-            {applicationSettings.applicationMethod === 'Email' && (
+            {applicationSettings.applicationMethod === "Email" && (
               <div>
                 <label className="block text-sm font-medium text-green-800 mb-2">
                   Application Email Address *
@@ -205,7 +213,7 @@ export default function JobApplicationSetupPage() {
                   type="email"
                   value={applicationSettings.applicationEmail}
                   onChange={(e) =>
-                    handleInputChange('applicationEmail', e.target.value)
+                    handleInputChange("applicationEmail", e.target.value)
                   }
                   className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                   placeholder="careers@yourcompany.com"
@@ -217,7 +225,7 @@ export default function JobApplicationSetupPage() {
               </div>
             )}
 
-            {applicationSettings.applicationMethod === 'Internal' && (
+            {applicationSettings.applicationMethod === "Internal" && (
               <div className="space-y-4">
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -235,7 +243,10 @@ export default function JobApplicationSetupPage() {
                         type="checkbox"
                         checked={applicationSettings.requireCoverLetter}
                         onChange={(e) =>
-                          handleInputChange('requireCoverLetter', e.target.checked)
+                          handleInputChange(
+                            "requireCoverLetter",
+                            e.target.checked
+                          )
                         }
                         className="w-4 h-4 text-green-600 border-green-300 rounded focus:ring-green-500"
                       />
@@ -266,7 +277,7 @@ export default function JobApplicationSetupPage() {
 
       case 2:
         // Don't show this step if not using Internal applications
-        if (applicationSettings.applicationMethod !== 'Internal') {
+        if (applicationSettings.applicationMethod !== "Internal") {
           return (
             <div className="space-y-6">
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
@@ -280,9 +291,11 @@ export default function JobApplicationSetupPage() {
                 </p>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-700">
-                    💡 To add custom questions, go back and select{' '}
-                    <strong>&quot;Through Career Harmony (Recommended)&quot;</strong> as
-                    your application method.
+                    💡 To add custom questions, go back and select{" "}
+                    <strong>
+                      &quot;Through Career Harmony (Recommended)&quot;
+                    </strong>{" "}
+                    as your application method.
                   </p>
                 </div>
               </div>
@@ -306,9 +319,11 @@ export default function JobApplicationSetupPage() {
               <div className="flex items-center justify-between">
                 <h4 className="font-medium text-green-800">Your Questions</h4>
                 <span className="text-xs text-green-600">
-                  {applicationSettings.screeningQuestions.filter((q) =>
-                    q.trim()
-                  ).length}{' '}
+                  {
+                    applicationSettings.screeningQuestions.filter((q) =>
+                      q.trim()
+                    ).length
+                  }{" "}
                   questions added
                 </span>
               </div>
@@ -391,7 +406,10 @@ export default function JobApplicationSetupPage() {
                     type="checkbox"
                     checked={applicationSettings.equalOpportunityEnabled}
                     onChange={(e) =>
-                      handleInputChange('equalOpportunityEnabled', e.target.checked)
+                      handleInputChange(
+                        "equalOpportunityEnabled",
+                        e.target.checked
+                      )
                     }
                     className="w-4 h-4 text-green-600 border-green-300 rounded focus:ring-green-500"
                   />
@@ -400,8 +418,8 @@ export default function JobApplicationSetupPage() {
                       Include Equal Opportunity Disclosure Page
                     </div>
                     <div className="text-sm text-green-600 mt-1">
-                      Required for most employers. Collects voluntary demographic
-                      information for compliance reporting.
+                      Required for most employers. Collects voluntary
+                      demographic information for compliance reporting.
                     </div>
                   </div>
                 </label>
@@ -420,14 +438,16 @@ export default function JobApplicationSetupPage() {
                   </ul>
                   <p className="text-xs text-gray-500 mt-3">
                     This information is used for compliance reporting only and
-                    will not affect hiring decisions. All responses are voluntary
-                    and kept separate from application materials.
+                    will not affect hiring decisions. All responses are
+                    voluntary and kept separate from application materials.
                   </p>
                 </div>
               )}
 
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <h5 className="font-medium text-amber-800 mb-2">⚖️ Legal Note</h5>
+                <h5 className="font-medium text-amber-800 mb-2">
+                  ⚖️ Legal Note
+                </h5>
                 <p className="text-xs text-amber-700">
                   Equal opportunity data collection helps ensure compliance with
                   federal regulations. Consult with your HR or legal team if you
@@ -465,23 +485,25 @@ export default function JobApplicationSetupPage() {
                   </span>
                 </div>
 
-                {applicationSettings.applicationMethod === 'Internal' && (
+                {applicationSettings.applicationMethod === "Internal" && (
                   <>
                     <div className="flex justify-between">
                       <span className="text-green-700">Cover Letter:</span>
                       <span className="font-medium text-green-900">
                         {applicationSettings.requireCoverLetter
-                          ? 'Required'
-                          : 'Optional'}
+                          ? "Required"
+                          : "Optional"}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
                       <span className="text-green-700">Custom Questions:</span>
                       <span className="font-medium text-green-900">
-                        {applicationSettings.screeningQuestions.filter((q) =>
-                          q.trim()
-                        ).length}{' '}
+                        {
+                          applicationSettings.screeningQuestions.filter((q) =>
+                            q.trim()
+                          ).length
+                        }{" "}
                         questions
                       </span>
                     </div>
@@ -510,8 +532,8 @@ export default function JobApplicationSetupPage() {
                   <span className="text-green-700">Equal Opportunity:</span>
                   <span className="font-medium text-green-900">
                     {applicationSettings.equalOpportunityEnabled
-                      ? 'Enabled'
-                      : 'Disabled'}
+                      ? "Enabled"
+                      : "Disabled"}
                   </span>
                 </div>
               </div>
@@ -537,8 +559,8 @@ export default function JobApplicationSetupPage() {
                       Application preview will show here
                     </p>
                     <p className="text-gray-500 text-xs mt-1">
-                      Click &quot;Preview Application Form&quot; to see how candidates will
-                      experience your application
+                      Click &quot;Preview Application Form&quot; to see how
+                      candidates will experience your application
                     </p>
                   </div>
                 </div>
@@ -567,7 +589,7 @@ export default function JobApplicationSetupPage() {
             Configure Job Applications
           </h1>
           <p className="text-green-700">
-            Set up how candidates will apply for your{' '}
+            Set up how candidates will apply for your{" "}
             <strong>{jobData.title}</strong> position
           </p>
         </div>
@@ -580,13 +602,13 @@ export default function JobApplicationSetupPage() {
                 <div
                   className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
                     currentStep === step
-                      ? 'bg-green-600 text-white'
+                      ? "bg-green-600 text-white"
                       : currentStep > step
-                        ? 'bg-green-500 text-white'
+                        ? "bg-green-500 text-white"
                         : step === 2 &&
-                            applicationSettings.applicationMethod !== 'Internal'
-                          ? 'bg-gray-200 text-gray-400'
-                          : 'bg-gray-200 text-gray-600'
+                            applicationSettings.applicationMethod !== "Internal"
+                          ? "bg-gray-200 text-gray-400"
+                          : "bg-gray-200 text-gray-600"
                   }`}
                 >
                   {currentStep > step ? (
@@ -599,11 +621,11 @@ export default function JobApplicationSetupPage() {
                   <div
                     className={`w-12 h-0.5 ${
                       currentStep > step
-                        ? 'bg-green-500'
+                        ? "bg-green-500"
                         : step === 2 &&
-                            applicationSettings.applicationMethod !== 'Internal'
-                          ? 'bg-gray-200'
-                          : 'bg-gray-200'
+                            applicationSettings.applicationMethod !== "Internal"
+                          ? "bg-gray-200"
+                          : "bg-gray-200"
                     }`}
                   />
                 )}
@@ -612,27 +634,25 @@ export default function JobApplicationSetupPage() {
           </div>
           <div className="flex justify-center mt-2 text-xs text-green-600">
             <div className="flex items-center space-x-1">
-              <span className={currentStep === 1 ? 'font-medium' : ''}>
+              <span className={currentStep === 1 ? "font-medium" : ""}>
                 Method
               </span>
               <span className="text-gray-300">•</span>
               <span
-                className={`${
-                  currentStep === 2 ? 'font-medium' : ''
-                } ${
-                  applicationSettings.applicationMethod !== 'Internal'
-                    ? 'text-gray-400 line-through'
-                    : ''
+                className={`${currentStep === 2 ? "font-medium" : ""} ${
+                  applicationSettings.applicationMethod !== "Internal"
+                    ? "text-gray-400 line-through"
+                    : ""
                 }`}
               >
                 Questions
               </span>
               <span className="text-gray-300">•</span>
-              <span className={currentStep === 3 ? 'font-medium' : ''}>
+              <span className={currentStep === 3 ? "font-medium" : ""}>
                 Legal
               </span>
               <span className="text-gray-300">•</span>
-              <span className={currentStep === 4 ? 'font-medium' : ''}>
+              <span className={currentStep === 4 ? "font-medium" : ""}>
                 Review
               </span>
             </div>
@@ -651,8 +671,8 @@ export default function JobApplicationSetupPage() {
             disabled={currentStep === 1}
             className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all ${
               currentStep === 1
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-green-50 text-green-700 border border-green-300 hover:bg-green-100'
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-green-50 text-green-700 border border-green-300 hover:bg-green-100"
             }`}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -678,4 +698,3 @@ export default function JobApplicationSetupPage() {
     </div>
   );
 }
-

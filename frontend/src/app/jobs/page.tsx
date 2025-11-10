@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent, type ReactElement } from "react";
 
 import {
   Search,
@@ -186,7 +186,7 @@ const sampleJobs = [
   },
 ];
 
-export default function JobsPage() {
+export default function JobsPage(): ReactElement {
   const [searchTerm, setSearchTerm] = useState("");
   const [location, setLocation] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -200,22 +200,25 @@ export default function JobsPage() {
   const jobs = sampleJobs;
 
   const handleSaveJob = (jobId: number): void => {
-    setSavedJobs((prev: any) => {
+    setSavedJobs((prev: Set<number>) => {
       const newSaved = new Set(prev);
       if (newSaved.has(jobId)) {
         newSaved.delete(jobId);
-        setSaveMessages((prev: any) => ({
+        setSaveMessages((prev: Record<number, string>) => ({
           ...prev,
           [jobId]: "Job removed from saved",
         }));
       } else {
         newSaved.add(jobId);
-        setSaveMessages((prev: any) => ({ ...prev, [jobId]: "Job saved!" }));
+        setSaveMessages((prev: Record<number, string>) => ({
+          ...prev,
+          [jobId]: "Job saved!",
+        }));
       }
 
       // Clear message after 2 seconds
       setTimeout(() => {
-        setSaveMessages((prev: any) => {
+        setSaveMessages((prev: Record<number, string>) => {
           const newMessages = { ...prev };
           delete newMessages[jobId];
           return newMessages;
@@ -227,7 +230,7 @@ export default function JobsPage() {
   };
 
   const toggleJobExpansion = (jobId: number): void => {
-    setExpandedJobs((prev: any) => {
+    setExpandedJobs((prev: Set<number>) => {
       const newExpanded = new Set(prev);
       if (newExpanded.has(jobId)) {
         newExpanded.delete(jobId);
@@ -245,7 +248,7 @@ export default function JobsPage() {
   const endIndex = startIndex + jobsPerPage;
   const currentJobs = jobs.slice(startIndex, endIndex);
 
-  const goToPage = (page: number) => {
+  const goToPage = (page: number): void => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -262,7 +265,7 @@ export default function JobsPage() {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: FormEvent): void => {
     e.preventDefault();
     // TODO: Implement search functionality
     console.log("Search:", { searchTerm, location });
@@ -399,8 +402,8 @@ export default function JobsPage() {
               found
             </p>
             <p className="text-sm text-green-600">
-              Rejections don&apos;t automatically mean you&apos;re a bad candidate. You
-              have value.
+              Rejections don&apos;t automatically mean you&apos;re a bad
+              candidate. You have value.
             </p>
             {totalJobs > 0 && (
               <p className="text-sm text-green-600 mt-1">

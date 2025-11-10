@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactElement } from "react";
 
 import {
   Save,
@@ -14,15 +14,15 @@ import {
   AlertCircle,
   CheckCircle,
   Users,
-} from 'lucide-react';
+} from "lucide-react";
 
 // TODO: Replace with API call to fetch employer info
 const employerInfo = {
-  name: 'Sarah Martinez',
+  name: "Sarah Martinez",
   companies: [
-    { id: 'techflow', name: 'TechFlow Solutions' },
-    { id: 'innovate', name: 'InnovateNow Corp' },
-    { id: 'datacore', name: 'DataCore Industries' },
+    { id: "techflow", name: "TechFlow Solutions" },
+    { id: "innovate", name: "InnovateNow Corp" },
+    { id: "datacore", name: "DataCore Industries" },
   ],
 };
 
@@ -38,9 +38,9 @@ const jobTemplates: Record<
     niceToHave: string[];
   }
 > = {
-  'marketing-coordinator': {
-    title: 'Marketing Coordinator',
-    department: 'Marketing',
+  "marketing-coordinator": {
+    title: "Marketing Coordinator",
+    department: "Marketing",
     description: `• Start with what makes this role meaningful and exciting
 • Describe the team they'll join and company culture
 • Explain how this position contributes to larger goals
@@ -48,27 +48,27 @@ const jobTemplates: Record<
 • Mention any unique benefits or perks of working here
 • Keep it authentic and avoid corporate buzzwords`,
     requirements: [
-      '2+ years of marketing experience',
-      'Experience with social media management',
-      'Strong written communication skills',
-      'Proficiency with marketing tools (Google Analytics, social platforms)',
+      "2+ years of marketing experience",
+      "Experience with social media management",
+      "Strong written communication skills",
+      "Proficiency with marketing tools (Google Analytics, social platforms)",
     ],
     responsibilities: [
-      'Develop and execute social media campaigns that engage our community',
-      'Create compelling content across multiple channels',
-      'Collaborate with cross-functional teams on integrated campaigns',
-      'Analyze campaign performance and provide insights for optimization',
+      "Develop and execute social media campaigns that engage our community",
+      "Create compelling content across multiple channels",
+      "Collaborate with cross-functional teams on integrated campaigns",
+      "Analyze campaign performance and provide insights for optimization",
     ],
     niceToHave: [
-      'Experience with marketing automation platforms',
-      'Basic graphic design skills',
-      'Previous experience in our industry',
-      'Bilingual capabilities',
+      "Experience with marketing automation platforms",
+      "Basic graphic design skills",
+      "Previous experience in our industry",
+      "Bilingual capabilities",
     ],
   },
-  'software-developer': {
-    title: 'Software Developer',
-    department: 'Engineering',
+  "software-developer": {
+    title: "Software Developer",
+    department: "Engineering",
     description: `• Describe the main purpose and impact of this role
 • Explain the team structure and collaboration style  
 • Highlight technical challenges and learning opportunities
@@ -76,27 +76,27 @@ const jobTemplates: Record<
 • Include information about code quality and best practices
 • Note any interesting technologies or projects they'll work on`,
     requirements: [
-      '3+ years of software development experience',
-      'Proficiency in JavaScript, Python, or similar languages',
-      'Experience with modern web frameworks',
-      'Understanding of database design and optimization',
+      "3+ years of software development experience",
+      "Proficiency in JavaScript, Python, or similar languages",
+      "Experience with modern web frameworks",
+      "Understanding of database design and optimization",
     ],
     responsibilities: [
-      'Design and implement new features that delight our users',
-      'Write clean, maintainable code with comprehensive tests',
-      'Participate in code reviews and mentor junior developers',
-      'Collaborate with product and design teams on user experience',
+      "Design and implement new features that delight our users",
+      "Write clean, maintainable code with comprehensive tests",
+      "Participate in code reviews and mentor junior developers",
+      "Collaborate with product and design teams on user experience",
     ],
     niceToHave: [
-      'Experience with cloud platforms (AWS, Azure, GCP)',
-      'Mobile development experience',
-      'Open source contributions',
-      'Experience with agile development methodologies',
+      "Experience with cloud platforms (AWS, Azure, GCP)",
+      "Mobile development experience",
+      "Open source contributions",
+      "Experience with agile development methodologies",
     ],
   },
-  'customer-success': {
-    title: 'Customer Success Manager',
-    department: 'Customer Success',
+  "customer-success": {
+    title: "Customer Success Manager",
+    department: "Customer Success",
     description: `• Explain how this role helps customers succeed
 • Describe the customer base and typical challenges
 • Highlight the collaborative nature with internal teams
@@ -104,22 +104,22 @@ const jobTemplates: Record<
 • Include information about customer journey and lifecycle
 • Note any tools, systems, or processes they'll use`,
     requirements: [
-      '2+ years in customer-facing roles',
-      'Excellent communication and problem-solving skills',
-      'Experience with CRM systems',
-      'Ability to understand and explain technical concepts',
+      "2+ years in customer-facing roles",
+      "Excellent communication and problem-solving skills",
+      "Experience with CRM systems",
+      "Ability to understand and explain technical concepts",
     ],
     responsibilities: [
-      'Onboard new customers and ensure successful product adoption',
-      'Proactively identify opportunities to help customers succeed',
-      'Serve as primary point of contact for assigned customer accounts',
-      'Gather customer feedback and work with product team on improvements',
+      "Onboard new customers and ensure successful product adoption",
+      "Proactively identify opportunities to help customers succeed",
+      "Serve as primary point of contact for assigned customer accounts",
+      "Gather customer feedback and work with product team on improvements",
     ],
     niceToHave: [
-      'Previous experience in SaaS or technology companies',
-      'Project management certification',
-      'Experience with data analysis and reporting',
-      'Multilingual capabilities for diverse customer base',
+      "Previous experience in SaaS or technology companies",
+      "Project management certification",
+      "Experience with data analysis and reporting",
+      "Multilingual capabilities for diverse customer base",
     ],
   },
 };
@@ -144,41 +144,41 @@ interface JobData {
   industry?: string;
 }
 
-export default function JobPostingPage() {
-  const [selectedCompany, setSelectedCompany] = useState('');
+export default function JobPostingPage(): ReactElement {
+  const [selectedCompany, setSelectedCompany] = useState("");
   const [jobData, setJobData] = useState<JobData>({
-    title: '',
-    department: '',
-    description: '',
-    requirements: [''],
-    responsibilities: [''],
-    niceToHave: [''],
-    location: '',
-    workArrangement: 'On-site',
-    jobType: 'Full-time',
-    experienceLevel: 'Mid Level',
-    salaryMin: '',
-    salaryMax: '',
+    title: "",
+    department: "",
+    description: "",
+    requirements: [""],
+    responsibilities: [""],
+    niceToHave: [""],
+    location: "",
+    workArrangement: "On-site",
+    jobType: "Full-time",
+    experienceLevel: "Mid Level",
+    salaryMin: "",
+    salaryMax: "",
     salaryDisclosed: true,
-    compensationAdditional: '',
-    aboutCompany: '',
-    applicationDeadline: '',
+    compensationAdditional: "",
+    aboutCompany: "",
+    applicationDeadline: "",
   });
 
-  const [currentTemplate, setCurrentTemplate] = useState('');
+  const [currentTemplate, setCurrentTemplate] = useState("");
   const [autoSaveStatus, setAutoSaveStatus] = useState<
-    'saving' | 'saved' | 'error'
-  >('saved');
+    "saving" | "saved" | "error"
+  >("saved");
   const [showPreview, setShowPreview] = useState(false);
 
   // Auto-save functionality (simulated)
   useEffect(() => {
     const autoSave = setTimeout(() => {
       if (jobData.title || jobData.description) {
-        setAutoSaveStatus('saving');
+        setAutoSaveStatus("saving");
         // TODO: Replace with actual API call
         setTimeout(() => {
-          setAutoSaveStatus('saved');
+          setAutoSaveStatus("saved");
         }, 1000);
       }
     }, 2000);
@@ -186,47 +186,50 @@ export default function JobPostingPage() {
     return () => clearTimeout(autoSave);
   }, [jobData]);
 
-  const handleInputChange = (field: keyof JobData, value: any) => {
-    setJobData((prev: any) => ({
+  const handleInputChange = (
+    field: keyof JobData,
+    value: string | boolean
+  ): void => {
+    setJobData((prev: JobData) => ({
       ...prev,
       [field]: value,
     }));
   };
 
   const handleArrayField = (
-    field: 'requirements' | 'responsibilities' | 'niceToHave',
+    field: "requirements" | "responsibilities" | "niceToHave",
     index: number,
     value: string
-  ) => {
-    setJobData((prev: any) => ({
+  ): void => {
+    setJobData((prev: JobData) => ({
       ...prev,
       [field]: prev[field].map((item, i) => (i === index ? value : item)),
     }));
   };
 
   const addArrayField = (
-    field: 'requirements' | 'responsibilities' | 'niceToHave'
-  ) => {
-    setJobData((prev: any) => ({
+    field: "requirements" | "responsibilities" | "niceToHave"
+  ): void => {
+    setJobData((prev: JobData) => ({
       ...prev,
-      [field]: [...prev[field], ''],
+      [field]: [...prev[field], ""],
     }));
   };
 
   const removeArrayField = (
-    field: 'requirements' | 'responsibilities' | 'niceToHave',
+    field: "requirements" | "responsibilities" | "niceToHave",
     index: number
-  ) => {
-    setJobData((prev: any) => ({
+  ): void => {
+    setJobData((prev: JobData) => ({
       ...prev,
       [field]: prev[field].filter((_, i) => i !== index),
     }));
   };
 
-  const applyTemplate = (templateKey: string) => {
+  const applyTemplate = (templateKey: string): void => {
     const template = jobTemplates[templateKey];
     if (template) {
-      setJobData((prev: any) => ({
+      setJobData((prev: JobData) => ({
         ...prev,
         ...template,
       }));
@@ -234,13 +237,13 @@ export default function JobPostingPage() {
     }
   };
 
-  const getAutoSaveIndicator = (): void => {
+  const getAutoSaveIndicator = (): ReactElement | null => {
     switch (autoSaveStatus) {
-      case 'saving':
+      case "saving":
         return <RefreshCw className="w-4 h-4 animate-spin text-amber-500" />;
-      case 'saved':
+      case "saved":
         return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'error':
+      case "error":
         return <AlertCircle className="w-4 h-4 text-red-500" />;
       default:
         return null;
@@ -266,9 +269,9 @@ export default function JobPostingPage() {
             <div className="flex items-center space-x-2 text-sm text-green-600">
               {getAutoSaveIndicator()}
               <span>
-                {autoSaveStatus === 'saving' && 'Saving...'}
-                {autoSaveStatus === 'saved' && 'Draft saved'}
-                {autoSaveStatus === 'error' && 'Save failed'}
+                {autoSaveStatus === "saving" && "Saving..."}
+                {autoSaveStatus === "saved" && "Draft saved"}
+                {autoSaveStatus === "error" && "Save failed"}
               </span>
             </div>
           </div>
@@ -298,8 +301,8 @@ export default function JobPostingPage() {
                       onClick={() => applyTemplate(key)}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                         currentTemplate === key
-                          ? 'bg-green-600 text-white'
-                          : 'bg-white/80 text-green-700 hover:bg-green-100 border border-green-300'
+                          ? "bg-green-600 text-white"
+                          : "bg-white/80 text-green-700 hover:bg-green-100 border border-green-300"
                       }`}
                     >
                       {jobTemplates[key].title}
@@ -337,8 +340,10 @@ export default function JobPostingPage() {
                     Industry *
                   </label>
                   <select
-                    value={jobData.industry || ''}
-                    onChange={(e) => handleInputChange('industry', e.target.value)}
+                    value={jobData.industry || ""}
+                    onChange={(e) =>
+                      handleInputChange("industry", e.target.value)
+                    }
                     className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                   >
                     <option value="">Select industry...</option>
@@ -370,7 +375,9 @@ export default function JobPostingPage() {
                     <input
                       type="text"
                       value={jobData.title}
-                      onChange={(e) => handleInputChange('title', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("title", e.target.value)
+                      }
                       className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                       placeholder="e.g. Senior Marketing Coordinator"
                     />
@@ -384,7 +391,7 @@ export default function JobPostingPage() {
                       type="text"
                       value={jobData.department}
                       onChange={(e) =>
-                        handleInputChange('department', e.target.value)
+                        handleInputChange("department", e.target.value)
                       }
                       className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                       placeholder="e.g. Marketing, Engineering"
@@ -400,7 +407,7 @@ export default function JobPostingPage() {
                     <select
                       value={jobData.jobType}
                       onChange={(e) =>
-                        handleInputChange('jobType', e.target.value)
+                        handleInputChange("jobType", e.target.value)
                       }
                       className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                     >
@@ -418,7 +425,7 @@ export default function JobPostingPage() {
                     <select
                       value={jobData.experienceLevel}
                       onChange={(e) =>
-                        handleInputChange('experienceLevel', e.target.value)
+                        handleInputChange("experienceLevel", e.target.value)
                       }
                       className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                     >
@@ -436,7 +443,7 @@ export default function JobPostingPage() {
                     <select
                       value={jobData.workArrangement}
                       onChange={(e) =>
-                        handleInputChange('workArrangement', e.target.value)
+                        handleInputChange("workArrangement", e.target.value)
                       }
                       className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                     >
@@ -454,7 +461,9 @@ export default function JobPostingPage() {
                   <input
                     type="text"
                     value={jobData.location}
-                    onChange={(e) => handleInputChange('location', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("location", e.target.value)
+                    }
                     className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                     placeholder="e.g. Phoenix, AZ or Remote"
                   />
@@ -473,7 +482,7 @@ export default function JobPostingPage() {
                 <textarea
                   value={jobData.description}
                   onChange={(e) =>
-                    handleInputChange('description', e.target.value)
+                    handleInputChange("description", e.target.value)
                   }
                   rows={8}
                   className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 resize-none"
@@ -497,7 +506,11 @@ export default function JobPostingPage() {
                         type="text"
                         value={requirement}
                         onChange={(e) =>
-                          handleArrayField('requirements', index, e.target.value)
+                          handleArrayField(
+                            "requirements",
+                            index,
+                            e.target.value
+                          )
                         }
                         className="flex-1 px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                         placeholder="e.g. 2+ years of marketing experience"
@@ -505,7 +518,7 @@ export default function JobPostingPage() {
                       {jobData.requirements.length > 1 && (
                         <button
                           onClick={() =>
-                            removeArrayField('requirements', index)
+                            removeArrayField("requirements", index)
                           }
                           className="px-3 py-3 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
                         >
@@ -515,7 +528,7 @@ export default function JobPostingPage() {
                     </div>
                   ))}
                   <button
-                    onClick={() => addArrayField('requirements')}
+                    onClick={() => addArrayField("requirements")}
                     className="flex items-center px-4 py-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors text-sm"
                   >
                     <Plus className="w-4 h-4 mr-1" />
@@ -541,7 +554,7 @@ export default function JobPostingPage() {
                         value={responsibility}
                         onChange={(e) =>
                           handleArrayField(
-                            'responsibilities',
+                            "responsibilities",
                             index,
                             e.target.value
                           )
@@ -552,7 +565,7 @@ export default function JobPostingPage() {
                       {jobData.responsibilities.length > 1 && (
                         <button
                           onClick={() =>
-                            removeArrayField('responsibilities', index)
+                            removeArrayField("responsibilities", index)
                           }
                           className="px-3 py-3 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
                         >
@@ -562,7 +575,7 @@ export default function JobPostingPage() {
                     </div>
                   ))}
                   <button
-                    onClick={() => addArrayField('responsibilities')}
+                    onClick={() => addArrayField("responsibilities")}
                     className="flex items-center px-4 py-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors text-sm"
                   >
                     <Plus className="w-4 h-4 mr-1" />
@@ -586,14 +599,14 @@ export default function JobPostingPage() {
                         type="text"
                         value={item}
                         onChange={(e) =>
-                          handleArrayField('niceToHave', index, e.target.value)
+                          handleArrayField("niceToHave", index, e.target.value)
                         }
                         className="flex-1 px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                         placeholder="e.g. Experience with marketing automation"
                       />
                       {jobData.niceToHave.length > 1 && (
                         <button
-                          onClick={() => removeArrayField('niceToHave', index)}
+                          onClick={() => removeArrayField("niceToHave", index)}
                           className="px-3 py-3 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
                         >
                           <X className="w-4 h-4" />
@@ -602,7 +615,7 @@ export default function JobPostingPage() {
                     </div>
                   ))}
                   <button
-                    onClick={() => addArrayField('niceToHave')}
+                    onClick={() => addArrayField("niceToHave")}
                     className="flex items-center px-4 py-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors text-sm"
                   >
                     <Plus className="w-4 h-4 mr-1" />
@@ -619,7 +632,7 @@ export default function JobPostingPage() {
                       type="checkbox"
                       checked={jobData.salaryDisclosed}
                       onChange={(e) =>
-                        handleInputChange('salaryDisclosed', e.target.checked)
+                        handleInputChange("salaryDisclosed", e.target.checked)
                       }
                       className="w-4 h-4 text-green-600 border-green-300 rounded focus:ring-green-500"
                     />
@@ -641,7 +654,7 @@ export default function JobPostingPage() {
                             type="number"
                             value={jobData.salaryMin}
                             onChange={(e) =>
-                              handleInputChange('salaryMin', e.target.value)
+                              handleInputChange("salaryMin", e.target.value)
                             }
                             className="w-full pl-10 pr-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                             placeholder="45000"
@@ -658,7 +671,7 @@ export default function JobPostingPage() {
                             type="number"
                             value={jobData.salaryMax}
                             onChange={(e) =>
-                              handleInputChange('salaryMax', e.target.value)
+                              handleInputChange("salaryMax", e.target.value)
                             }
                             className="w-full pl-10 pr-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                             placeholder="65000"
@@ -676,7 +689,10 @@ export default function JobPostingPage() {
                   <textarea
                     value={jobData.compensationAdditional}
                     onChange={(e) =>
-                      handleInputChange('compensationAdditional', e.target.value)
+                      handleInputChange(
+                        "compensationAdditional",
+                        e.target.value
+                      )
                     }
                     rows={3}
                     className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 resize-none"
@@ -697,7 +713,7 @@ export default function JobPostingPage() {
                 <textarea
                   value={jobData.aboutCompany}
                   onChange={(e) =>
-                    handleInputChange('aboutCompany', e.target.value)
+                    handleInputChange("aboutCompany", e.target.value)
                   }
                   rows={4}
                   className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 resize-none"
@@ -718,7 +734,7 @@ export default function JobPostingPage() {
                   type="date"
                   value={jobData.applicationDeadline}
                   onChange={(e) =>
-                    handleInputChange('applicationDeadline', e.target.value)
+                    handleInputChange("applicationDeadline", e.target.value)
                   }
                   className="px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                 />
@@ -763,17 +779,21 @@ export default function JobPostingPage() {
                 <div className="flex items-center justify-between">
                   <span>Company Selected</span>
                   <span
-                    className={selectedCompany ? 'text-green-600' : 'text-gray-400'}
+                    className={
+                      selectedCompany ? "text-green-600" : "text-gray-400"
+                    }
                   >
-                    {selectedCompany ? '✓' : '○'}
+                    {selectedCompany ? "✓" : "○"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Job Title</span>
                   <span
-                    className={jobData.title ? 'text-green-600' : 'text-gray-400'}
+                    className={
+                      jobData.title ? "text-green-600" : "text-gray-400"
+                    }
                   >
-                    {jobData.title ? '✓' : '○'}
+                    {jobData.title ? "✓" : "○"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -781,11 +801,11 @@ export default function JobPostingPage() {
                   <span
                     className={
                       jobData.description.length > 50
-                        ? 'text-green-600'
-                        : 'text-gray-400'
+                        ? "text-green-600"
+                        : "text-gray-400"
                     }
                   >
-                    {jobData.description.length > 50 ? '✓' : '○'}
+                    {jobData.description.length > 50 ? "✓" : "○"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -793,23 +813,23 @@ export default function JobPostingPage() {
                   <span
                     className={
                       jobData.requirements.filter((r) => r.trim()).length > 0
-                        ? 'text-green-600'
-                        : 'text-gray-400'
+                        ? "text-green-600"
+                        : "text-gray-400"
                     }
                   >
                     {jobData.requirements.filter((r) => r.trim()).length > 0
-                      ? '✓'
-                      : '○'}
+                      ? "✓"
+                      : "○"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Location</span>
                   <span
                     className={
-                      jobData.location ? 'text-green-600' : 'text-gray-400'
+                      jobData.location ? "text-green-600" : "text-gray-400"
                     }
                   >
-                    {jobData.location ? '✓' : '○'}
+                    {jobData.location ? "✓" : "○"}
                   </span>
                 </div>
               </div>
@@ -820,4 +840,3 @@ export default function JobPostingPage() {
     </div>
   );
 }
-

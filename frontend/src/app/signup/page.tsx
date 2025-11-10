@@ -1,38 +1,43 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import {
+  useState,
+  type FormEvent,
+  type ChangeEvent,
+  type ReactElement,
+} from "react";
 
-import Link from 'next/link';
-import { User, Mail, Lock, Eye, EyeOff, Heart, Users } from 'lucide-react';
+import Link from "next/link";
+import { User, Mail, Lock, Eye, EyeOff, Heart, Users } from "lucide-react";
 
-export default function SignupPage(): React.ReactElement {
+export default function SignupPage(): ReactElement {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    accountType: 'jobseeker',
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    accountType: "jobseeker",
     agreeToTerms: false,
-    subscribeToUpdates: true
+    subscribeToUpdates: true,
   });
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent): void => {
     e.preventDefault();
     // TODO: Implement signup functionality
-    console.log('Form submitted:', formData);
-    alert('Welcome to Career Harmony! 🌱');
+    console.log("Form submitted:", formData);
+    alert("Welcome to Career Harmony! 🌱");
   };
 
   return (
@@ -65,41 +70,49 @@ export default function SignupPage(): React.ReactElement {
                   I&apos;m looking to...
                 </label>
                 <div className="grid grid-cols-2 gap-3">
-                  <label className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                    formData.accountType === 'jobseeker' 
-                      ? 'border-green-500 bg-gradient-to-br from-green-50 to-amber-50' 
-                      : 'border-green-200 bg-white/50'
-                  }`}>
+                  <label
+                    className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      formData.accountType === "jobseeker"
+                        ? "border-green-500 bg-gradient-to-br from-green-50 to-amber-50"
+                        : "border-green-200 bg-white/50"
+                    }`}
+                  >
                     <input
                       type="radio"
                       name="accountType"
                       value="jobseeker"
-                      checked={formData.accountType === 'jobseeker'}
+                      checked={formData.accountType === "jobseeker"}
                       onChange={handleInputChange}
                       className="sr-only"
                     />
                     <div className="flex flex-col items-center text-center w-full">
                       <User className="w-6 h-6 text-green-600 mb-2" />
-                      <span className="font-medium text-green-800">Find Work</span>
+                      <span className="font-medium text-green-800">
+                        Find Work
+                      </span>
                       <span className="text-xs text-green-600">Job Seeker</span>
                     </div>
                   </label>
-                  <label className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                    formData.accountType === 'employer' 
-                      ? 'border-green-500 bg-gradient-to-br from-green-50 to-amber-50' 
-                      : 'border-green-200 bg-white/50'
-                  }`}>
+                  <label
+                    className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      formData.accountType === "employer"
+                        ? "border-green-500 bg-gradient-to-br from-green-50 to-amber-50"
+                        : "border-green-200 bg-white/50"
+                    }`}
+                  >
                     <input
                       type="radio"
                       name="accountType"
                       value="employer"
-                      checked={formData.accountType === 'employer'}
+                      checked={formData.accountType === "employer"}
                       onChange={handleInputChange}
                       className="sr-only"
                     />
                     <div className="flex flex-col items-center text-center w-full">
                       <Users className="w-6 h-6 text-green-600 mb-2" />
-                      <span className="font-medium text-green-800">Hire Talent</span>
+                      <span className="font-medium text-green-800">
+                        Hire Talent
+                      </span>
                       <span className="text-xs text-green-600">Employer</span>
                     </div>
                   </label>
@@ -235,17 +248,23 @@ export default function SignupPage(): React.ReactElement {
                     required
                   />
                   <span className="text-sm text-green-700">
-                    I agree to the{' '}
-                    <Link href="/terms" className="text-green-800 underline hover:text-green-900">
+                    I agree to the{" "}
+                    <Link
+                      href="/terms"
+                      className="text-green-800 underline hover:text-green-900"
+                    >
                       Terms of Service
-                    </Link>
-                    {' '}and{' '}
-                    <Link href="/privacy" className="text-green-800 underline hover:text-green-900">
+                    </Link>{" "}
+                    and{" "}
+                    <Link
+                      href="/privacy"
+                      className="text-green-800 underline hover:text-green-900"
+                    >
                       Privacy Policy
                     </Link>
                   </span>
                 </label>
-                
+
                 <label className="flex items-start space-x-3">
                   <input
                     type="checkbox"
@@ -255,7 +274,8 @@ export default function SignupPage(): React.ReactElement {
                     className="mt-1 w-4 h-4 text-green-600 border-green-300 rounded focus:ring-green-400"
                   />
                   <span className="text-sm text-green-700">
-                    Send me updates about new opportunities and community events (you can unsubscribe anytime)
+                    Send me updates about new opportunities and community events
+                    (you can unsubscribe anytime)
                   </span>
                 </label>
               </div>
@@ -273,8 +293,11 @@ export default function SignupPage(): React.ReactElement {
             {/* Sign-in link */}
             <div className="mt-6 text-center">
               <p className="text-sm text-green-700">
-                Already have an account?{' '}
-                <Link href="/login" className="font-medium text-green-800 underline hover:text-green-900 transition-colors">
+                Already have an account?{" "}
+                <Link
+                  href="/login"
+                  className="font-medium text-green-800 underline hover:text-green-900 transition-colors"
+                >
                   Sign in here
                 </Link>
               </p>
@@ -288,10 +311,13 @@ export default function SignupPage(): React.ReactElement {
                 <Heart className="w-4 h-4 text-green-600" />
               </div>
             </div>
-            <h3 className="font-semibold text-green-800 mb-2">Our Community Promise</h3>
+            <h3 className="font-semibold text-green-800 mb-2">
+              Our Community Promise
+            </h3>
             <p className="text-sm text-green-700">
-              We respect your privacy, honor your worth, and believe your well-being matters more than profit. 
-              Your data won&apos;t be sold, and you&apos;ll always be treated as a whole human being.
+              We respect your privacy, honor your worth, and believe your
+              well-being matters more than profit. Your data won&apos;t be sold,
+              and you&apos;ll always be treated as a whole human being.
             </p>
           </div>
         </div>
@@ -299,6 +325,3 @@ export default function SignupPage(): React.ReactElement {
     </div>
   );
 }
-
-
-

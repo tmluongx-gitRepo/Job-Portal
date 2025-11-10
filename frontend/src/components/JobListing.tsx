@@ -1,4 +1,4 @@
-
+import { type ReactElement } from "react";
 import {
   MapPin,
   DollarSign,
@@ -45,7 +45,7 @@ export default function JobListing({
   saveMessage,
   onSave,
   onToggleExpand,
-}: JobListingProps): React.ReactElement {
+}: JobListingProps): ReactElement {
   return (
     <div className="bg-white/70 backdrop-blur-sm border border-green-200 rounded-xl shadow-sm hover:shadow-md transition-all p-6">
       <div className="flex items-start justify-between mb-4">
