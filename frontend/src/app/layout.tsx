@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
+
 import "./globals.css";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 export const metadata: Metadata = {
-  title: "Job Portal",
-  description: "Find your dream job",
+  title: "Career Harmony - Job Portal",
+  description: "Find your dream job that honors your whole self",
 };
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -14,7 +18,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        {children}
+        <Header />
+        <main>{children}</main>
+        <Footer />
       </body>
     </html>
   );

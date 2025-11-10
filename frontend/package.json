@@ -7,24 +7,43 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "prepare": "cd .. && husky install .husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "next lint --fix --file",
+      "prettier --write"
+    ],
+    "*.{js,jsx}": [
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.460.0",
     "next": "^15.1.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.5"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
-    "typescript": "^5.7.2",
+    "autoprefixer": "^10.4.20",
     "eslint": "^9.17.0",
     "eslint-config-next": "^15.1.5",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
     "postcss": "^8.4.49",
+    "prettier": "^3.4.2",
     "tailwindcss": "^3.4.17",
-    "autoprefixer": "^10.4.20"
+    "typescript": "^5.7.2"
   }
 }

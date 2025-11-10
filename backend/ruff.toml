@@ -1,0 +1,91 @@
+# Ruff configuration for Job Portal Backend
+# https://docs.astral.sh/ruff/
+
+# Target Python 3.12
+target-version = "py312"
+
+# Line length to match common Python standards
+line-length = 100
+
+[lint]
+# Enable recommended rule sets
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort (import sorting)
+    "N",      # pep8-naming
+    "UP",     # pyupgrade (modern Python syntax)
+    "B",      # flake8-bugbear (common bugs)
+    "C4",     # flake8-comprehensions
+    "DTZ",    # flake8-datetimez (timezone aware datetimes)
+    "T10",    # flake8-debugger (no debugger statements)
+    "EM",     # flake8-errmsg (error message best practices)
+    "ISC",    # flake8-implicit-str-concat
+    "ICN",    # flake8-import-conventions
+    "PIE",    # flake8-pie (misc lints)
+    "PT",     # flake8-pytest-style
+    "RET",    # flake8-return (return statement checks)
+    "SIM",    # flake8-simplify
+    "ARG",    # flake8-unused-arguments
+    "PTH",    # flake8-use-pathlib
+    "PL",     # pylint
+    "TRY",    # tryceratops (exception handling)
+    "RUF",    # Ruff-specific rules
+]
+
+# Ignore specific rules that may be too strict for this project
+ignore = [
+    "E501",    # Line too long (handled by formatter)
+    "B008",    # Do not perform function calls in argument defaults (FastAPI uses this pattern)
+    "PLR0913", # Too many arguments to function call
+    "PLW0603", # Using global statement (intentional singleton pattern in database.py)
+    "TRY003",  # Avoid specifying long messages outside exception class
+    "EM101",   # Exception must not use a string literal (conflicts with FastAPI)
+    "EM102",   # Exception must not use an f-string literal
+]
+
+# Allow autofix for all enabled rules
+fixable = ["ALL"]
+unfixable = []
+
+# Exclude commonly ignored directories
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "build",
+    "dist",
+    "*.egg-info",
+]
+
+[lint.per-file-ignores]
+# Ignore import violations in __init__.py files
+"__init__.py" = ["F401", "F403"]
+# Ignore assert statements in tests
+"tests/**/*.py" = ["S101"]
+
+[lint.isort]
+# Use standard import ordering
+known-first-party = ["app"]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+
+[format]
+# Use double quotes for strings
+quote-style = "double"
+
+# Indent with 4 spaces
+indent-style = "space"
+
+# Use Unix-style line endings
+line-ending = "lf"

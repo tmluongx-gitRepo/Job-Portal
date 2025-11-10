@@ -4,9 +4,29 @@ User model for ChromaDB.
 In ChromaDB, users are stored as documents with metadata.
 Each user document contains their profile information as metadata.
 """
-from datetime import datetime
-from typing import Optional
+
+from datetime import UTC, datetime
+from typing import TypedDict
 from uuid import uuid4
+
+
+class _UserMetadataRequired(TypedDict):
+    """Required fields present in stored user metadata."""
+
+    email: str
+    username: str
+    hashed_password: str
+
+
+class UserMetadata(_UserMetadataRequired, total=False):
+    """Optional fields used when reconstructing a user from storage."""
+
+    id: str
+    full_name: str | None
+    is_active: bool
+    is_superuser: bool
+    created_at: str
+    updated_at: str
 
 
 class User:
@@ -17,12 +37,12 @@ class User:
         email: str,
         username: str,
         hashed_password: str,
-        full_name: Optional[str] = None,
+        full_name: str | None = None,
         is_active: bool = True,
         is_superuser: bool = False,
-        user_id: Optional[str] = None,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
+        user_id: str | None = None,
+        created_at: datetime | None = None,
+        updated_at: datetime | None = None,
     ):
         self.id = user_id or str(uuid4())
         self.email = email
@@ -31,10 +51,10 @@ class User:
         self.full_name = full_name
         self.is_active = is_active
         self.is_superuser = is_superuser
-        self.created_at = created_at or datetime.utcnow()
-        self.updated_at = updated_at or datetime.utcnow()
+        self.created_at = created_at or datetime.now(UTC)
+        self.updated_at = updated_at or datetime.now(UTC)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, object]:
         """Convert user to dictionary for ChromaDB storage."""
         return {
             "id": self.id,
@@ -49,8 +69,10 @@ class User:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "User":
+    def from_dict(cls, data: UserMetadata) -> "User":
         """Create user from dictionary."""
+        created_at = datetime.fromisoformat(data["created_at"]) if "created_at" in data else None
+        updated_at = datetime.fromisoformat(data["updated_at"]) if "updated_at" in data else None
         return cls(
             user_id=data.get("id"),
             email=data["email"],
@@ -59,8 +81,8 @@ class User:
             full_name=data.get("full_name"),
             is_active=data.get("is_active", True),
             is_superuser=data.get("is_superuser", False),
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else None,
-            updated_at=datetime.fromisoformat(data["updated_at"]) if "updated_at" in data else None,
+            created_at=created_at,
+            updated_at=updated_at,
         )
 
     def __repr__(self) -> str:
