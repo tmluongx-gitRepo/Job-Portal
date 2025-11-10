@@ -13,13 +13,25 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - name: Check PR target branch
+      - name: Check out code
+        uses: actions/checkout@v4
+      
+      - name: Check PR source branch
         run: |
+          SOURCE_BRANCH="${{ github.head_ref }}"
+          
+          if [ "$SOURCE_BRANCH" = "dev" ]; then
+            echo "✅ Allowing dev → main PR (official release process)"
+            exit 0
+          fi
+          
           echo "❌ ERROR: Direct pull requests to 'main' are not allowed!"
           echo ""
           echo "This project follows a dev → main workflow:"
           echo "  1. Create PRs targeting 'dev' branch"
           echo "  2. After approval and testing in dev, maintainers will merge dev → main"
+          echo ""
+          echo "Current PR: $SOURCE_BRANCH → main"
           echo ""
           echo "Please close this PR and create a new one targeting 'dev' instead."
           echo ""
@@ -30,7 +42,7 @@ jobs:
           exit 1
 
       - name: Comment on PR
-        if: always()
+        if: failure()
         uses: actions/github-script@v7
         with:
           script: |
@@ -40,7 +52,7 @@ jobs:
               repo: context.repo.repo,
               body: \`## ❌ Pull Request Target Error
 
-            This PR is targeting the \\\`main\\\` branch, which is not allowed.
+            This PR is targeting the \\\`main\\\` branch from \\\`${{ github.head_ref }}\\\`, which is not allowed.
 
             ### Required Workflow
             All pull requests must target the \\\`dev\\\` branch first:
