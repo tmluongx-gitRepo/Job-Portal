@@ -1,10 +1,11 @@
 import { Sun, Leaf, Globe, TrendingUp, Users, Zap, ArrowRight } from 'lucide-react';
+
 import JobSearchForm from '../components/JobSearchForm';
 import HealthyReminders from '../components/HealthyReminders';
 import JobCard from '../components/JobCard';
 import SolutionCard from '../components/SolutionCard';
 
-export default function Home() {
+export default function Home(): React.ReactElement {
   const featuredJobs = [
     {
       title: 'Sustainability Director',
@@ -79,7 +80,7 @@ export default function Home() {
             </div>
             
             <p className="text-xl text-green-700 mb-8 max-w-3xl mx-auto leading-relaxed">
-              <em>Work in harmony:</em> Find careers that honor your whole self—where you don't have to sacrifice 
+              <em>Work in harmony:</em> Find careers that honor your whole self—where you don&apos;t have to sacrifice 
               your wellbeing, values, or dignity just to make a living.
             </p>
 

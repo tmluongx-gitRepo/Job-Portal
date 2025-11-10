@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+
 import Link from 'next/link';
 import { Mail, Lock, Eye, EyeOff, Heart } from 'lucide-react';
 
-export default function LoginPage() {
+export default function LoginPage(): React.ReactElement {
   const [formData, setFormData] = useState({
     email: '',
     password: '',

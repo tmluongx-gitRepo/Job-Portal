@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+
 import Link from "next/link";
 import {
   Search,
@@ -58,7 +59,7 @@ const sampleApplicants = [
     ],
     resumeUrl: "/resumes/sarah-chen.pdf",
     coverLetterExcerpt:
-      "I'm excited to bring my creative marketing experience to TechFlow Solutions...",
+      "I&apos;m excited to bring my creative marketing experience to TechFlow Solutions...",
     matchScore: 92,
     volunteerWork: [
       "Local Animal Shelter - Marketing Volunteer (2+ years): Created social media campaigns that increased adoptions by 40%",
@@ -196,7 +197,7 @@ const sampleApplicants = [
     ],
     resumeUrl: "/resumes/david-kim.pdf",
     coverLetterExcerpt:
-      "I'm particularly drawn to TechFlow's innovative approach...",
+      "I&apos;m particularly drawn to TechFlow's innovative approach...",
     matchScore: 90,
     volunteerWork: [
       "Habitat for Humanity - Build Team Leader (4 years): Led construction teams of 15+ volunteers on weekend builds",
@@ -237,7 +238,7 @@ const sampleApplicants = [
     ],
     resumeUrl: "/resumes/jessica-miller.pdf",
     coverLetterExcerpt:
-      "Although I'm early in my career, I'm eager to learn...",
+      "Although I&apos;m early in my career, I&apos;m eager to learn...",
     matchScore: 72,
     volunteerWork: [
       "Mesa Public Library - Reading Program Assistant (2 years): Helped organize summer reading programs for children",
@@ -416,7 +417,7 @@ export default function ApplicationsPage() {
   });
 
   const handleSelectApplicant = (applicantId: number) => {
-    setSelectedApplicants((prev) => {
+    setSelectedApplicants((prev: any) => {
       const newSelected = new Set(prev);
       if (newSelected.has(applicantId)) {
         newSelected.delete(applicantId);
@@ -428,7 +429,7 @@ export default function ApplicationsPage() {
   };
 
   const toggleCardExpansion = (applicantId: number) => {
-    setExpandedCards((prev) => {
+    setExpandedCards((prev: any) => {
       const newExpanded = new Set(prev);
       if (newExpanded.has(applicantId)) {
         newExpanded.delete(applicantId);
@@ -440,7 +441,7 @@ export default function ApplicationsPage() {
   };
 
   const toggleStatusDropdown = (applicantId: number) => {
-    setOpenStatusDropdowns((prev) => {
+    setOpenStatusDropdowns((prev: any) => {
       const newOpen = new Set(prev);
       if (newOpen.has(applicantId)) {
         newOpen.delete(applicantId);
@@ -454,7 +455,7 @@ export default function ApplicationsPage() {
   const updateApplicantStatus = (applicantId: number, newStatus: string) => {
     // TODO: Implement API call to update status
     console.log(`Updating applicant ${applicantId} status to ${newStatus}`);
-    setOpenStatusDropdowns((prev) => {
+    setOpenStatusDropdowns((prev: any) => {
       const newOpen = new Set(prev);
       newOpen.delete(applicantId);
       return newOpen;

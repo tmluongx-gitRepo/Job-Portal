@@ -1,3 +1,4 @@
+
 import {
   MapPin,
   DollarSign,
@@ -44,7 +45,7 @@ export default function JobListing({
   saveMessage,
   onSave,
   onToggleExpand,
-}: JobListingProps) {
+}: JobListingProps): React.ReactElement {
   return (
     <div className="bg-white/70 backdrop-blur-sm border border-green-200 rounded-xl shadow-sm hover:shadow-md transition-all p-6">
       <div className="flex items-start justify-between mb-4">
@@ -160,7 +161,7 @@ export default function JobListing({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
               <div>
                 <h4 className="font-medium text-green-800 mb-2">
-                  What they're looking for:
+                  What they&apos;re looking for:
                 </h4>
                 <ul className="space-y-1">
                   {job.requirements.map((req, index) => (
@@ -287,7 +288,7 @@ export default function JobListing({
                 <div className="grid grid-cols-1 gap-4">
                   <div>
                     <h4 className="font-medium text-green-800 mb-2">
-                      What they're looking for:
+                      What they&apos;re looking for:
                     </h4>
                     <ul className="space-y-1">
                       {job.requirements.map((req, index) => (

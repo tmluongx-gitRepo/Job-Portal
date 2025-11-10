@@ -1,4 +1,5 @@
 import Link from 'next/link';
+
 import {
   Heart,
   Users,
@@ -161,7 +162,7 @@ export default function AboutPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-green-900 mb-4">
-              How We're Different
+              How We&apos;re Different
             </h2>
             <p className="text-green-700 text-lg">
               A fundamentally human-centered approach to job matching
@@ -270,9 +271,9 @@ export default function AboutPage() {
 
               <p className="text-green-700 text-lg leading-relaxed">
                 So we decided to build something different. A platform that
-                remembers we're all human beings seeking meaningful work and
-                meaningful connections. Career Harmony isn't just about finding
-                a job—it's about finding where you belong.
+                remembers we&apos;re all human beings seeking meaningful work and
+                meaningful connections. Career Harmony isn&apos;t just about finding
+                a job—it&apos;s about finding where you belong.
               </p>
             </div>
           </div>
@@ -295,14 +296,14 @@ export default function AboutPage() {
                 href="/signup"
                 className="bg-white text-green-700 px-8 py-3 rounded-lg font-semibold hover:bg-green-50 transition-all flex items-center justify-center"
               >
-                I'm Looking for Work
+                I&apos;m Looking for Work
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
               <Link
                 href="/signup"
                 className="bg-green-800 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-900 transition-all flex items-center justify-center"
               >
-                I'm Hiring Talent
+                I&apos;m Hiring Talent
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
             </div>

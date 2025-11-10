@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
 import {
   Save,
   Eye,
@@ -186,7 +187,7 @@ export default function JobPostingPage() {
   }, [jobData]);
 
   const handleInputChange = (field: keyof JobData, value: any) => {
-    setJobData((prev) => ({
+    setJobData((prev: any) => ({
       ...prev,
       [field]: value,
     }));
@@ -197,7 +198,7 @@ export default function JobPostingPage() {
     index: number,
     value: string
   ) => {
-    setJobData((prev) => ({
+    setJobData((prev: any) => ({
       ...prev,
       [field]: prev[field].map((item, i) => (i === index ? value : item)),
     }));
@@ -206,7 +207,7 @@ export default function JobPostingPage() {
   const addArrayField = (
     field: 'requirements' | 'responsibilities' | 'niceToHave'
   ) => {
-    setJobData((prev) => ({
+    setJobData((prev: any) => ({
       ...prev,
       [field]: [...prev[field], ''],
     }));
@@ -216,7 +217,7 @@ export default function JobPostingPage() {
     field: 'requirements' | 'responsibilities' | 'niceToHave',
     index: number
   ) => {
-    setJobData((prev) => ({
+    setJobData((prev: any) => ({
       ...prev,
       [field]: prev[field].filter((_, i) => i !== index),
     }));
@@ -225,7 +226,7 @@ export default function JobPostingPage() {
   const applyTemplate = (templateKey: string) => {
     const template = jobTemplates[templateKey];
     if (template) {
-      setJobData((prev) => ({
+      setJobData((prev: any) => ({
         ...prev,
         ...template,
       }));
@@ -233,7 +234,7 @@ export default function JobPostingPage() {
     }
   };
 
-  const getAutoSaveIndicator = () => {
+  const getAutoSaveIndicator = (): void => {
     switch (autoSaveStatus) {
       case 'saving':
         return <RefreshCw className="w-4 h-4 animate-spin text-amber-500" />;
@@ -576,7 +577,7 @@ export default function JobPostingPage() {
                   Nice to Have
                 </label>
                 <p className="text-xs text-green-600 mb-3">
-                  Bonus skills that would be great but aren't deal-breakers
+                  Bonus skills that would be great but aren&apos;t deal-breakers
                 </p>
                 <div className="space-y-3">
                   {jobData.niceToHave.map((item, index) => (

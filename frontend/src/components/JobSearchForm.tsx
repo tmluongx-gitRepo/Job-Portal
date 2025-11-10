@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+
 import { Search, Target } from 'lucide-react';
 
-export default function JobSearchForm() {
+export default function JobSearchForm(): React.ReactElement {
   const [searchTerm, setSearchTerm] = useState('');
   const [location, setLocation] = useState('');
 

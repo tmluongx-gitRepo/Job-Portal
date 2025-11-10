@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+
 import { 
   User, Mail, Phone, MapPin, FileText, Upload, Camera, Edit3, Save, 
   Check, Star, Briefcase, GraduationCap, Award, Heart, Zap 
@@ -52,7 +53,7 @@ const completionItems = [
   { label: 'Profile Photo', completed: false, description: 'Professional headshot' }
 ];
 
-export default function ProfilePage() {
+export default function ProfilePage(): React.ReactElement {
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState(initialProfileData);
 
@@ -66,7 +67,7 @@ export default function ProfilePage() {
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = (): void => {
     // TODO: Implement API call to save profile data
     console.log('Saving profile:', profileData);
     setIsEditing(false);
@@ -129,7 +130,7 @@ export default function ProfilePage() {
               <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-amber-50 rounded-lg border border-green-200">
                 <div className="flex items-center mb-2">
                   <Heart className="w-4 h-4 text-green-600 mr-2" />
-                  <span className="font-medium text-green-800">You're doing great!</span>
+                  <span className="font-medium text-green-800">You&apos;re doing great!</span>
                 </div>
                 <p className="text-sm text-green-700">
                   Adding a resume and photo will help employers get to know the amazing professional you are.
