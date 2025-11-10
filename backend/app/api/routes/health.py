@@ -8,7 +8,7 @@ router = APIRouter()
 
 
 @router.get("/health", status_code=status.HTTP_200_OK)
-async def health_check():
+async def health_check() -> dict[str, str]:
     """
     Health check endpoint.
 
@@ -27,7 +27,7 @@ async def health_check():
         await ping_mongo()
         health_status["mongodb"] = "healthy"
     except Exception as e:
-        health_status["mongodb"] = f"unhealthy: {str(e)}"
+        health_status["mongodb"] = f"unhealthy: {e!s}"
         health_status["status"] = "degraded"
 
     # Check Redis connection
@@ -37,7 +37,7 @@ async def health_check():
         await redis.aclose()
         health_status["redis"] = "healthy"
     except Exception as e:
-        health_status["redis"] = f"unhealthy: {str(e)}"
+        health_status["redis"] = f"unhealthy: {e!s}"
         health_status["status"] = "degraded"
 
     return health_status

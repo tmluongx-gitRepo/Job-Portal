@@ -1,0 +1,107 @@
+#!/usr/bin/env sh
+
+if [ -f "$(dirname -- "$0")/_/husky.sh" ]; then
+  . "$(dirname -- "$0")/_/husky.sh"
+fi
+
+# Job Portal Pre-Commit Hook
+# Prefers running tooling directly in this environment,
+# and falls back to docker compose when needed.
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+require_frontend_env() {
+  if command -v bun >/dev/null 2>&1 && [ -d "frontend/node_modules" ]; then
+    echo "  ⚙️  Using local frontend environment"
+    FRONTEND_CMD_PREFIX="cd frontend && "
+    return 0
+  fi
+
+  if command -v docker >/dev/null 2>&1; then
+    SERVICE_ID="$(docker compose ps -q frontend 2>/dev/null || true)"
+    if [ -n "$SERVICE_ID" ]; then
+      echo "  ⚙️  Using frontend docker service"
+      FRONTEND_CMD_PREFIX="docker compose exec -T frontend "
+      return 0
+    fi
+  fi
+
+  cat <<'EOF'
+❌ Unable to run frontend checks.
+   Install dependencies (e.g., run `bun install` inside this container),
+   or ensure `docker compose up frontend` is running and Docker is available.
+EOF
+  return 1
+}
+
+require_backend_env() {
+  if command -v uv >/dev/null 2>&1; then
+    echo "  ⚙️  Using local backend environment"
+    BACKEND_CMD_PREFIX="cd backend && "
+    return 0
+  fi
+
+  if command -v docker >/dev/null 2>&1; then
+    SERVICE_ID="$(docker compose ps -q backend 2>/dev/null || true)"
+    if [ -n "$SERVICE_ID" ]; then
+      echo "  ⚙️  Using backend docker service"
+      BACKEND_CMD_PREFIX="docker compose exec -T backend "
+      return 0
+    fi
+  fi
+
+  cat <<'EOF'
+❌ Unable to run backend checks.
+   Install uv dependencies inside this container,
+   or ensure `docker compose up backend` is running and Docker is available.
+EOF
+  return 1
+}
+
+run_frontend() {
+  CMD="$1"
+  if [ -n "$FRONTEND_CMD_PREFIX" ]; then
+    sh -c "${FRONTEND_CMD_PREFIX}${CMD}"
+    return $?
+  fi
+  require_frontend_env && run_frontend "$CMD"
+}
+
+run_backend() {
+  CMD="$1"
+  if [ -n "$BACKEND_CMD_PREFIX" ]; then
+    sh -c "${BACKEND_CMD_PREFIX}${CMD}"
+    return $?
+  fi
+  require_backend_env && run_backend "$CMD"
+}
+
+# Detect which parts of the codebase have staged changes
+FRONTEND_CHANGED=$(git diff --cached --name-only | grep "^frontend/" || true)
+BACKEND_CHANGED=$(git diff --cached --name-only | grep "^backend/" || true)
+
+# Run lint-staged for file-level formatting and linting
+echo "✨ Running lint-staged..."
+require_frontend_env
+run_frontend "bunx lint-staged"
+
+# Frontend checks (if frontend files are staged)
+if [ -n "$FRONTEND_CHANGED" ]; then
+    echo "⚛️  Checking frontend code..."
+    require_frontend_env
+    run_frontend "bun run lint"
+    run_frontend "bun run type-check"
+fi
+
+# Backend checks (if backend files are staged)
+if [ -n "$BACKEND_CHANGED" ]; then
+    echo "🐍 Checking backend code..."
+    require_backend_env
+    run_backend "uv run ruff check ."
+    run_backend "uv run ruff format --check ."
+    run_backend "uv run mypy app/ --config-file=pyproject.toml"
+fi
+
+echo "✅ Pre-commit checks passed!"

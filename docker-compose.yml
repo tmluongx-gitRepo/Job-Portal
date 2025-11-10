@@ -5,39 +5,47 @@ services:
       context: .
       dockerfile: .devcontainer/Dockerfile
     container_name: job-portal-dev
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
     volumes:
       - .:/workspace:cached
-    command: sleep infinity
+    command: /bin/bash -c "cd /workspace/frontend && bun install && bun run dev"
     networks:
       - job-portal-network
     depends_on:
       - chromadb
       - redis
-
-  # Frontend Next.js application
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    container_name: job-portal-frontend
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
-    volumes:
-      - ./frontend:/app:cached
-      - /app/node_modules
-      - /app/.next
-    env_file:
-      - .env
     environment:
-      NODE_ENV: development
-      WATCHPACK_POLLING: "true"
-      NEXT_PUBLIC_API_URL: "http://localhost:${BACKEND_PORT:-8000}"
-      NEXT_PUBLIC_BASE_URL: "http://localhost:${FRONTEND_PORT:-3000}"
-    networks:
-      - job-portal-network
-    depends_on:
-      - backend
-    restart: unless-stopped
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:${BACKEND_PORT:-8000}
+      - NEXT_PUBLIC_BASE_URL=http://localhost:${FRONTEND_PORT:-3000}
+
+  # Frontend Next.js application (DISABLED - run from devcontainer instead)
+  # This avoids node_modules sync issues between containers
+  # To run frontend: cd /workspace/frontend && bun run dev
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile.dev
+  #   container_name: job-portal-frontend
+  #   ports:
+  #     - "${FRONTEND_PORT:-3000}:3000"
+  #   volumes:
+  #     - ./frontend:/app:cached
+  #     - /app/node_modules
+  #     - /app/.next
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     NODE_ENV: development
+  #     WATCHPACK_POLLING: "true"
+  #     NEXT_PUBLIC_API_URL: "http://localhost:${BACKEND_PORT:-8000}"
+  #     NEXT_PUBLIC_BASE_URL: "http://localhost:${FRONTEND_PORT:-3000}"
+  #   networks:
+  #     - job-portal-network
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
 
   # Backend FastAPI application
   backend:

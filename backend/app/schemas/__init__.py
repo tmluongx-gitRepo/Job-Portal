@@ -1,67 +1,61 @@
-from app.schemas.user import UserBase, UserCreate, UserUpdate, UserResponse
-from app.schemas.job import JobBase, JobCreate, JobUpdate, JobResponse
-from app.schemas.job_seeker import (
-    JobSeekerPreferencesSchema,
-    JobSeekerProfileBase,
-    JobSeekerProfileCreate,
-    JobSeekerProfileUpdate,
-    JobSeekerProfileResponse,
-)
 from app.schemas.application import (
-    StatusHistoryEntrySchema,
     ApplicationBase,
     ApplicationCreate,
-    ApplicationUpdate,
     ApplicationResponse,
+    ApplicationUpdate,
+    StatusHistoryEntrySchema,
 )
 from app.schemas.employer import (
     EmployerProfileBase,
     EmployerProfileCreate,
-    EmployerProfileUpdate,
     EmployerProfileResponse,
+    EmployerProfileUpdate,
+)
+from app.schemas.job import JobBase, JobCreate, JobResponse, JobUpdate
+from app.schemas.job_seeker import (
+    JobSeekerPreferencesSchema,
+    JobSeekerProfileBase,
+    JobSeekerProfileCreate,
+    JobSeekerProfileResponse,
+    JobSeekerProfileUpdate,
 )
 from app.schemas.recommendation import (
     MatchFactorSchema,
     RecommendationBase,
     RecommendationCreate,
-    RecommendationUpdate,
     RecommendationResponse,
+    RecommendationUpdate,
     RecommendationWithDetails,
 )
+from app.schemas.user import UserBase, UserCreate, UserResponse, UserUpdate
 
 __all__ = [
-    # User schemas
-    "UserBase",
-    "UserCreate",
-    "UserUpdate",
-    "UserResponse",
-    # Job schemas
+    "ApplicationBase",
+    "ApplicationCreate",
+    "ApplicationResponse",
+    "ApplicationUpdate",
+    "EmployerProfileBase",
+    "EmployerProfileCreate",
+    "EmployerProfileResponse",
+    "EmployerProfileUpdate",
     "JobBase",
     "JobCreate",
-    "JobUpdate",
     "JobResponse",
-    # Job Seeker schemas
     "JobSeekerPreferencesSchema",
     "JobSeekerProfileBase",
     "JobSeekerProfileCreate",
-    "JobSeekerProfileUpdate",
     "JobSeekerProfileResponse",
-    # Application schemas
-    "StatusHistoryEntrySchema",
-    "ApplicationBase",
-    "ApplicationCreate",
-    "ApplicationUpdate",
-    "ApplicationResponse",
-    # Employer schemas
-    "EmployerProfileBase",
-    "EmployerProfileCreate",
-    "EmployerProfileUpdate",
-    "EmployerProfileResponse",
-    # Recommendation schemas
+    "JobSeekerProfileUpdate",
+    "JobUpdate",
     "MatchFactorSchema",
     "RecommendationBase",
     "RecommendationCreate",
-    "RecommendationUpdate",
     "RecommendationResponse",
+    "RecommendationUpdate",
     "RecommendationWithDetails",
+    "StatusHistoryEntrySchema",
+    "UserBase",
+    "UserCreate",
+    "UserResponse",
+    "UserUpdate",
 ]

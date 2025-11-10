@@ -48,3 +48,6 @@ logs/
 # Docker volumes
 chroma_data/
 redis_data/
+
+# AI Example Files
+ai-mockups/

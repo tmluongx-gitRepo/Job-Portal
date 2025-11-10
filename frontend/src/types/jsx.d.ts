@@ -1,10 +1,9 @@
 declare namespace JSX {
   interface IntrinsicElements {
-    [element: string]: any;
+    [element: string]: unknown;
   }
 
   interface IntrinsicAttributes {
-    [attribute: string]: any;
+    [attribute: string]: unknown;
   }
 }
-
