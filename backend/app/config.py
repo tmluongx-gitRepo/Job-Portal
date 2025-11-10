@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     # Supabase Authentication
     SUPABASE_URL: str = ""
     SUPABASE_ANON_KEY: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""  # For testing/admin operations
 
     # Dropbox File Storage
     DROPBOX_APP_KEY: str = ""

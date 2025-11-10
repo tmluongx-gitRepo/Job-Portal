@@ -17,7 +17,7 @@ class TestJobsRBAC:
     """Test role-based access control for Jobs API."""
 
     @pytest.mark.asyncio
-    async def test_unauthenticated_can_browse_active_jobs(self, client: AsyncClient):
+    async def test_unauthenticated_can_browse_active_jobs(self, client: AsyncClient) -> None:
         """Unauthenticated users can browse active jobs."""
         # Note: This test may fail with "Event loop is closed" due to Motor/pytest-asyncio interaction
         # In production, this endpoint works fine
@@ -32,7 +32,7 @@ class TestJobsRBAC:
             raise
 
     @pytest.mark.asyncio
-    async def test_unauthenticated_cannot_create_job(self, client: AsyncClient):
+    async def test_unauthenticated_cannot_create_job(self, client: AsyncClient) -> None:
         """Unauthenticated users cannot create jobs."""
         response = await client.post(
             "/api/jobs", json={"title": "Test Job", "description": "Test", "location": "SF"}
@@ -42,7 +42,9 @@ class TestJobsRBAC:
         assert response.status_code in [401, 403]
 
     @pytest.mark.asyncio
-    async def test_employer_can_create_job(self, client: AsyncClient, employer_with_profile):
+    async def test_employer_can_create_job(
+        self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
+    ) -> None:
         """Employers can create job postings."""
         token, user_id, profile_id = employer_with_profile
 
@@ -67,7 +69,9 @@ class TestJobsRBAC:
         assert data["posted_by"] == profile_id
 
     @pytest.mark.asyncio
-    async def test_job_seeker_cannot_create_job(self, client: AsyncClient, job_seeker_token):
+    async def test_job_seeker_cannot_create_job(
+        self, client: AsyncClient, job_seeker_token: str
+    ) -> None:
         """Job seekers cannot create job postings."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -80,7 +84,9 @@ class TestJobsRBAC:
         assert response.status_code == HTTP_FORBIDDEN
 
     @pytest.mark.asyncio
-    async def test_employer_can_update_own_job(self, client: AsyncClient, employer_with_profile):
+    async def test_employer_can_update_own_job(
+        self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
+    ) -> None:
         """Employers can update their own job postings."""
         token, user_id, profile_id = employer_with_profile
 
@@ -111,8 +117,8 @@ class TestJobsRBAC:
 
     @pytest.mark.asyncio
     async def test_employer_cannot_update_other_employer_job(
-        self, client: AsyncClient, employer_token, employer_with_profile
-    ):
+        self, client: AsyncClient, employer_token: str, employer_with_profile: tuple[str, str, str]
+    ) -> None:
         """Employers cannot update other employers' job postings."""
         if not employer_token:
             pytest.skip("Email confirmation required for testing")
@@ -144,8 +150,8 @@ class TestJobsRBAC:
 
     @pytest.mark.asyncio
     async def test_admin_can_update_any_job(
-        self, client: AsyncClient, admin_token, employer_with_profile
-    ):
+        self, client: AsyncClient, admin_token: str, employer_with_profile: tuple[str, str, str]
+    ) -> None:
         """Admins can update any job posting."""
         if not admin_token:
             pytest.skip("Email confirmation required for testing")
@@ -178,7 +184,9 @@ class TestJobsRBAC:
         assert data["title"] == "Admin Updated"
 
     @pytest.mark.asyncio
-    async def test_employer_can_delete_own_job(self, client: AsyncClient, employer_with_profile):
+    async def test_employer_can_delete_own_job(
+        self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
+    ) -> None:
         """Employers can delete their own job postings."""
         token, user_id, profile_id = employer_with_profile
 
@@ -205,8 +213,11 @@ class TestJobsRBAC:
 
     @pytest.mark.asyncio
     async def test_job_seeker_cannot_delete_job(
-        self, client: AsyncClient, job_seeker_token, employer_with_profile
-    ):
+        self,
+        client: AsyncClient,
+        job_seeker_token: str,
+        employer_with_profile: tuple[str, str, str],
+    ) -> None:
         """Job seekers cannot delete job postings."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")

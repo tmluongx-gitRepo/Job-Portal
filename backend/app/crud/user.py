@@ -11,12 +11,31 @@ from app.database import get_users_collection
 from app.type_definitions import UserDocument
 
 
-async def create_user(email: str, account_type: str = "job_seeker") -> UserDocument:
-    """Create a new user."""
+async def create_user(
+    email: str, account_type: str = "job_seeker", supabase_id: str | None = None
+) -> UserDocument:
+    """
+    Create a new user.
+
+    Args:
+        email: User's email address
+        account_type: Type of account (job_seeker, employer, admin)
+        supabase_id: Optional Supabase user ID for auth integration
+
+    Returns:
+        Created user document
+
+    Raises:
+        ValueError: If user with email already exists
+    """
     collection = get_users_collection()
 
-    # Check if user already exists
-    existing_user = await collection.find_one({"email": email})
+    # Check if user already exists by email or Supabase ID
+    query = {"$or": [{"email": email}]}
+    if supabase_id:
+        query["$or"].append({"supabase_id": supabase_id})
+
+    existing_user = await collection.find_one(query)
     if existing_user:
         raise ValueError(f"User with email {email} already exists")
 
@@ -26,6 +45,10 @@ async def create_user(email: str, account_type: str = "job_seeker") -> UserDocum
         "created_at": datetime.now(UTC),
         "updated_at": datetime.now(UTC),
     }
+
+    # Add Supabase ID if provided
+    if supabase_id:
+        user_doc["supabase_id"] = supabase_id
 
     result = await collection.insert_one(user_doc)
     user_doc["_id"] = result.inserted_id
@@ -47,6 +70,13 @@ async def get_user_by_email(email: str) -> UserDocument | None:
     """Get user by email."""
     collection = get_users_collection()
     result = await collection.find_one({"email": email})
+    return cast(UserDocument, result) if result else None
+
+
+async def get_user_by_supabase_id(supabase_id: str) -> UserDocument | None:
+    """Get user by Supabase ID."""
+    collection = get_users_collection()
+    result = await collection.find_one({"supabase_id": supabase_id})
     return cast(UserDocument, result) if result else None
 
 

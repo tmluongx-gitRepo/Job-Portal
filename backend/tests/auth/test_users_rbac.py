@@ -17,7 +17,7 @@ class TestUsersRBAC:
     """Test role-based access control for Users API."""
 
     @pytest.mark.asyncio
-    async def test_unauthenticated_cannot_access_users(self, client: AsyncClient):
+    async def test_unauthenticated_cannot_access_users(self, client: AsyncClient) -> None:
         """Unauthenticated users cannot access any user endpoints."""
         # FastAPI HTTPBearer returns 403 when no credentials provided
 
@@ -34,7 +34,9 @@ class TestUsersRBAC:
         assert response.status_code in [401, 403]
 
     @pytest.mark.asyncio
-    async def test_job_seeker_can_view_own_account(self, client: AsyncClient, job_seeker_token):
+    async def test_job_seeker_can_view_own_account(
+        self, client: AsyncClient, job_seeker_token: str
+    ) -> None:
         """Job seekers can view their own account via /me."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -48,7 +50,9 @@ class TestUsersRBAC:
         assert "email" in data
 
     @pytest.mark.asyncio
-    async def test_job_seeker_cannot_list_all_users(self, client: AsyncClient, job_seeker_token):
+    async def test_job_seeker_cannot_list_all_users(
+        self, client: AsyncClient, job_seeker_token: str
+    ) -> None:
         """Job seekers cannot list all users (admin only)."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -59,7 +63,9 @@ class TestUsersRBAC:
         assert response.status_code == HTTP_FORBIDDEN
 
     @pytest.mark.asyncio
-    async def test_job_seeker_can_update_own_account(self, client: AsyncClient, job_seeker_token):
+    async def test_job_seeker_can_update_own_account(
+        self, client: AsyncClient, job_seeker_token: str
+    ) -> None:
         """Job seekers can update their own account via /me."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -77,8 +83,8 @@ class TestUsersRBAC:
 
     @pytest.mark.asyncio
     async def test_job_seeker_cannot_change_own_account_type(
-        self, client: AsyncClient, job_seeker_token
-    ):
+        self, client: AsyncClient, job_seeker_token: str
+    ) -> None:
         """Job seekers cannot change their own account_type."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -93,7 +99,9 @@ class TestUsersRBAC:
         assert "cannot change" in response.json()["detail"].lower()
 
     @pytest.mark.asyncio
-    async def test_job_seeker_can_delete_own_account(self, client: AsyncClient, job_seeker_token):
+    async def test_job_seeker_can_delete_own_account(
+        self, client: AsyncClient, job_seeker_token: str
+    ) -> None:
         """Job seekers can delete their own account."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -105,7 +113,9 @@ class TestUsersRBAC:
         assert response.status_code == HTTP_NO_CONTENT
 
     @pytest.mark.asyncio
-    async def test_employer_can_view_own_account(self, client: AsyncClient, employer_token):
+    async def test_employer_can_view_own_account(
+        self, client: AsyncClient, employer_token: str
+    ) -> None:
         """Employers can view their own account via /me."""
         if not employer_token:
             pytest.skip("Email confirmation required for testing")
@@ -119,8 +129,8 @@ class TestUsersRBAC:
 
     @pytest.mark.asyncio
     async def test_employer_cannot_view_other_users(
-        self, client: AsyncClient, employer_token, job_seeker_token
-    ):
+        self, client: AsyncClient, employer_token: str, job_seeker_token: str
+    ) -> None:
         """Employers cannot view other users' accounts."""
         if not employer_token or not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -137,7 +147,7 @@ class TestUsersRBAC:
         assert response.status_code == HTTP_FORBIDDEN
 
     @pytest.mark.asyncio
-    async def test_admin_can_list_all_users(self, client: AsyncClient, admin_token):
+    async def test_admin_can_list_all_users(self, client: AsyncClient, admin_token: str) -> None:
         """Admins can list all users."""
         if not admin_token:
             pytest.skip("Email confirmation required for testing")
@@ -151,8 +161,8 @@ class TestUsersRBAC:
 
     @pytest.mark.asyncio
     async def test_admin_can_view_any_user(
-        self, client: AsyncClient, admin_token, job_seeker_token
-    ):
+        self, client: AsyncClient, admin_token: str, job_seeker_token: str
+    ) -> None:
         """Admins can view any user's account."""
         if not admin_token or not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -171,7 +181,7 @@ class TestUsersRBAC:
         assert data["id"] == js_user_id
 
     @pytest.mark.asyncio
-    async def test_admin_can_create_user(self, client: AsyncClient, admin_token):
+    async def test_admin_can_create_user(self, client: AsyncClient, admin_token: str) -> None:
         """Admins can create users via POST /users."""
         if not admin_token:
             pytest.skip("Email confirmation required for testing")
@@ -189,8 +199,8 @@ class TestUsersRBAC:
 
     @pytest.mark.asyncio
     async def test_admin_can_change_account_type(
-        self, client: AsyncClient, admin_token, job_seeker_token
-    ):
+        self, client: AsyncClient, admin_token: str, job_seeker_token: str
+    ) -> None:
         """Admins can change a user's account_type."""
         if not admin_token or not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -212,8 +222,8 @@ class TestUsersRBAC:
 
     @pytest.mark.asyncio
     async def test_admin_can_delete_any_user(
-        self, client: AsyncClient, admin_token, job_seeker_token
-    ):
+        self, client: AsyncClient, admin_token: str, job_seeker_token: str
+    ) -> None:
         """Admins can delete any user."""
         if not admin_token or not job_seeker_token:
             pytest.skip("Email confirmation required for testing")

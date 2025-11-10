@@ -77,7 +77,9 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)) 
 
     Convenient endpoint to get your own account details.
     """
-    user = await user_crud.get_user_by_id(current_user["id"])
+    # Use MongoDB ID if available (from JIT provisioning), otherwise try Supabase ID
+    user_id = current_user.get("mongo_id") or current_user["id"]
+    user = await user_crud.get_user_by_id(user_id)
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

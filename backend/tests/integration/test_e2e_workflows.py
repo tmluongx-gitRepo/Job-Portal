@@ -7,6 +7,7 @@ import pytest
 from bson import ObjectId
 from httpx import AsyncClient
 
+from tests.conftest import TestDataCleaner
 from tests.constants import (
     EXTENDED_SKILLS_COUNT,
     HTTP_CREATED,
@@ -23,8 +24,8 @@ class TestE2EWorkflows:
 
     @pytest.mark.asyncio
     async def test_complete_job_application_workflow(  # noqa: PLR0915
-        self, client: AsyncClient, test_cleaner
-    ):
+        self, client: AsyncClient, test_cleaner: TestDataCleaner
+    ) -> None:
         """Test entire flow: register → profile → post job → apply → review."""
 
         # === EMPLOYER JOURNEY ===
@@ -164,7 +165,7 @@ class TestE2EWorkflows:
         assert js_app_response.json()["status"] == "interviewing"
 
     @pytest.mark.asyncio
-    async def test_account_deletion_workflow(self, client: AsyncClient):
+    async def test_account_deletion_workflow(self, client: AsyncClient) -> None:
         """Test that deleting account removes all associated data."""
 
         # Register employer with full setup
@@ -230,7 +231,9 @@ class TestE2EWorkflows:
         assert token_check.status_code == HTTP_UNAUTHORIZED
 
     @pytest.mark.asyncio
-    async def test_profile_update_workflow(self, client: AsyncClient, job_seeker_with_profile):
+    async def test_profile_update_workflow(
+        self, client: AsyncClient, job_seeker_with_profile: tuple[str, str, str]
+    ) -> None:
         """Test updating profile and viewing changes."""
         js_token, js_user_id, js_profile_id = job_seeker_with_profile
         js_headers = {"Authorization": f"Bearer {js_token}"}

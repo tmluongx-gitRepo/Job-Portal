@@ -6,6 +6,7 @@ Ensures authorization works correctly across related resources.
 import pytest
 from httpx import AsyncClient
 
+from tests.conftest import TestDataCleaner
 from tests.constants import (
     HTTP_BAD_REQUEST,
     HTTP_CREATED,
@@ -21,8 +22,8 @@ class TestCrossResourceAuthorization:
 
     @pytest.mark.asyncio
     async def test_cannot_create_job_without_employer_profile(
-        self, client: AsyncClient, employer_token
-    ):
+        self, client: AsyncClient, employer_token: str
+    ) -> None:
         """Employers must have a profile before posting jobs."""
         if not employer_token:
             pytest.skip("Email confirmation required for testing")
@@ -48,8 +49,8 @@ class TestCrossResourceAuthorization:
 
     @pytest.mark.asyncio
     async def test_deleting_user_cascades_to_profile(
-        self, client: AsyncClient, job_seeker_with_profile, admin_token
-    ):
+        self, client: AsyncClient, job_seeker_with_profile: tuple[str, str, str], admin_token: str
+    ) -> None:
         """Deleting user should cascade to their profile."""
         if not admin_token:
             pytest.skip("Email confirmation required for testing")
@@ -67,8 +68,8 @@ class TestCrossResourceAuthorization:
 
     @pytest.mark.asyncio
     async def test_employer_can_only_view_applications_to_own_jobs(
-        self, client: AsyncClient, employer_with_profile
-    ):
+        self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
+    ) -> None:
         """Employers can only see applications to their own jobs."""
         emp_token, _, emp_profile_id = employer_with_profile
         emp_headers = {"Authorization": f"Bearer {emp_token}"}
@@ -101,8 +102,11 @@ class TestCrossResourceAuthorization:
 
     @pytest.mark.asyncio
     async def test_cannot_update_profile_of_different_type(
-        self, client: AsyncClient, job_seeker_token, employer_with_profile
-    ):
+        self,
+        client: AsyncClient,
+        job_seeker_token: str,
+        employer_with_profile: tuple[str, str, str],
+    ) -> None:
         """Job seekers cannot update employer profiles and vice versa."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -121,8 +125,12 @@ class TestCrossResourceAuthorization:
 
     @pytest.mark.asyncio
     async def test_deleting_job_makes_applications_inaccessible(
-        self, client: AsyncClient, job_seeker_with_profile, employer_with_profile, test_cleaner
-    ):
+        self,
+        client: AsyncClient,
+        job_seeker_with_profile: tuple[str, str, str],
+        employer_with_profile: tuple[str, str, str],
+        test_cleaner: TestDataCleaner,
+    ) -> None:
         """Deleting a job should affect its applications."""
         js_token, js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, emp_profile_id = employer_with_profile
@@ -166,8 +174,8 @@ class TestCrossResourceAuthorization:
 
     @pytest.mark.asyncio
     async def test_profile_ownership_required_for_job_posting(
-        self, client: AsyncClient, employer_token, employer_with_profile
-    ):
+        self, client: AsyncClient, employer_token: str, employer_with_profile: tuple[str, str, str]
+    ) -> None:
         """Cannot post job using another employer's profile."""
         if not employer_token:
             pytest.skip("Email confirmation required for testing")

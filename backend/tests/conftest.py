@@ -30,6 +30,10 @@ Cleanup System:
 ═══════════════════════════════════════════════════════════════
 """
 
+import asyncio
+from collections.abc import AsyncGenerator, Generator
+from typing import Any
+
 import pytest
 import pytest_asyncio
 from bson import ObjectId
@@ -41,20 +45,59 @@ from app.main import app
 from tests.constants import HTTP_CREATED, HTTP_OK
 
 # ============================================================================
+# PERMANENT TEST USERS (created once, reused across all tests)
+# ============================================================================
+
+TEST_USERS = {
+    "job_seeker": {
+        "email": "test.jobseeker@yourapp.com",
+        "password": "TestJobSeeker123!",
+        "account_type": "job_seeker",
+    },
+    "employer": {
+        "email": "test.employer@yourapp.com",
+        "password": "TestEmployer123!",
+        "account_type": "employer",
+    },
+}
+
+# ============================================================================
 # CORE FIXTURES
 # ============================================================================
 
 
 @pytest_asyncio.fixture
-async def client():
-    """Async HTTP client for testing."""
+async def client() -> AsyncGenerator[AsyncClient, None]:
+    """Async HTTP client for testing (function-scoped)."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+
+@pytest.fixture(scope="session")
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+    """
+    Create an event loop for session-scoped async fixtures.
+
+    Note: This overrides pytest-asyncio's event_loop fixture, which triggers
+    a deprecation warning. This is currently the most reliable way to support
+    session-scoped async fixtures. The warning can be safely ignored.
+    """
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest_asyncio.fixture(scope="session")
+async def session_client() -> AsyncGenerator[AsyncClient, None]:
+    """Async HTTP client for session-scoped fixtures (token generation)."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
-def _configure_test_database():
+def _configure_test_database() -> Generator[None, None, None]:
     """Configure the application to use test database for all tests."""
     import os
 
@@ -74,7 +117,7 @@ def _configure_test_database():
 
 
 @pytest_asyncio.fixture
-def db():
+def db() -> Generator[Any, None, None]:
     """Database connection for test operations."""
     database = get_mongo_database()
     yield database
@@ -95,35 +138,38 @@ class TestDataCleaner:
     - Deleting in proper order (apps → jobs → profiles → users)
     """
 
-    def __init__(self, db):
+    def __init__(self, db: Any) -> None:
         self.db = db
         self.user_ids: set[str] = set()
         self.profile_ids: dict[str, str] = {}  # profile_id -> type (job_seeker/employer)
         self.job_ids: set[str] = set()
         self.application_ids: set[str] = set()
         self.test_emails: set[str] = set()
+        self.supabase_user_ids: set[str] = set()  # Supabase UUIDs for cleanup
 
-    def track_user(self, user_id: str, email: str | None = None):
+    def track_user(self, user_id: str, email: str | None = None) -> None:
         """Track a user created during testing."""
         self.user_ids.add(user_id)
         if email:
             self.test_emails.add(email)
 
-    def track_profile(self, profile_id: str, profile_type: str):
+    def track_profile(self, profile_id: str, profile_type: str) -> None:
         """Track a profile (job_seeker or employer)."""
         self.profile_ids[profile_id] = profile_type
 
-    def track_job(self, job_id: str):
+    def track_job(self, job_id: str) -> None:
         """Track a job posting."""
         self.job_ids.add(job_id)
 
-    def track_application(self, application_id: str):
+    def track_application(self, application_id: str) -> None:
         """Track a job application."""
         self.application_ids.add(application_id)
 
-    async def cleanup(self):
+    async def cleanup(self) -> dict[str, int]:
         """Clean up all tracked test data."""
-        counts = {"users": 0, "profiles": 0, "jobs": 0, "applications": 0}
+        from tests.supabase_test_utils import delete_supabase_user
+
+        counts = {"users": 0, "profiles": 0, "jobs": 0, "applications": 0, "supabase_users": 0}
 
         # Clean applications first (they reference jobs)
         if self.application_ids:
@@ -153,11 +199,16 @@ class TestDataCleaner:
             )
             counts["users"] = result.deleted_count
 
+        # Clean Supabase users (auth provider cleanup)
+        for supabase_id in self.supabase_user_ids:
+            if delete_supabase_user(supabase_id):
+                counts["supabase_users"] += 1
+
         return counts
 
 
 @pytest_asyncio.fixture
-async def test_cleaner(db):
+async def test_cleaner(db: Any) -> AsyncGenerator[TestDataCleaner, None]:
     """
     Provides test data cleanup for each test.
 
@@ -179,7 +230,7 @@ async def test_cleaner(db):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def session_cleanup():
+def session_cleanup() -> Generator[None, None, None]:
     """
     Safety net: Clean ALL test data at end of test session.
 
@@ -191,7 +242,7 @@ def session_cleanup():
     # Run cleanup after all tests complete (create new event loop for cleanup)
     import asyncio
 
-    async def _cleanup():
+    async def _cleanup() -> None:
         print("\n" + "=" * 60)
         print("🧹 Final Test Session Cleanup")
         print("=" * 60)
@@ -260,100 +311,71 @@ def session_cleanup():
 
 
 @pytest_asyncio.fixture
-async def admin_token(client, test_cleaner):
+async def admin_token(_client: Any = None) -> str:
     """
-    Register and login as an admin user.
+    Login as permanent test admin user.
 
-    Token and user data are automatically tracked and cleaned up after the test,
-    ensuring no interference with other tests.
+    Note: Admin users cannot be created via /api/auth/register.
+    This fixture is kept for compatibility but will fail until
+    an admin user is manually created in Supabase.
     """
-    email = f"admin_test_{ObjectId()}@example.com"
+    pytest.skip("Admin users must be created manually in Supabase dashboard")
 
-    register_response = await client.post(
-        "/api/auth/register",
-        json={"email": email, "password": "AdminPass123!", "account_type": "admin"},
+
+@pytest_asyncio.fixture(scope="session")
+async def job_seeker_token(session_client: AsyncClient) -> str:
+    """
+    Login as permanent test job seeker (session-scoped).
+
+    Token is created once per test session and reused across all tests.
+    This avoids token conflicts and improves test performance.
+    """
+    user = TEST_USERS["job_seeker"]
+
+    login_response = await session_client.post(
+        "/api/auth/login", json={"email": user["email"], "password": user["password"]}
     )
 
-    if register_response.status_code == HTTP_OK:
-        data = register_response.json()
-        if "access_token" in data:
-            # Get user ID and track for cleanup
-            user_response = await client.get(
-                "/api/users/me", headers={"Authorization": f"Bearer {data['access_token']}"}
-            )
-            if user_response.status_code == HTTP_OK:
-                user_id = user_response.json()["id"]
-                test_cleaner.track_user(user_id, email)
+    if login_response.status_code == HTTP_OK:
+        token: str = login_response.json()["access_token"]
+        return token
 
-            return data["access_token"]
+    pytest.fail(
+        f"Failed to login test job seeker: {login_response.status_code}\n"
+        f"Response: {login_response.json()}\n"
+        f"Did you run 'python -m tests.setup_test_users' to create test users?"
+    )
 
-    return None
+
+@pytest_asyncio.fixture(scope="session")
+async def employer_token(session_client: AsyncClient) -> str:
+    """
+    Login as permanent test employer (session-scoped).
+
+    Token is created once per test session and reused across all tests.
+    This avoids token conflicts and improves test performance.
+    """
+    user = TEST_USERS["employer"]
+
+    login_response = await session_client.post(
+        "/api/auth/login", json={"email": user["email"], "password": user["password"]}
+    )
+
+    if login_response.status_code == HTTP_OK:
+        token: str = login_response.json()["access_token"]
+        return token
+
+    pytest.fail(
+        f"Failed to login test employer: {login_response.status_code}\n"
+        f"Response: {login_response.json()}\n"
+        f"Did you run 'python -m tests.setup_test_users' to create test users?"
+    )
 
 
 @pytest_asyncio.fixture
-async def job_seeker_token(client, test_cleaner):
-    """
-    Register and login as a job seeker.
-
-    Token and user data are automatically tracked and cleaned up after the test,
-    ensuring no interference with other tests.
-    """
-    email = f"jobseeker_test_{ObjectId()}@example.com"
-
-    register_response = await client.post(
-        "/api/auth/register",
-        json={"email": email, "password": "JobSeekerPass123!", "account_type": "job_seeker"},
-    )
-
-    if register_response.status_code == HTTP_OK:
-        data = register_response.json()
-        if "access_token" in data:
-            # Get user ID and track for cleanup
-            user_response = await client.get(
-                "/api/users/me", headers={"Authorization": f"Bearer {data['access_token']}"}
-            )
-            if user_response.status_code == HTTP_OK:
-                user_id = user_response.json()["id"]
-                test_cleaner.track_user(user_id, email)
-
-            return data["access_token"]
-
-    return None
-
-
-@pytest_asyncio.fixture
-async def employer_token(client, test_cleaner):
-    """
-    Register and login as an employer.
-
-    Token and user data are automatically tracked and cleaned up after the test,
-    ensuring no interference with other tests.
-    """
-    email = f"employer_test_{ObjectId()}@example.com"
-
-    register_response = await client.post(
-        "/api/auth/register",
-        json={"email": email, "password": "EmployerPass123!", "account_type": "employer"},
-    )
-
-    if register_response.status_code == HTTP_OK:
-        data = register_response.json()
-        if "access_token" in data:
-            # Get user ID and track for cleanup
-            user_response = await client.get(
-                "/api/users/me", headers={"Authorization": f"Bearer {data['access_token']}"}
-            )
-            if user_response.status_code == HTTP_OK:
-                user_id = user_response.json()["id"]
-                test_cleaner.track_user(user_id, email)
-
-            return data["access_token"]
-
-    return None
-
-
-@pytest_asyncio.fixture
-async def job_seeker_with_profile(client, job_seeker_token, test_cleaner):
+async def job_seeker_with_profile(
+    client: AsyncClient, job_seeker_token: str, test_cleaner: TestDataCleaner
+) -> tuple[str, str, str]:
     """
     Create a job seeker with a complete profile.
 
@@ -399,7 +421,9 @@ async def job_seeker_with_profile(client, job_seeker_token, test_cleaner):
 
 
 @pytest_asyncio.fixture
-async def employer_with_profile(client, employer_token, test_cleaner):
+async def employer_with_profile(
+    client: AsyncClient, employer_token: str, test_cleaner: TestDataCleaner
+) -> tuple[str, str, str]:
     """
     Create an employer with a complete profile.
 

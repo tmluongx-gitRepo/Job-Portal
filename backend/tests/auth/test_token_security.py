@@ -17,7 +17,7 @@ class TestTokenSecurity:
     """Test JWT token security and validation."""
 
     @pytest.mark.asyncio
-    async def test_malformed_token_rejected(self, client: AsyncClient):
+    async def test_malformed_token_rejected(self, client: AsyncClient) -> None:
         """Malformed tokens should return 401 Unauthorized."""
         test_cases = [
             "not-a-jwt-token",
@@ -33,7 +33,9 @@ class TestTokenSecurity:
             assert response.status_code in [401, 403], f"Failed for token: {malformed_token}"
 
     @pytest.mark.asyncio
-    async def test_tampered_payload_rejected(self, client: AsyncClient, job_seeker_token):
+    async def test_tampered_payload_rejected(
+        self, client: AsyncClient, job_seeker_token: str
+    ) -> None:
         """Tokens with modified payloads should be rejected."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -57,8 +59,8 @@ class TestTokenSecurity:
 
     @pytest.mark.asyncio
     async def test_token_without_bearer_prefix_rejected(
-        self, client: AsyncClient, job_seeker_token
-    ):
+        self, client: AsyncClient, job_seeker_token: str
+    ) -> None:
         """Tokens without 'Bearer' prefix should be rejected."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -70,7 +72,9 @@ class TestTokenSecurity:
         assert response.status_code in [401, 403]
 
     @pytest.mark.asyncio
-    async def test_token_with_wrong_signature(self, client: AsyncClient, job_seeker_token):
+    async def test_token_with_wrong_signature(
+        self, client: AsyncClient, job_seeker_token: str
+    ) -> None:
         """Tokens signed with wrong key should be rejected."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -87,7 +91,7 @@ class TestTokenSecurity:
         assert response.status_code in [401, 403]
 
     @pytest.mark.asyncio
-    async def test_empty_authorization_header_rejected(self, client: AsyncClient):
+    async def test_empty_authorization_header_rejected(self, client: AsyncClient) -> None:
         """Empty Authorization header should be rejected."""
         headers = {"Authorization": ""}
         response = await client.get("/api/users/me", headers=headers)
@@ -98,7 +102,9 @@ class TestTokenSecurity:
         assert response.status_code in [401, 403]
 
     @pytest.mark.asyncio
-    async def test_token_reuse_after_logout(self, client: AsyncClient, job_seeker_token):
+    async def test_token_reuse_after_logout(
+        self, client: AsyncClient, job_seeker_token: str
+    ) -> None:
         """Tokens should not work after logout."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -122,7 +128,9 @@ class TestTokenSecurity:
             pytest.skip("Logout endpoint not fully implemented")
 
     @pytest.mark.asyncio
-    async def test_double_bearer_prefix_rejected(self, client: AsyncClient, job_seeker_token):
+    async def test_double_bearer_prefix_rejected(
+        self, client: AsyncClient, job_seeker_token: str
+    ) -> None:
         """Token with double 'Bearer' prefix should be rejected."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")

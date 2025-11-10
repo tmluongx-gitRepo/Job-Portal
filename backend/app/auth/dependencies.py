@@ -14,6 +14,7 @@ from app.auth.auth_utils import (
     is_employer,
     is_job_seeker,
 )
+from app.crud import user as user_crud
 
 
 def _raise_invalid_token_payload() -> None:
@@ -34,7 +35,8 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     Dependency to get current authenticated user from JWT token.
 
     Extracts JWT token from Authorization header, validates it,
-    and returns user information.
+    and returns user information. Auto-creates MongoDB user record
+    on first authentication (Just-In-Time provisioning).
 
     Args:
         credentials: HTTP Bearer credentials from Authorization header
@@ -62,6 +64,22 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         # Ensure user has required fields
         if not user.get("id") or not user.get("email"):
             _raise_invalid_token_payload()
+
+        # Just-In-Time (JIT) user provisioning:
+        # Create MongoDB user if doesn't exist
+        existing_user = await user_crud.get_user_by_supabase_id(user["id"])
+        if not existing_user:
+            # Create user in MongoDB with Supabase ID
+            mongo_user = await user_crud.create_user(
+                email=user["email"],
+                account_type=user.get("account_type", "job_seeker"),
+                supabase_id=user["id"],
+            )
+            # Update user dict with MongoDB ID for downstream use
+            user["mongo_id"] = str(mongo_user["_id"])
+        else:
+            # User exists, add MongoDB ID to user dict
+            user["mongo_id"] = str(existing_user["_id"])
 
     except ExpiredTokenError as e:
         raise HTTPException(

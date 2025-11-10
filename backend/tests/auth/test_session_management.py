@@ -7,6 +7,7 @@ import pytest
 from bson import ObjectId
 from httpx import AsyncClient
 
+from tests.conftest import TestDataCleaner
 from tests.constants import (
     HTTP_NOT_FOUND,
     HTTP_OK,
@@ -18,7 +19,9 @@ class TestSessionManagement:
     """Test session and token management."""
 
     @pytest.mark.asyncio
-    async def test_multiple_concurrent_sessions_allowed(self, client: AsyncClient, test_cleaner):
+    async def test_multiple_concurrent_sessions_allowed(
+        self, client: AsyncClient, test_cleaner: TestDataCleaner
+    ) -> None:
         """Users can login from multiple devices simultaneously."""
         email = f"multidevice_test_{ObjectId()}@example.com"
         password = "TestPass123!"
@@ -68,7 +71,9 @@ class TestSessionManagement:
             assert response.status_code == HTTP_OK
 
     @pytest.mark.asyncio
-    async def test_logout_invalidates_current_session(self, client: AsyncClient, test_cleaner):
+    async def test_logout_invalidates_current_session(
+        self, client: AsyncClient, test_cleaner: TestDataCleaner
+    ) -> None:
         """Logging out should invalidate the current session."""
         email = f"logout_test_{ObjectId()}@example.com"
         password = "TestPass123!"
@@ -110,7 +115,9 @@ class TestSessionManagement:
             pytest.skip("Logout endpoint not fully implemented or requires different flow")
 
     @pytest.mark.asyncio
-    async def test_refresh_token_extends_session(self, client: AsyncClient, job_seeker_token):
+    async def test_refresh_token_extends_session(
+        self, client: AsyncClient, job_seeker_token: str
+    ) -> None:
         """Refresh token should extend session without re-login."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -139,7 +146,9 @@ class TestSessionManagement:
             pytest.skip(f"Refresh endpoint returned {response.status_code}")
 
     @pytest.mark.asyncio
-    async def test_login_creates_new_session(self, client: AsyncClient, test_cleaner):
+    async def test_login_creates_new_session(
+        self, client: AsyncClient, test_cleaner: TestDataCleaner
+    ) -> None:
         """Each login should create a fresh session."""
         email = f"login_test_{ObjectId()}@example.com"
         password = "TestPass123!"
