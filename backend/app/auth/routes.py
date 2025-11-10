@@ -1,20 +1,20 @@
 """
 Authentication API routes for Supabase integration.
 """
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.auth.dependencies import get_current_user
 from app.auth.schemas import (
-    UserSignUp,
-    UserSignIn,
-    TokenResponse,
-    UserInfo,
-    PasswordReset,
-    PasswordUpdate,
     CurrentUser,
     MessageResponse,
+    PasswordReset,
+    PasswordUpdate,
+    TokenResponse,
+    UserInfo,
+    UserSignIn,
+    UserSignUp,
 )
 from app.auth.supabase_client import supabase
-from app.auth.dependencies import get_current_user
 
 router = APIRouter()
 
@@ -40,7 +40,7 @@ async def register(user_data: UserSignUp):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service not configured"
         )
-    
+
     try:
         # Sign up user with Supabase
         response = supabase.auth.sign_up({
@@ -53,13 +53,13 @@ async def register(user_data: UserSignUp):
                 }
             }
         })
-        
+
         if not response.user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User registration failed"
             )
-        
+
         # Check if email confirmation is required (no session returned)
         if not response.session:
             return {
@@ -68,7 +68,7 @@ async def register(user_data: UserSignUp):
                 "email": response.user.email,
                 "email_confirmation_required": True
             }
-        
+
         # Extract user info
         user_info = UserInfo(
             id=response.user.id,
@@ -78,14 +78,14 @@ async def register(user_data: UserSignUp):
             provider="email",
             created_at=response.user.created_at,
         )
-        
+
         return TokenResponse(
             access_token=response.session.access_token,
             refresh_token=response.session.refresh_token,
             expires_in=response.session.expires_in,
             user=user_info,
         )
-        
+
     except Exception as e:
         # Handle Supabase auth errors
         error_message = str(e)
@@ -119,23 +119,23 @@ async def login(credentials: UserSignIn):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service not configured"
         )
-    
+
     try:
         # Sign in with Supabase
         response = supabase.auth.sign_in_with_password({
             "email": credentials.email,
             "password": credentials.password,
         })
-        
+
         if not response.user or not response.session:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
             )
-        
+
         # Extract user metadata
         user_metadata = response.user.user_metadata or {}
-        
+
         user_info = UserInfo(
             id=response.user.id,
             email=response.user.email,
@@ -144,14 +144,14 @@ async def login(credentials: UserSignIn):
             provider=response.user.app_metadata.get("provider", "email"),
             created_at=response.user.created_at,
         )
-        
+
         return TokenResponse(
             access_token=response.session.access_token,
             refresh_token=response.session.refresh_token,
             expires_in=response.session.expires_in,
             user=user_info,
         )
-        
+
     except Exception as e:
         error_message = str(e)
         if "invalid" in error_message.lower() or "not found" in error_message.lower():
@@ -183,17 +183,17 @@ async def logout(current_user: dict = Depends(get_current_user)):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service not configured"
         )
-    
+
     try:
         # Sign out from Supabase
         supabase.auth.sign_out()
-        
+
         return MessageResponse(message="Successfully logged out")
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Logout failed: {str(e)}"
+            detail=f"Logout failed: {e!s}"
         )
 
 
@@ -230,19 +230,19 @@ async def refresh_token(refresh_token: str):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service not configured"
         )
-    
+
     try:
         # Refresh session with Supabase
         response = supabase.auth.refresh_session(refresh_token)
-        
+
         if not response.user or not response.session:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid refresh token"
             )
-        
+
         user_metadata = response.user.user_metadata or {}
-        
+
         user_info = UserInfo(
             id=response.user.id,
             email=response.user.email,
@@ -251,14 +251,14 @@ async def refresh_token(refresh_token: str):
             provider=response.user.app_metadata.get("provider", "email"),
             created_at=response.user.created_at,
         )
-        
+
         return TokenResponse(
             access_token=response.session.access_token,
             refresh_token=response.session.refresh_token,
             expires_in=response.session.expires_in,
             user=user_info,
         )
-        
+
     except Exception as e:
         error_message = str(e)
         if "invalid" in error_message.lower() or "expired" in error_message.lower():
@@ -290,16 +290,16 @@ async def request_password_reset(data: PasswordReset):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service not configured"
         )
-    
+
     try:
         # Request password reset from Supabase
         supabase.auth.reset_password_email(data.email)
-        
+
         # Always return success for security (don't reveal if email exists)
         return MessageResponse(
             message="If the email exists, a password reset link has been sent"
         )
-        
+
     except Exception:
         # Still return success message for security
         return MessageResponse(
@@ -332,13 +332,13 @@ async def update_password(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service not configured"
         )
-    
+
     try:
         # Update password in Supabase
         supabase.auth.update_user({"password": data.password})
-        
+
         return MessageResponse(message="Password updated successfully")
-        
+
     except Exception as e:
         error_message = str(e)
         raise HTTPException(

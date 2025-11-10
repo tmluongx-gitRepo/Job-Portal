@@ -29,16 +29,14 @@ Cleanup System:
 
 ═══════════════════════════════════════════════════════════════
 """
+
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
 from bson import ObjectId
-from typing import Dict, Set
-from datetime import datetime
+from httpx import ASGITransport, AsyncClient
 
-from app.main import app
 from app.database import get_mongo_database
-
+from app.main import app
 
 # ============================================================================
 # CORE FIXTURES
@@ -72,65 +70,65 @@ class TestDataCleaner:
     - Cleaning up users (which invalidates tokens)
     - Deleting in proper order (apps → jobs → profiles → users)
     """
-    
+
     def __init__(self, db):
         self.db = db
-        self.user_ids: Set[str] = set()
-        self.profile_ids: Dict[str, str] = {}  # profile_id -> type (job_seeker/employer)
-        self.job_ids: Set[str] = set()
-        self.application_ids: Set[str] = set()
-        self.test_emails: Set[str] = set()
-    
+        self.user_ids: set[str] = set()
+        self.profile_ids: dict[str, str] = {}  # profile_id -> type (job_seeker/employer)
+        self.job_ids: set[str] = set()
+        self.application_ids: set[str] = set()
+        self.test_emails: set[str] = set()
+
     def track_user(self, user_id: str, email: str = None):
         """Track a user created during testing."""
         self.user_ids.add(user_id)
         if email:
             self.test_emails.add(email)
-    
+
     def track_profile(self, profile_id: str, profile_type: str):
         """Track a profile (job_seeker or employer)."""
         self.profile_ids[profile_id] = profile_type
-    
+
     def track_job(self, job_id: str):
         """Track a job posting."""
         self.job_ids.add(job_id)
-    
+
     def track_application(self, application_id: str):
         """Track a job application."""
         self.application_ids.add(application_id)
-    
+
     async def cleanup(self):
         """Clean up all tracked test data."""
         counts = {"users": 0, "profiles": 0, "jobs": 0, "applications": 0}
-        
+
         # Clean applications first (they reference jobs)
         if self.application_ids:
             result = await self.db["applications"].delete_many({
                 "_id": {"$in": [ObjectId(aid) for aid in self.application_ids]}
             })
             counts["applications"] = result.deleted_count
-        
+
         # Clean jobs (they reference profiles)
         if self.job_ids:
             result = await self.db["jobs"].delete_many({
                 "_id": {"$in": [ObjectId(jid) for jid in self.job_ids]}
             })
             counts["jobs"] = result.deleted_count
-        
+
         # Clean profiles (they reference users)
         if self.profile_ids:
             for profile_id, profile_type in self.profile_ids.items():
                 collection_name = f"{profile_type}_profiles"
                 await self.db[collection_name].delete_one({"_id": ObjectId(profile_id)})
                 counts["profiles"] += 1
-        
+
         # Clean users last (this invalidates auth tokens)
         if self.user_ids:
             result = await self.db["users"].delete_many({
                 "_id": {"$in": [ObjectId(uid) for uid in self.user_ids]}
             })
             counts["users"] = result.deleted_count
-        
+
         return counts
 
 
@@ -143,12 +141,12 @@ async def test_cleaner(db):
     ensuring each test's authentication data is isolated.
     """
     cleaner = TestDataCleaner(db)
-    
+
     yield cleaner
-    
+
     # Cleanup after test completes
     counts = await cleaner.cleanup()
-    
+
     # Minimal output: only show if something was cleaned
     total = sum(counts.values())
     if total > 0:
@@ -165,18 +163,18 @@ def session_cleanup():
     Particularly important for tokens/auth data from skipped or failed tests.
     """
     yield
-    
+
     # Run cleanup after all tests complete (create new event loop for cleanup)
     import asyncio
-    
+
     async def _cleanup():
         print("\n" + "="*60)
         print("🧹 Final Test Session Cleanup")
         print("="*60)
-        
+
         db = get_mongo_database()
         total_cleaned = 0
-        
+
         try:
             # Clean test users (by email pattern) - this invalidates all test tokens
             result = await db["users"].delete_many({
@@ -185,7 +183,7 @@ def session_cleanup():
             if result.deleted_count > 0:
                 print(f"  ├─ Users: {result.deleted_count}")
                 total_cleaned += result.deleted_count
-            
+
             # Clean test profiles
             result = await db["job_seeker_profiles"].delete_many({
                 "full_name": {"$regex": "^Test.*"}
@@ -193,14 +191,14 @@ def session_cleanup():
             if result.deleted_count > 0:
                 print(f"  ├─ Job Seeker Profiles: {result.deleted_count}")
                 total_cleaned += result.deleted_count
-            
+
             result = await db["employer_profiles"].delete_many({
                 "company_name": {"$regex": "^Test.*"}
             })
             if result.deleted_count > 0:
                 print(f"  ├─ Employer Profiles: {result.deleted_count}")
                 total_cleaned += result.deleted_count
-            
+
             # Clean test jobs
             result = await db["jobs"].delete_many({
                 "title": {"$regex": "^(Test|Original|Software Engineer|To Delete|Protected Job).*"}
@@ -208,7 +206,7 @@ def session_cleanup():
             if result.deleted_count > 0:
                 print(f"  ├─ Jobs: {result.deleted_count}")
                 total_cleaned += result.deleted_count
-            
+
             if total_cleaned > 0:
                 print(f"\n✅ Session cleanup complete: {total_cleaned} items removed")
             else:
@@ -216,9 +214,9 @@ def session_cleanup():
         except Exception as e:
             print(f"⚠️  Session cleanup encountered an error: {e}")
             print("   (Per-test cleanup already handled most data)")
-        
+
         print("="*60 + "\n")
-    
+
     # Create new event loop and run cleanup
     try:
         loop = asyncio.new_event_loop()
@@ -243,7 +241,7 @@ async def admin_token(client, test_cleaner):
     ensuring no interference with other tests.
     """
     email = f"admin_test_{ObjectId()}@example.com"
-    
+
     register_response = await client.post(
         "/api/auth/register",
         json={
@@ -252,7 +250,7 @@ async def admin_token(client, test_cleaner):
             "account_type": "admin"
         }
     )
-    
+
     if register_response.status_code == 200:
         data = register_response.json()
         if "access_token" in data:
@@ -264,9 +262,9 @@ async def admin_token(client, test_cleaner):
             if user_response.status_code == 200:
                 user_id = user_response.json()["id"]
                 test_cleaner.track_user(user_id, email)
-            
+
             return data["access_token"]
-    
+
     return None
 
 
@@ -279,7 +277,7 @@ async def job_seeker_token(client, test_cleaner):
     ensuring no interference with other tests.
     """
     email = f"jobseeker_test_{ObjectId()}@example.com"
-    
+
     register_response = await client.post(
         "/api/auth/register",
         json={
@@ -288,7 +286,7 @@ async def job_seeker_token(client, test_cleaner):
             "account_type": "job_seeker"
         }
     )
-    
+
     if register_response.status_code == 200:
         data = register_response.json()
         if "access_token" in data:
@@ -300,9 +298,9 @@ async def job_seeker_token(client, test_cleaner):
             if user_response.status_code == 200:
                 user_id = user_response.json()["id"]
                 test_cleaner.track_user(user_id, email)
-            
+
             return data["access_token"]
-    
+
     return None
 
 
@@ -315,7 +313,7 @@ async def employer_token(client, test_cleaner):
     ensuring no interference with other tests.
     """
     email = f"employer_test_{ObjectId()}@example.com"
-    
+
     register_response = await client.post(
         "/api/auth/register",
         json={
@@ -324,7 +322,7 @@ async def employer_token(client, test_cleaner):
             "account_type": "employer"
         }
     )
-    
+
     if register_response.status_code == 200:
         data = register_response.json()
         if "access_token" in data:
@@ -336,9 +334,9 @@ async def employer_token(client, test_cleaner):
             if user_response.status_code == 200:
                 user_id = user_response.json()["id"]
                 test_cleaner.track_user(user_id, email)
-            
+
             return data["access_token"]
-    
+
     return None
 
 
@@ -352,16 +350,16 @@ async def job_seeker_with_profile(client, job_seeker_token, test_cleaner):
     """
     if not job_seeker_token:
         pytest.skip("Cannot create job seeker token (email confirmation required)")
-    
+
     headers = {"Authorization": f"Bearer {job_seeker_token}"}
-    
+
     # Get user info
     user_response = await client.get("/api/users/me", headers=headers)
     if user_response.status_code != 200:
         pytest.skip("Cannot get user info")
-    
+
     user_id = user_response.json()["id"]
-    
+
     # Create profile
     profile_response = await client.post(
         "/api/job-seeker-profiles",
@@ -376,15 +374,15 @@ async def job_seeker_with_profile(client, job_seeker_token, test_cleaner):
             "bio": "Test bio"
         }
     )
-    
+
     if profile_response.status_code != 201:
         pytest.skip("Cannot create job seeker profile")
-    
+
     profile_id = profile_response.json()["id"]
-    
+
     # Track profile for cleanup
     test_cleaner.track_profile(profile_id, "job_seeker")
-    
+
     return job_seeker_token, user_id, profile_id
 
 
@@ -398,16 +396,16 @@ async def employer_with_profile(client, employer_token, test_cleaner):
     """
     if not employer_token:
         pytest.skip("Cannot create employer token (email confirmation required)")
-    
+
     headers = {"Authorization": f"Bearer {employer_token}"}
-    
+
     # Get user info
     user_response = await client.get("/api/users/me", headers=headers)
     if user_response.status_code != 200:
         pytest.skip("Cannot get user info")
-    
+
     user_id = user_response.json()["id"]
-    
+
     # Create profile
     profile_response = await client.post(
         "/api/employer-profiles",
@@ -421,15 +419,15 @@ async def employer_with_profile(client, employer_token, test_cleaner):
             "description": "Test company description"
         }
     )
-    
+
     if profile_response.status_code != 201:
         pytest.skip("Cannot create employer profile")
-    
+
     profile_id = profile_response.json()["id"]
-    
+
     # Track profile for cleanup
     test_cleaner.track_profile(profile_id, "employer")
-    
+
     return employer_token, user_id, profile_id
 
 

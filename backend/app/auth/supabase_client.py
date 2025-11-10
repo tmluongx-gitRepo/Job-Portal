@@ -1,7 +1,8 @@
 """
 Supabase client configuration and initialization.
 """
-from supabase import create_client, Client
+from supabase import Client, create_client
+
 from app.config import settings
 
 
@@ -19,7 +20,7 @@ def get_supabase_client() -> Client:
             "Supabase configuration missing. Please set SUPABASE_URL and "
             "SUPABASE_ANON_KEY in your environment variables."
         )
-    
+
     return create_client(
         settings.SUPABASE_URL,
         settings.SUPABASE_ANON_KEY

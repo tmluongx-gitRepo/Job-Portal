@@ -1,17 +1,16 @@
 """
 Employer Profile API routes.
 """
-from typing import Optional
-from fastapi import APIRouter, HTTPException, Query, status, Depends
 
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from app.auth.dependencies import get_current_user, get_optional_user, require_employer
+from app.crud import employer_profile as profile_crud
 from app.schemas.employer import (
     EmployerProfileCreate,
-    EmployerProfileUpdate,
     EmployerProfileResponse,
+    EmployerProfileUpdate,
 )
-from app.crud import employer_profile as profile_crud
-from app.auth.dependencies import require_employer, get_current_user, get_optional_user
-
 
 router = APIRouter()
 
@@ -37,9 +36,9 @@ async def create_profile(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="You already have an employer profile"
             )
-        
+
         profile_data = profile.model_dump(exclude={"user_id"}, exclude_none=True)
-        
+
         # Use authenticated user's ID
         created_profile = await profile_crud.create_profile(
             user_id=employer["id"],
@@ -59,7 +58,7 @@ async def create_profile(
 async def get_profiles(
     skip: int = 0,
     limit: int = 100,
-    current_user: Optional[dict] = Depends(get_optional_user)
+    current_user: dict | None = Depends(get_optional_user)
 ):
     """
     Get all employer profiles.
@@ -124,7 +123,7 @@ async def update_profile(
     existing_profile = await profile_crud.get_profile_by_id(profile_id)
     if not existing_profile:
         raise HTTPException(status_code=404, detail="Employer profile not found")
-    
+
     # Check ownership
     from app.auth.utils import is_admin
     if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
@@ -132,7 +131,7 @@ async def update_profile(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only update your own profile"
         )
-    
+
     update_data = profile_update.model_dump(exclude_unset=True)
 
     if not update_data:
@@ -165,7 +164,7 @@ async def delete_profile(
     existing_profile = await profile_crud.get_profile_by_id(profile_id)
     if not existing_profile:
         raise HTTPException(status_code=404, detail="Employer profile not found")
-    
+
     # Check ownership
     from app.auth.utils import is_admin
     if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
@@ -173,10 +172,9 @@ async def delete_profile(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only delete your own profile"
         )
-    
+
     deleted = await profile_crud.delete_profile(profile_id)
 
     if not deleted:
         raise HTTPException(status_code=404, detail="Employer profile not found")
 
-    return None

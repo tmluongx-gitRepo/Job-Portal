@@ -3,19 +3,19 @@ End-to-end workflow tests.
 Tests complete user journeys across the application.
 """
 import pytest
-from httpx import AsyncClient
 from bson import ObjectId
+from httpx import AsyncClient
 
 
 class TestE2EWorkflows:
     """Test complete end-to-end user workflows."""
-    
+
     @pytest.mark.asyncio
     async def test_complete_job_application_workflow(self, client: AsyncClient, test_cleaner):
         """Test entire flow: register → profile → post job → apply → review."""
-        
+
         # === EMPLOYER JOURNEY ===
-        
+
         # 1. Employer registers
         emp_email = f"employer_e2e_{ObjectId()}@example.com"
         emp_response = await client.post("/api/auth/register", json={
@@ -23,17 +23,17 @@ class TestE2EWorkflows:
             "password": "EmpPass123!",
             "account_type": "employer"
         })
-        
+
         if emp_response.status_code != 200:
             pytest.skip("Email confirmation required - cannot test full E2E flow")
-        
+
         emp_token = emp_response.json()["access_token"]
         emp_headers = {"Authorization": f"Bearer {emp_token}"}
-        
+
         # Track employer for cleanup
         emp_me = await client.get("/api/users/me", headers=emp_headers)
         test_cleaner.track_user(emp_me.json()["id"], emp_email)
-        
+
         # 2. Employer creates profile
         profile_response = await client.post(
             "/api/employer-profiles",
@@ -49,7 +49,7 @@ class TestE2EWorkflows:
         assert profile_response.status_code == 201
         emp_profile_id = profile_response.json()["id"]
         test_cleaner.track_profile(emp_profile_id, "employer")
-        
+
         # 3. Employer posts job
         job_response = await client.post(
             "/api/jobs",
@@ -67,9 +67,9 @@ class TestE2EWorkflows:
         assert job_response.status_code == 201
         job_id = job_response.json()["id"]
         test_cleaner.track_job(job_id)
-        
+
         # === JOB SEEKER JOURNEY ===
-        
+
         # 4. Job seeker registers
         js_email = f"jobseeker_e2e_{ObjectId()}@example.com"
         js_response = await client.post("/api/auth/register", json={
@@ -80,11 +80,11 @@ class TestE2EWorkflows:
         assert js_response.status_code == 200
         js_token = js_response.json()["access_token"]
         js_headers = {"Authorization": f"Bearer {js_token}"}
-        
+
         # Track job seeker for cleanup
         js_me = await client.get("/api/users/me", headers=js_headers)
         test_cleaner.track_user(js_me.json()["id"], js_email)
-        
+
         # 5. Job seeker creates profile
         js_profile_response = await client.post(
             "/api/job-seeker-profiles",
@@ -102,7 +102,7 @@ class TestE2EWorkflows:
         assert js_profile_response.status_code == 201
         js_profile_id = js_profile_response.json()["id"]
         test_cleaner.track_profile(js_profile_id, "job_seeker")
-        
+
         # 6. Job seeker browses jobs (public)
         jobs_response = await client.get("/api/jobs")
         assert jobs_response.status_code in [200, 500]  # May fail with event loop issue in tests
@@ -111,7 +111,7 @@ class TestE2EWorkflows:
             job_found = any(job["id"] == job_id for job in jobs)
             # Job might not appear if posted as draft or inactive
             assert job_found or len(jobs) >= 0  # At least confirm list works
-        
+
         # 7. Job seeker applies
         application_response = await client.post(
             "/api/applications",
@@ -124,9 +124,9 @@ class TestE2EWorkflows:
         assert application_response.status_code == 201
         app_id = application_response.json()["id"]
         test_cleaner.track_application(app_id)
-        
+
         # === EMPLOYER REVIEWS ===
-        
+
         # 8. Employer views applications
         apps_response = await client.get("/api/applications", headers=emp_headers)
         assert apps_response.status_code == 200
@@ -134,12 +134,12 @@ class TestE2EWorkflows:
         assert len(applications) >= 1
         app_ids = [app["id"] for app in applications]
         assert app_id in app_ids
-        
+
         # 9. Employer views specific application
         app_detail = await client.get(f"/api/applications/{app_id}", headers=emp_headers)
         assert app_detail.status_code == 200
         assert app_detail.json()["job_id"] == job_id
-        
+
         # 10. Employer updates application status
         update_response = await client.put(
             f"/api/applications/{app_id}",
@@ -148,17 +148,17 @@ class TestE2EWorkflows:
         )
         assert update_response.status_code == 200
         assert update_response.json()["status"] == "interviewing"
-        
+
         # 11. Job seeker checks application status
         js_app_response = await client.get(f"/api/applications/{app_id}", headers=js_headers)
         assert js_app_response.status_code == 200
         assert js_app_response.json()["status"] == "interviewing"
-    
-    
+
+
     @pytest.mark.asyncio
     async def test_account_deletion_workflow(self, client: AsyncClient, test_cleaner):
         """Test that deleting account removes all associated data."""
-        
+
         # Register employer with full setup
         emp_email = f"delete_test_{ObjectId()}@example.com"
         emp_response = await client.post("/api/auth/register", json={
@@ -166,18 +166,18 @@ class TestE2EWorkflows:
             "password": "DeletePass123!",
             "account_type": "employer"
         })
-        
+
         if emp_response.status_code != 200:
             pytest.skip("Email confirmation required for testing")
-        
+
         emp_token = emp_response.json()["access_token"]
         emp_headers = {"Authorization": f"Bearer {emp_token}"}
-        
+
         # Get user ID
         me_response = await client.get("/api/users/me", headers=emp_headers)
         user_id = me_response.json()["id"]
         # Don't track - we're testing deletion
-        
+
         # Create profile
         profile_response = await client.post(
             "/api/employer-profiles",
@@ -191,7 +191,7 @@ class TestE2EWorkflows:
             }
         )
         profile_id = profile_response.json()["id"]
-        
+
         # Create job
         job_response = await client.post(
             "/api/jobs",
@@ -205,35 +205,35 @@ class TestE2EWorkflows:
             }
         )
         job_id = job_response.json()["id"]
-        
+
         # Delete account
         delete_response = await client.delete("/api/users/me", headers=emp_headers)
         assert delete_response.status_code == 204
-        
+
         # Verify profile is gone
         profile_check = await client.get(f"/api/employer-profiles/{profile_id}")
         assert profile_check.status_code == 404
-        
+
         # Verify job is gone or marked deleted
         job_check = await client.get(f"/api/jobs/{job_id}")
         assert job_check.status_code in [404, 410]  # Not Found or Gone
-        
+
         # Verify token no longer works
         token_check = await client.get("/api/users/me", headers=emp_headers)
         assert token_check.status_code == 401
-    
-    
+
+
     @pytest.mark.asyncio
     async def test_profile_update_workflow(self, client: AsyncClient, job_seeker_with_profile):
         """Test updating profile and viewing changes."""
         js_token, js_user_id, js_profile_id = job_seeker_with_profile
         js_headers = {"Authorization": f"Bearer {js_token}"}
-        
+
         # Get initial profile
         initial_response = await client.get(f"/api/job-seeker-profiles/{js_profile_id}")
         assert initial_response.status_code == 200
         initial_profile = initial_response.json()
-        
+
         # Update profile
         update_response = await client.put(
             f"/api/job-seeker-profiles/{js_profile_id}",
@@ -245,12 +245,12 @@ class TestE2EWorkflows:
         )
         assert update_response.status_code == 200
         updated_profile = update_response.json()
-        
+
         # Verify changes
         assert updated_profile["bio"] == "Updated bio for workflow test"
         assert len(updated_profile["skills"]) == 5
         assert "TypeScript" in updated_profile["skills"]
-        
+
         # Verify changes persist
         verify_response = await client.get(f"/api/job-seeker-profiles/{js_profile_id}")
         assert verify_response.status_code == 200

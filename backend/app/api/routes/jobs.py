@@ -1,8 +1,9 @@
-from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query, status, Depends
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from app.auth.dependencies import get_current_user, get_optional_user, require_employer
 from app.crud import job as job_crud
-from app.schemas.job import JobCreate, JobUpdate, JobResponse
-from app.auth.dependencies import require_employer, get_current_user, get_optional_user
+from app.schemas.job import JobCreate, JobResponse, JobUpdate
 
 router = APIRouter()
 
@@ -20,23 +21,23 @@ async def create_job(
     The job will be automatically linked to the authenticated employer.
     """
     job_data = job.model_dump()
-    
+
     # Use authenticated user's ID as posted_by
     created_job = await job_crud.create_job(job_data, posted_by=employer["id"])
-    
+
     return JobResponse(
         id=str(created_job["_id"]),
         **{k: v for k, v in created_job.items() if k != "_id"}
     )
 
 
-@router.get("", response_model=List[JobResponse])
+@router.get("", response_model=list[JobResponse])
 async def list_jobs(
     skip: int = Query(0, ge=0, description="Number of jobs to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of jobs to return"),
-    is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    posted_by: Optional[str] = Query(None, description="Filter by employer user ID"),
-    current_user: Optional[dict] = Depends(get_optional_user)
+    is_active: bool | None = Query(None, description="Filter by active status"),
+    posted_by: str | None = Query(None, description="Filter by employer user ID"),
+    current_user: dict | None = Depends(get_optional_user)
 ):
     """
     List all jobs with optional filters.
@@ -57,7 +58,7 @@ async def list_jobs(
     else:
         # For non-owners, only show active jobs
         jobs = await job_crud.get_jobs(skip=skip, limit=limit, is_active=True, posted_by=posted_by)
-    
+
     return [
         JobResponse(
             id=str(job["_id"]),
@@ -69,8 +70,8 @@ async def list_jobs(
 
 @router.get("/count")
 async def count_jobs(
-    is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    posted_by: Optional[str] = Query(None, description="Filter by employer user ID")
+    is_active: bool | None = Query(None, description="Filter by active status"),
+    posted_by: str | None = Query(None, description="Filter by employer user ID")
 ):
     """
     Get the total count of jobs.
@@ -82,18 +83,18 @@ async def count_jobs(
     return {"count": count}
 
 
-@router.get("/search", response_model=List[JobResponse])
+@router.get("/search", response_model=list[JobResponse])
 async def search_jobs(
-    query: Optional[str] = Query(None, description="Search text (title, description, company)"),
-    location: Optional[str] = Query(None, description="Location filter"),
-    job_type: Optional[str] = Query(None, description="Job type filter"),
-    remote_ok: Optional[bool] = Query(None, description="Remote work filter"),
-    skills: Optional[List[str]] = Query(None, description="Skills filter (any of these skills)"),
-    min_salary: Optional[int] = Query(None, ge=0, description="Minimum salary"),
-    max_salary: Optional[int] = Query(None, ge=0, description="Maximum salary"),
-    experience_required: Optional[str] = Query(None, description="Experience level required"),
-    industry: Optional[str] = Query(None, description="Industry filter"),
-    company_size: Optional[str] = Query(None, description="Company size filter"),
+    query: str | None = Query(None, description="Search text (title, description, company)"),
+    location: str | None = Query(None, description="Location filter"),
+    job_type: str | None = Query(None, description="Job type filter"),
+    remote_ok: bool | None = Query(None, description="Remote work filter"),
+    skills: list[str] | None = Query(None, description="Skills filter (any of these skills)"),
+    min_salary: int | None = Query(None, ge=0, description="Minimum salary"),
+    max_salary: int | None = Query(None, ge=0, description="Maximum salary"),
+    experience_required: str | None = Query(None, description="Experience level required"),
+    industry: str | None = Query(None, description="Industry filter"),
+    company_size: str | None = Query(None, description="Company size filter"),
     is_active: bool = Query(True, description="Filter by active status"),
     skip: int = Query(0, ge=0, description="Number of jobs to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of jobs to return")
@@ -128,7 +129,7 @@ async def search_jobs(
         skip=skip,
         limit=limit
     )
-    
+
     return [
         JobResponse(
             id=str(job["_id"]),
@@ -150,13 +151,13 @@ async def get_job(
     - **increment_views**: Set to true to increment the view counter
     """
     job = await job_crud.get_job_by_id(job_id, increment_views=increment_views)
-    
+
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job with id {job_id} not found"
         )
-    
+
     return JobResponse(
         id=str(job["_id"]),
         **{k: v for k, v in job.items() if k != "_id"}
@@ -185,7 +186,7 @@ async def update_job(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job with id {job_id} not found"
         )
-    
+
     # Check if user is the owner or admin
     from app.auth.utils import is_admin
     if existing_job.get("posted_by") != current_user["id"] and not is_admin(current_user):
@@ -193,17 +194,17 @@ async def update_job(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only update jobs you posted"
         )
-    
+
     # Update the job
     update_data = job_update.model_dump(exclude_unset=True)
     updated_job = await job_crud.update_job(job_id, update_data)
-    
+
     if not updated_job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job with id {job_id} not found"
         )
-    
+
     return JobResponse(
         id=str(updated_job["_id"]),
         **{k: v for k, v in updated_job.items() if k != "_id"}
@@ -228,7 +229,7 @@ async def delete_job(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job with id {job_id} not found"
         )
-    
+
     # Check if user is the owner or admin
     from app.auth.utils import is_admin
     if existing_job.get("posted_by") != current_user["id"] and not is_admin(current_user):
@@ -236,14 +237,13 @@ async def delete_job(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only delete jobs you posted"
         )
-    
+
     deleted = await job_crud.delete_job(job_id)
-    
+
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job with id {job_id} not found"
         )
-    
-    return None
+
 

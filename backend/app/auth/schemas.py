@@ -2,7 +2,8 @@
 Pydantic schemas for authentication endpoints.
 """
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -11,7 +12,7 @@ class UserSignUp(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, description="Password must be at least 8 characters")
     account_type: Literal["job_seeker", "employer"] = Field(..., description="Account type")
-    full_name: Optional[str] = Field(None, description="User's full name")
+    full_name: str | None = Field(None, description="User's full name")
 
 
 class UserSignIn(BaseModel):
@@ -33,10 +34,10 @@ class UserInfo(BaseModel):
     """Schema for user information."""
     id: str
     email: str
-    account_type: Optional[str] = None
+    account_type: str | None = None
     email_verified: bool = False
     provider: str = "email"
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
 
 
 class PasswordReset(BaseModel):
@@ -53,7 +54,7 @@ class CurrentUser(BaseModel):
     """Schema for current authenticated user."""
     id: str
     email: str
-    account_type: Optional[str] = None
+    account_type: str | None = None
     provider: str
     email_verified: bool
     role: str

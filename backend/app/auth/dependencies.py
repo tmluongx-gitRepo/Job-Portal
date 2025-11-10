@@ -1,18 +1,18 @@
 """
 FastAPI dependencies for authentication and authorization.
 """
-from typing import Optional
+
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.auth.utils import (
+    ExpiredTokenError,
+    InvalidTokenError,
     decode_supabase_jwt,
     extract_user_from_token,
-    InvalidTokenError,
-    ExpiredTokenError,
     is_admin,
-    is_job_seeker,
     is_employer,
+    is_job_seeker,
 )
 
 # HTTP Bearer token security scheme
@@ -43,14 +43,14 @@ async def get_current_user(
             return {"user_id": current_user["id"]}
     """
     token = credentials.credentials
-    
+
     try:
         # Decode and validate JWT token
         payload = decode_supabase_jwt(token)
-        
+
         # Extract user information
         user = extract_user_from_token(payload)
-        
+
         # Ensure user has required fields
         if not user.get("id") or not user.get("email"):
             raise HTTPException(
@@ -58,9 +58,9 @@ async def get_current_user(
                 detail="Invalid token payload",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
+
         return user
-        
+
     except ExpiredTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -73,7 +73,7 @@ async def get_current_user(
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -82,8 +82,8 @@ async def get_current_user(
 
 
 async def get_optional_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
-) -> Optional[dict]:
+    credentials: HTTPAuthorizationCredentials | None = Depends(HTTPBearer(auto_error=False))
+) -> dict | None:
     """
     Dependency to get current user if authenticated, None otherwise.
     
@@ -105,7 +105,7 @@ async def get_optional_user(
     """
     if not credentials:
         return None
-    
+
     try:
         token = credentials.credentials
         payload = decode_supabase_jwt(token)

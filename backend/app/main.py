@@ -15,7 +15,13 @@ from app.api.routes import (
 )
 from app.auth import routes as auth_routes
 from app.config import settings
-from app.database import close_mongo_client, get_chroma_client, ping_mongo, ping_redis
+from app.database import (
+    close_mongo_client,
+    get_chroma_client,
+    init_db_indexes,
+    ping_mongo,
+    ping_redis,
+)
 
 
 @asynccontextmanager
@@ -37,6 +43,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     try:
         await ping_mongo()
         print("✅ Connected to MongoDB")
+        # Initialize indexes
+        await init_db_indexes()
     except ConnectionError as e:
         # User-friendly error for configuration issues
         print(f"⚠️  MongoDB: {e}")
@@ -62,7 +70,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     try:
         from app.auth.supabase_client import supabase
         if supabase:
-            print(f"✅ Supabase authentication configured")
+            print("✅ Supabase authentication configured")
             print(f"✅ Supabase URL: {settings.SUPABASE_URL}")
         else:
             print("⚠️  Supabase: Not configured (set SUPABASE_URL and keys in .env)")

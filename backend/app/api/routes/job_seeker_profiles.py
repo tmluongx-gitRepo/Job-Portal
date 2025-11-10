@@ -1,17 +1,16 @@
 """
 Job Seeker Profile API routes.
 """
-from typing import Optional
-from fastapi import APIRouter, HTTPException, status, Query, Depends
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from app.auth.dependencies import get_current_user, get_optional_user, require_job_seeker
+from app.crud import job_seeker_profile as profile_crud
 from app.schemas.job_seeker import (
     JobSeekerProfileCreate,
+    JobSeekerProfileResponse,
     JobSeekerProfileUpdate,
-    JobSeekerProfileResponse
 )
-from app.crud import job_seeker_profile as profile_crud
-from app.auth.dependencies import require_job_seeker, get_current_user, get_optional_user
-
 
 router = APIRouter()
 
@@ -37,16 +36,16 @@ async def create_profile(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="You already have a job seeker profile"
             )
-        
+
         # Convert to dict and remove None values
         profile_data = profile.model_dump(exclude={"user_id"}, exclude_none=True)
-        
+
         # Use authenticated user's ID
         created_profile = await profile_crud.create_profile(
             user_id=job_seeker["id"],
             profile_data=profile_data
         )
-        
+
         return JobSeekerProfileResponse(
             id=str(created_profile["_id"]),
             user_id=str(created_profile["user_id"]),
@@ -60,7 +59,7 @@ async def create_profile(
 async def get_profiles(
     skip: int = 0,
     limit: int = 100,
-    current_user: Optional[dict] = Depends(get_optional_user)
+    current_user: dict | None = Depends(get_optional_user)
 ):
     """
     Get all job seeker profiles.
@@ -68,7 +67,7 @@ async def get_profiles(
     **Public endpoint** - Employers can browse candidates
     """
     profiles = await profile_crud.get_profiles(skip=skip, limit=limit)
-    
+
     return [
         JobSeekerProfileResponse(
             id=str(profile["_id"]),
@@ -97,7 +96,7 @@ async def search_profiles(
         skip=skip,
         limit=limit
     )
-    
+
     return [
         JobSeekerProfileResponse(
             id=str(profile["_id"]),
@@ -112,15 +111,15 @@ async def search_profiles(
 async def get_profile(profile_id: str, increment_views: bool = Query(False)):
     """Get profile by ID."""
     profile = await profile_crud.get_profile_by_id(profile_id)
-    
+
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
-    
+
     # Optionally increment view count
     if increment_views:
         await profile_crud.increment_profile_views(profile_id)
         profile["profile_views"] = profile.get("profile_views", 0) + 1
-    
+
     return JobSeekerProfileResponse(
         id=str(profile["_id"]),
         user_id=str(profile["user_id"]),
@@ -132,10 +131,10 @@ async def get_profile(profile_id: str, increment_views: bool = Query(False)):
 async def get_profile_by_user(user_id: str):
     """Get profile by user ID."""
     profile = await profile_crud.get_profile_by_user_id(user_id)
-    
+
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found for this user")
-    
+
     return JobSeekerProfileResponse(
         id=str(profile["_id"]),
         user_id=str(profile["user_id"]),
@@ -159,7 +158,7 @@ async def update_profile(
     existing_profile = await profile_crud.get_profile_by_id(profile_id)
     if not existing_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
-    
+
     # Check ownership
     from app.auth.utils import is_admin
     if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
@@ -167,18 +166,18 @@ async def update_profile(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only update your own profile"
         )
-    
+
     # Build update dict (only include provided fields)
     update_data = profile_update.model_dump(exclude_unset=True)
-    
+
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
-    
+
     updated_profile = await profile_crud.update_profile(profile_id, update_data)
-    
+
     if not updated_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
-    
+
     return JobSeekerProfileResponse(
         id=str(updated_profile["_id"]),
         user_id=str(updated_profile["user_id"]),
@@ -201,7 +200,7 @@ async def delete_profile(
     existing_profile = await profile_crud.get_profile_by_id(profile_id)
     if not existing_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
-    
+
     # Check ownership
     from app.auth.utils import is_admin
     if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
@@ -209,11 +208,10 @@ async def delete_profile(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only delete your own profile"
         )
-    
+
     deleted = await profile_crud.delete_profile(profile_id)
-    
+
     if not deleted:
         raise HTTPException(status_code=404, detail="Profile not found")
-    
-    return None
+
 

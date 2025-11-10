@@ -1,27 +1,20 @@
 """
 Authentication utilities for JWT token validation and user extraction.
 """
-from datetime import datetime
-from typing import Optional
 import jwt
 from jwt import PyJWTError
-
-from app.config import settings
 
 
 class AuthenticationError(Exception):
     """Base authentication error."""
-    pass
 
 
 class InvalidTokenError(AuthenticationError):
     """Raised when token is invalid."""
-    pass
 
 
 class ExpiredTokenError(AuthenticationError):
     """Raised when token has expired."""
-    pass
 
 
 def decode_supabase_jwt(token: str) -> dict:
@@ -49,22 +42,22 @@ def decode_supabase_jwt(token: str) -> dict:
             options={"verify_signature": False},  # Trust Supabase's validation
             algorithms=["HS256"]
         )
-        
+
         # Check if token is expired
         if "exp" in payload:
             from datetime import datetime
             exp_timestamp = payload["exp"]
             if datetime.utcnow().timestamp() > exp_timestamp:
                 raise ExpiredTokenError("Token has expired")
-        
+
         return payload
-        
+
     except jwt.ExpiredSignatureError:
         raise ExpiredTokenError("Token has expired")
     except jwt.InvalidTokenError:
         raise InvalidTokenError("Invalid token")
     except PyJWTError as e:
-        raise InvalidTokenError(f"Token validation failed: {str(e)}")
+        raise InvalidTokenError(f"Token validation failed: {e!s}")
 
 
 def extract_user_from_token(payload: dict) -> dict:
@@ -85,7 +78,7 @@ def extract_user_from_token(payload: dict) -> dict:
     """
     user_metadata = payload.get("user_metadata", {})
     app_metadata = payload.get("app_metadata", {})
-    
+
     return {
         "id": payload.get("sub"),
         "email": payload.get("email"),
@@ -97,7 +90,7 @@ def extract_user_from_token(payload: dict) -> dict:
     }
 
 
-def validate_account_type(account_type: Optional[str]) -> bool:
+def validate_account_type(account_type: str | None) -> bool:
     """
     Validate account type value.
     
