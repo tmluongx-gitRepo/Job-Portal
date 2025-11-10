@@ -1,5 +1,6 @@
-import Link from 'next/link';
+import Link from "next/link";
 
+import { type ReactElement } from "react";
 import {
   Heart,
   Users,
@@ -10,9 +11,9 @@ import {
   Zap,
   Globe,
   ArrowRight,
-} from 'lucide-react';
+} from "lucide-react";
 
-export default function AboutPage() {
+export default function AboutPage(): ReactElement {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-green-100">
       {/* Hero Section */}
@@ -26,9 +27,9 @@ export default function AboutPage() {
               Redefining How We Think About Work
             </h1>
             <p className="text-xl text-green-700 max-w-3xl mx-auto leading-relaxed">
-              Career Harmony was born from a simple belief: every person deserves
-              dignity in their job search, and every company deserves to find
-              talent that truly fits their culture and values.
+              Career Harmony was born from a simple belief: every person
+              deserves dignity in their job search, and every company deserves
+              to find talent that truly fits their culture and values.
             </p>
           </div>
 
@@ -44,8 +45,8 @@ export default function AboutPage() {
                 requirements, but values, culture, and life goals. By providing
                 smarter, more intuitive tools, we make hiring more efficient for
                 employers while creating a more dignified experience for job
-                seekers. Career Harmony is where meaningful work meets meaningful
-                lives.
+                seekers. Career Harmony is where meaningful work meets
+                meaningful lives.
               </p>
             </div>
           </div>
@@ -149,8 +150,9 @@ export default function AboutPage() {
                 Sustainable Growth
               </h3>
               <p className="text-green-700">
-                We support career paths that are sustainable for both individuals
-                and organizations, focusing on long-term success over quick fixes.
+                We support career paths that are sustainable for both
+                individuals and organizations, focusing on long-term success
+                over quick fixes.
               </p>
             </div>
           </div>
@@ -185,7 +187,8 @@ export default function AboutPage() {
                     </h4>
                     <p className="text-green-700 text-sm">
                       Our interface reminds you of your worth, not your
-                      deficiencies. Supportive messaging throughout your journey.
+                      deficiencies. Supportive messaging throughout your
+                      journey.
                     </p>
                   </div>
                 </div>
@@ -258,8 +261,8 @@ export default function AboutPage() {
                 Career Harmony was created by people who experienced the
                 traditional job search process and knew there had to be a better
                 way. We saw talented individuals lose confidence in systems that
-                seemed designed to highlight their inadequacies rather than their
-                potential.
+                seemed designed to highlight their inadequacies rather than
+                their potential.
               </p>
 
               <p className="text-green-700 text-lg leading-relaxed mb-6">
@@ -271,9 +274,9 @@ export default function AboutPage() {
 
               <p className="text-green-700 text-lg leading-relaxed">
                 So we decided to build something different. A platform that
-                remembers we&apos;re all human beings seeking meaningful work and
-                meaningful connections. Career Harmony isn&apos;t just about finding
-                a job—it&apos;s about finding where you belong.
+                remembers we&apos;re all human beings seeking meaningful work
+                and meaningful connections. Career Harmony isn&apos;t just about
+                finding a job—it&apos;s about finding where you belong.
               </p>
             </div>
           </div>
@@ -288,8 +291,8 @@ export default function AboutPage() {
               Ready to Experience the Difference?
             </h2>
             <p className="text-xl mb-8 text-green-100">
-              Join a community that believes in the dignity and potential of every
-              person.
+              Join a community that believes in the dignity and potential of
+              every person.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
@@ -313,4 +316,3 @@ export default function AboutPage() {
     </div>
   );
 }
-

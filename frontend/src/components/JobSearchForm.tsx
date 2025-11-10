@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState, type FormEvent, type ReactElement } from "react";
 
-import { Search, Target } from 'lucide-react';
+import { Search, Target } from "lucide-react";
 
-export default function JobSearchForm(): React.ReactElement {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [location, setLocation] = useState('');
+export default function JobSearchForm(): ReactElement {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [location, setLocation] = useState("");
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: FormEvent): void => {
     e.preventDefault();
     // TODO: Implement search functionality
-    console.log('Search:', { searchTerm, location });
+    console.log("Search:", { searchTerm, location });
   };
 
   return (
@@ -27,7 +27,7 @@ export default function JobSearchForm(): React.ReactElement {
             className="w-full pl-12 pr-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent text-lg bg-white/80"
           />
         </div>
-        
+
         <div className="flex-1 relative">
           <input
             type="text"
@@ -37,8 +37,8 @@ export default function JobSearchForm(): React.ReactElement {
             className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent text-lg bg-white/80"
           />
         </div>
-        
-        <button 
+
+        <button
           type="submit"
           className="bg-gradient-to-r from-green-600 to-green-700 text-white px-8 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all flex items-center shadow-sm"
         >
@@ -49,4 +49,3 @@ export default function JobSearchForm(): React.ReactElement {
     </div>
   );
 }
-

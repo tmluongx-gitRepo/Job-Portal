@@ -1,5 +1,4 @@
-import React from 'react';
-
+import { type ReactElement } from "react";
 
 interface JobCardProps {
   title: string;
@@ -12,16 +11,16 @@ interface JobCardProps {
   iconColor?: string;
 }
 
-export default function JobCard({ 
-  title, 
-  company, 
-  location, 
-  salary, 
-  description, 
-  tags, 
+export default function JobCard({
+  title,
+  company,
+  location,
+  salary,
+  description,
+  tags,
   icon: Icon,
-  iconColor = 'text-green-600'
-}: JobCardProps) {
+  iconColor = "text-green-600",
+}: JobCardProps): ReactElement {
   return (
     <div className="bg-white/80 backdrop-blur-sm border border-green-200 rounded-xl shadow-sm hover:shadow-md transition-all p-6 hover:border-green-300">
       <div className="flex items-start space-x-4 mb-4">
@@ -38,7 +37,7 @@ export default function JobCard({
       <p className="text-green-700 mb-4">{description}</p>
       <div className="flex flex-wrap gap-2 mb-4">
         {tags.map((tag, index) => (
-          <span 
+          <span
             key={index}
             className="bg-gradient-to-r from-green-100 to-amber-100 text-green-800 px-3 py-1 rounded-full text-sm border border-green-200"
           >
@@ -52,4 +51,3 @@ export default function JobCard({
     </div>
   );
 }
-

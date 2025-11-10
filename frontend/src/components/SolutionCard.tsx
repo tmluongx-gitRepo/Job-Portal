@@ -1,5 +1,4 @@
-import React from 'react';
-
+import { type ReactElement } from "react";
 
 interface SolutionCardProps {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
@@ -9,13 +8,13 @@ interface SolutionCardProps {
   iconColor?: string;
 }
 
-export default function SolutionCard({ 
-  icon: Icon, 
-  title, 
-  description, 
+export default function SolutionCard({
+  icon: Icon,
+  title,
+  description,
   note,
-  iconColor = 'text-green-600'
-}: SolutionCardProps) {
+  iconColor = "text-green-600",
+}: SolutionCardProps): ReactElement {
   return (
     <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow-sm border border-green-200 p-8 hover:shadow-md transition-all">
       <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-amber-100 rounded-xl flex items-center justify-center mb-6">
@@ -27,4 +26,3 @@ export default function SolutionCard({
     </div>
   );
 }
-

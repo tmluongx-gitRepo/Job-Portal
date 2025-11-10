@@ -1,8 +1,8 @@
+import { type ReactElement } from "react";
 import Link from "next/link";
 import { Leaf } from "lucide-react";
 
-
-export default function Footer(): React.ReactElement {
+export default function Footer(): ReactElement {
   return (
     <footer className="bg-green-950 text-white py-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">

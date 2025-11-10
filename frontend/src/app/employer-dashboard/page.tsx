@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 
 import {
   Building2,
@@ -143,7 +143,7 @@ const healthyReminders = [
   "Your hiring process reflects your company values—make it count.",
 ];
 
-const getStatusBadge = (status: string) => {
+const getStatusBadge = (status: string): { bg: string; text: string } => {
   const statusConfig: Record<string, { bg: string; text: string }> = {
     Active: { bg: "bg-green-100", text: "text-green-800" },
     Paused: { bg: "bg-yellow-100", text: "text-yellow-800" },
@@ -155,7 +155,7 @@ const getStatusBadge = (status: string) => {
   return statusConfig[status] || { bg: "bg-gray-100", text: "text-gray-800" };
 };
 
-export default function EmployerDashboard() {
+export default function EmployerDashboard(): ReactElement {
   const [selectedCompany, setSelectedCompany] = useState("all");
   const [currentReminder, setCurrentReminder] = useState(healthyReminders[0]);
 

@@ -1,32 +1,37 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import {
+  useState,
+  type FormEvent,
+  type ChangeEvent,
+  type ReactElement,
+} from "react";
 
-import Link from 'next/link';
-import { Mail, Lock, Eye, EyeOff, Heart } from 'lucide-react';
+import Link from "next/link";
+import { Mail, Lock, Eye, EyeOff, Heart } from "lucide-react";
 
-export default function LoginPage(): React.ReactElement {
+export default function LoginPage(): ReactElement {
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    rememberMe: false
+    email: "",
+    password: "",
+    rememberMe: false,
   });
-  
+
   const [showPassword, setShowPassword] = useState(false);
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent): void => {
     e.preventDefault();
     // TODO: Implement login functionality
-    console.log('Login submitted:', formData);
-    alert('Welcome back to Career Harmony! 🌱');
+    console.log("Login submitted:", formData);
+    alert("Welcome back to Career Harmony! 🌱");
   };
 
   return (
@@ -118,8 +123,11 @@ export default function LoginPage(): React.ReactElement {
                   />
                   <span className="text-sm text-green-700">Remember me</span>
                 </label>
-                
-                <Link href="/forgot-password" className="text-sm text-green-700 hover:text-green-800 underline transition-colors">
+
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-green-700 hover:text-green-800 underline transition-colors"
+                >
                   Forgot password?
                 </Link>
               </div>
@@ -137,8 +145,11 @@ export default function LoginPage(): React.ReactElement {
             {/* Sign-up link */}
             <div className="mt-6 text-center">
               <p className="text-sm text-green-700">
-                New to Career Harmony?{' '}
-                <Link href="/signup" className="font-medium text-green-800 underline hover:text-green-900 transition-colors">
+                New to Career Harmony?{" "}
+                <Link
+                  href="/signup"
+                  className="font-medium text-green-800 underline hover:text-green-900 transition-colors"
+                >
                   Join our community
                 </Link>
               </p>
@@ -152,9 +163,11 @@ export default function LoginPage(): React.ReactElement {
                 <Heart className="w-4 h-4 text-green-600" />
               </div>
             </div>
-            <h3 className="font-semibold text-green-800 mb-2">Welcome Back to Your Journey</h3>
+            <h3 className="font-semibold text-green-800 mb-2">
+              Welcome Back to Your Journey
+            </h3>
             <p className="text-sm text-green-700">
-              Ready to continue building a career that honors your whole self? 
+              Ready to continue building a career that honors your whole self?
               Your community is here to support your growth.
             </p>
           </div>
@@ -163,4 +176,3 @@ export default function LoginPage(): React.ReactElement {
     </div>
   );
 }
-
