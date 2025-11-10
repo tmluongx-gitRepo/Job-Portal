@@ -38,7 +38,7 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Run MyPy type checking
-        run: uv run mypy app/ --config-file=pyproject.toml
+        run: uv run mypy .
 
       - name: Run pytest
         run: |

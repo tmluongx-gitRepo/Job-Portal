@@ -17,7 +17,7 @@ redis==7.0.1
 python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.20
-email-validator==2.2.0
+email-validator==2.3.0
 
 # Utilities
 python-dotenv==1.0.1
@@ -28,3 +28,5 @@ pytest==8.3.4
 pytest-asyncio==0.24.0
 ruff==0.8.4
 mypy==1.13.0
+types-redis==4.6.0.20241004
+types-passlib==1.7.7.20250602

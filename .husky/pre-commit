@@ -101,7 +101,7 @@ if [ -n "$BACKEND_CHANGED" ]; then
     require_backend_env
     run_backend "uv run ruff check ."
     run_backend "uv run ruff format --check ."
-    run_backend "uv run mypy app/ --config-file=pyproject.toml"
+    run_backend "uv run mypy ."
 fi
 
 echo "✅ Pre-commit checks passed!"

@@ -103,7 +103,7 @@ async def ping_redis() -> dict[str, str]:
             "mode": info.get("redis_mode", "standalone"),
         }
     finally:
-        await redis.aclose()
+        await redis.aclose()  # type: ignore[attr-defined]
 
 
 # MongoDB Collection Helpers
