@@ -16,7 +16,7 @@ from app.schemas.recommendation import (
     RecommendationResponse,
     RecommendationUpdate,
 )
-from app.types import RecommendationDocument
+from app.type_definitions import RecommendationDocument
 
 router = APIRouter()
 
@@ -131,7 +131,7 @@ async def get_recommendations_for_job_seeker(
     Returns recommendations sorted by match percentage (highest first) with full job details.
     """
     # Verify user can access these recommendations
-    from app.auth.utils import is_admin
+    from app.auth.auth_utils import is_admin
 
     if not is_admin(current_user):
         # Get user's job seeker profile
@@ -258,7 +258,7 @@ async def get_recommendation(
         )
 
     # Verify ownership
-    from app.auth.utils import is_admin
+    from app.auth.auth_utils import is_admin
 
     if not is_admin(current_user):
         profile = await profile_crud.get_profile_by_user_id(current_user["id"])

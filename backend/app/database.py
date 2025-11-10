@@ -149,10 +149,14 @@ def get_saved_jobs_collection() -> AsyncIOMotorCollection:
     return db["saved_jobs"]
 
 
-async def init_db_indexes() -> None:
-    """Initialize all database indexes."""
+def get_resumes_collection() -> AsyncIOMotorCollection:
+    """Get resumes collection from MongoDB."""
     db = get_mongo_database()
+    return db["resumes"]
 
+
+async def _init_user_indexes(db: Any) -> None:
+    """Initialize indexes for users and profiles."""
     # Users collection indexes
     users = db["users"]
     await users.create_index("email", unique=True)
@@ -179,6 +183,9 @@ async def init_db_indexes() -> None:
     await employer_profiles.create_index("location")
     await employer_profiles.create_index([("created_at", -1)])
 
+
+async def _init_job_indexes(db: Any) -> None:
+    """Initialize indexes for jobs and applications."""
     # Jobs collection indexes
     jobs = db["jobs"]
     await jobs.create_index("posted_by")
@@ -208,6 +215,9 @@ async def init_db_indexes() -> None:
     )  # Prevent duplicate applications
     await applications.create_index([("job_id", 1), ("status", 1)])
 
+
+async def _init_feature_indexes(db: Any) -> None:
+    """Initialize indexes for recommendations, saved jobs, and resumes."""
     # Recommendations collection indexes
     recommendations = db["recommendations"]
     await recommendations.create_index("job_seeker_id")
@@ -224,3 +234,16 @@ async def init_db_indexes() -> None:
     await saved_jobs.create_index(
         [("job_seeker_id", 1), ("job_id", 1)], unique=True
     )  # Prevent duplicate saves
+
+    # Resumes collection indexes
+    resumes = db["resumes"]
+    await resumes.create_index("job_seeker_id", unique=True)  # One resume per user
+    await resumes.create_index([("uploaded_at", -1)])
+
+
+async def init_db_indexes() -> None:
+    """Initialize all database indexes."""
+    db = get_mongo_database()
+    await _init_user_indexes(db)
+    await _init_job_indexes(db)
+    await _init_feature_indexes(db)

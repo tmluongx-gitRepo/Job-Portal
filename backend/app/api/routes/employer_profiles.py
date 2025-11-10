@@ -13,7 +13,7 @@ from app.schemas.employer import (
     EmployerProfileResponse,
     EmployerProfileUpdate,
 )
-from app.types import EmployerProfileDocument
+from app.type_definitions import EmployerProfileDocument
 
 router = APIRouter()
 
@@ -154,7 +154,7 @@ async def update_profile(
         raise HTTPException(status_code=404, detail="Employer profile not found")
 
     # Check ownership
-    from app.auth.utils import is_admin
+    from app.auth.auth_utils import is_admin
 
     if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
@@ -188,7 +188,7 @@ async def delete_profile(profile_id: str, current_user: dict = Depends(get_curre
         raise HTTPException(status_code=404, detail="Employer profile not found")
 
     # Check ownership
-    from app.auth.utils import is_admin
+    from app.auth.auth_utils import is_admin
 
     if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
         raise HTTPException(

@@ -169,3 +169,16 @@ class SavedJobDocument(TypedDict):
     notes: NotRequired[str]
     saved_date: datetime
     created_at: datetime
+
+
+class ResumeDocument(TypedDict):
+    """MongoDB Resume document structure."""
+
+    _id: ObjectId
+    job_seeker_id: str
+    dropbox_path: str
+    original_filename: str
+    uploaded_at: datetime
+    content_type: str
+    created_at: datetime
+    updated_at: datetime

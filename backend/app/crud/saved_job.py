@@ -8,7 +8,7 @@ from typing import cast
 from bson import ObjectId
 
 from app.database import get_jobs_collection, get_saved_jobs_collection
-from app.types import SavedJobDocument
+from app.type_definitions import SavedJobDocument
 
 
 async def create_saved_job(

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.auth.dependencies import get_current_user, get_optional_user, require_employer
 from app.crud import job as job_crud
 from app.schemas.job import JobCreate, JobResponse, JobUpdate
-from app.types import JobDocument
+from app.type_definitions import JobDocument
 
 router = APIRouter()
 
@@ -205,7 +205,7 @@ async def update_job(
         )
 
     # Check if user is the owner or admin
-    from app.auth.utils import is_admin
+    from app.auth.auth_utils import is_admin
 
     if existing_job.get("posted_by") != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
@@ -240,7 +240,7 @@ async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)
         )
 
     # Check if user is the owner or admin
-    from app.auth.utils import is_admin
+    from app.auth.auth_utils import is_admin
 
     if existing_job.get("posted_by") != current_user["id"] and not is_admin(current_user):
         raise HTTPException(

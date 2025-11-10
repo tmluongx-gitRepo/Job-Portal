@@ -12,7 +12,7 @@ from app.schemas.application import (
     ApplicationUpdate,
     StatusHistoryEntrySchema,
 )
-from app.types import ApplicationDocument
+from app.type_definitions import ApplicationDocument
 
 router = APIRouter()
 
@@ -146,7 +146,7 @@ async def list_applications(
     - **job_id**: Filter by job ID
     - **status**: Filter by application status
     """
-    from app.auth.utils import is_admin, is_employer, is_job_seeker
+    from app.auth.auth_utils import is_admin, is_employer, is_job_seeker
 
     # Admins can see all applications with any filter
     if is_admin(current_user):
@@ -245,7 +245,7 @@ async def get_application(
         )
 
     # Check authorization
-    from app.auth.utils import is_admin, is_job_seeker
+    from app.auth.auth_utils import is_admin, is_job_seeker
 
     if not is_admin(current_user):
         # Get job seeker profile if user is job seeker
@@ -297,7 +297,7 @@ async def update_application(
         )
 
     # Check authorization
-    from app.auth.utils import is_admin, is_job_seeker
+    from app.auth.auth_utils import is_admin, is_job_seeker
 
     if not is_admin(current_user):
         # Get job seeker profile if user is job seeker
@@ -362,7 +362,7 @@ async def delete_application(
         )
 
     # Check authorization - only applicant or admin can delete
-    from app.auth.utils import is_admin
+    from app.auth.auth_utils import is_admin
 
     if not is_admin(current_user):
         # Verify user owns the job seeker profile that applied

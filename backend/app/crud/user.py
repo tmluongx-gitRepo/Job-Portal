@@ -8,7 +8,7 @@ from typing import cast
 from bson import ObjectId
 
 from app.database import get_users_collection
-from app.types import UserDocument
+from app.type_definitions import UserDocument
 
 
 async def create_user(email: str, account_type: str = "job_seeker") -> UserDocument:

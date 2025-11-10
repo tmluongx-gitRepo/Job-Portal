@@ -6,11 +6,11 @@ from collections.abc import Iterable
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.auth.auth_utils import is_admin
 from app.auth.dependencies import get_current_user, require_job_seeker
-from app.auth.utils import is_admin
 from app.crud import saved_job as saved_job_crud
 from app.schemas.saved_job import SavedJobCreate, SavedJobResponse, SavedJobUpdate
-from app.types import SavedJobDocument
+from app.type_definitions import SavedJobDocument
 
 router = APIRouter()
 

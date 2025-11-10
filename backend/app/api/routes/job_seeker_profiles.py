@@ -14,12 +14,12 @@ from app.schemas.job_seeker import (
     JobSeekerProfileResponse,
     JobSeekerProfileUpdate,
 )
-from app.types import JobSeekerProfileDocument
+from app.type_definitions import JobSeekerProfileDocument
 
 router = APIRouter()
 
 
-def _serialize_profile(document: JobSeekerProfileDocument) -> JobSeekerProfileResponse:
+async def _serialize_profile(document: JobSeekerProfileDocument) -> JobSeekerProfileResponse:
     """Convert a database document to the response schema."""
     first_name = document.get("first_name", "")
     last_name = document.get("last_name", "")
@@ -30,12 +30,21 @@ def _serialize_profile(document: JobSeekerProfileDocument) -> JobSeekerProfileRe
     skills = document.get("skills", [])
     experience_years = document.get("experience_years", 0)
     education_level = document.get("education_level")
-    resume_file_url = document.get("resume_file_url")
-    resume_file_name = document.get("resume_file_name")
     preferences_data = document.get("preferences")
     preferences = JobSeekerPreferencesSchema(**preferences_data) if preferences_data else None
     profile_views = document.get("profile_views", 0)
     profile_completion_percentage = document.get("profile_completion_percentage")
+
+    # Populate resume fields from resumes collection
+    resume_file_url = None
+    resume_file_name = None
+
+    from app.crud import resume as resume_crud
+
+    resume = await resume_crud.get_resume_by_job_seeker(str(document["user_id"]))
+    if resume:
+        resume_file_url = f"/api/resumes/{resume['_id']}/download"
+        resume_file_name = resume["original_filename"]
 
     return JobSeekerProfileResponse(
         id=str(document["_id"]),
@@ -59,11 +68,11 @@ def _serialize_profile(document: JobSeekerProfileDocument) -> JobSeekerProfileRe
     )
 
 
-def _serialize_profiles(
+async def _serialize_profiles(
     documents: Iterable[JobSeekerProfileDocument],
 ) -> list[JobSeekerProfileResponse]:
     """Convert multiple job seeker profile documents into API response schemas."""
-    return [_serialize_profile(doc) for doc in documents]
+    return [await _serialize_profile(doc) for doc in documents]
 
 
 @router.post("", response_model=JobSeekerProfileResponse, status_code=status.HTTP_201_CREATED)
@@ -95,7 +104,7 @@ async def create_profile(
             user_id=job_seeker["id"], profile_data=profile_data
         )
 
-        return _serialize_profile(created_profile)
+        return await _serialize_profile(created_profile)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -111,7 +120,7 @@ async def get_profiles(
     """
     profiles = await profile_crud.get_profiles(skip=skip, limit=limit)
 
-    return _serialize_profiles(profiles)
+    return await _serialize_profiles(profiles)
 
 
 @router.get("/search", response_model=list[JobSeekerProfileResponse])
@@ -133,7 +142,7 @@ async def search_profiles(
         limit=limit,
     )
 
-    return _serialize_profiles(profiles)
+    return await _serialize_profiles(profiles)
 
 
 @router.get("/{profile_id}", response_model=JobSeekerProfileResponse)
@@ -151,7 +160,7 @@ async def get_profile(
         await profile_crud.increment_profile_views(profile_id)
         profile["profile_views"] = profile.get("profile_views", 0) + 1
 
-    return _serialize_profile(profile)
+    return await _serialize_profile(profile)
 
 
 @router.get("/user/{user_id}", response_model=JobSeekerProfileResponse)
@@ -162,7 +171,7 @@ async def get_profile_by_user(user_id: str) -> JobSeekerProfileResponse:
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found for this user")
 
-    return _serialize_profile(profile)
+    return await _serialize_profile(profile)
 
 
 @router.put("/{profile_id}", response_model=JobSeekerProfileResponse)
@@ -183,7 +192,7 @@ async def update_profile(
         raise HTTPException(status_code=404, detail="Profile not found")
 
     # Check ownership
-    from app.auth.utils import is_admin
+    from app.auth.auth_utils import is_admin
 
     if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
@@ -201,7 +210,7 @@ async def update_profile(
     if not updated_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    return _serialize_profile(updated_profile)
+    return await _serialize_profile(updated_profile)
 
 
 @router.delete("/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -218,7 +227,7 @@ async def delete_profile(profile_id: str, current_user: dict = Depends(get_curre
         raise HTTPException(status_code=404, detail="Profile not found")
 
     # Check ownership
-    from app.auth.utils import is_admin
+    from app.auth.auth_utils import is_admin
 
     if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
         raise HTTPException(

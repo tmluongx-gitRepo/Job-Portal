@@ -6,8 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.auth.dependencies import get_current_user
-from app.auth.schemas import (
+from app.auth.auth_schemas import (
     CurrentUser,
     MessageResponse,
     PasswordReset,
@@ -17,6 +16,7 @@ from app.auth.schemas import (
     UserSignIn,
     UserSignUp,
 )
+from app.auth.dependencies import get_current_user
 from app.auth.supabase_client import supabase
 
 router = APIRouter()

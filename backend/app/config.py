@@ -2,10 +2,9 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Find .env file - check backend dir first, then project root
-ENV_FILE = Path(__file__).parent.parent / ".env"
-if not ENV_FILE.exists():
-    ENV_FILE = Path(__file__).parent.parent.parent / ".env"
+# Find .env file in project root directory
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent  # Job-Portal/
+ENV_FILE = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
@@ -37,6 +36,11 @@ class Settings(BaseSettings):
     # Supabase Authentication
     SUPABASE_URL: str = ""
     SUPABASE_ANON_KEY: str = ""
+
+    # Dropbox File Storage
+    DROPBOX_APP_KEY: str = ""
+    DROPBOX_APP_SECRET: str = ""
+    DROPBOX_ACCESS_TOKEN: str = ""
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://frontend:3000"]

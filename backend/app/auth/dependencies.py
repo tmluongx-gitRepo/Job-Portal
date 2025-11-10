@@ -5,7 +5,7 @@ FastAPI dependencies for authentication and authorization.
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.auth.utils import (
+from app.auth.auth_utils import (
     ExpiredTokenError,
     InvalidTokenError,
     decode_supabase_jwt,
