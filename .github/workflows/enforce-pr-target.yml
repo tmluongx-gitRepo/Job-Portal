@@ -38,21 +38,20 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## ❌ Pull Request Target Error
+              body: \`## ❌ Pull Request Target Error
 
+            This PR is targeting the \\\`main\\\` branch, which is not allowed.
 
+            ### Required Workflow
+            All pull requests must target the \\\`dev\\\` branch first:
+            1. ✅ Feature branches → \\\`dev\\\`
+            2. ✅ After testing in \\\`dev\\\`, maintainers merge \\\`dev\\\` → \\\`main\\\`
 
-### Required Workflow
-#This PR is targeting the \`main\` branch, which is not allowed.
-#All pull requests must target the \`dev\` branch first:
-# 1. ✅ Feature branches → \`dev\`
-# 2. ✅ After testing in \`dev\`, maintainers merge \`dev\` → \`main\`
+            ### How to Fix
+            You can change the target branch of this PR:
+            1. Click the **"Edit"** button next to the PR title
+            2. Change the **base branch** from \\\`main\\\` to \\\`dev\\\`
+            3. The checks will automatically re-run
 
-# ### How to Fix
-# You can change the target branch of this PR:
-# 1. Click the **"Edit"** button next to the PR title
-# 2. Change the **base branch** from \`main\` to \`dev\`
-# 3. The checks will automatically re-run
-
-# Or close this PR and create a new one targeting \`dev\`.`
-#             })
+            Or close this PR and create a new one targeting \\\`dev\\\`.\`
+            })
