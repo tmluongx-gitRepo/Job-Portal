@@ -1,4 +1,3 @@
-import { type ReactElement } from "react";
 import type { Metadata } from "next";
 
 import "./globals.css";
@@ -10,11 +9,12 @@ export const metadata: Metadata = {
   description: "Find your dream job that honors your whole self",
 };
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
-}>): ReactElement {
+}>) {
   return (
     <html lang="en">
       <body className="antialiased">
