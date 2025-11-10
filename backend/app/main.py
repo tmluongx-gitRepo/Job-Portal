@@ -11,6 +11,7 @@ from app.api.routes import (
     job_seeker_profiles,
     jobs,
     recommendations,
+    saved_jobs,
     users,
 )
 from app.auth import routes as auth_routes
@@ -115,6 +116,7 @@ app.include_router(
 )
 app.include_router(jobs.router, prefix="/api/jobs", tags=["Jobs"])
 app.include_router(applications.router, prefix="/api/applications", tags=["Applications"])
+app.include_router(saved_jobs.router, prefix="/api/saved-jobs", tags=["Saved Jobs"])
 app.include_router(recommendations.router, prefix="/api/recommendations", tags=["Recommendations"])
 
 

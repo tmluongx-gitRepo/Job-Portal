@@ -158,3 +158,14 @@ class RecommendationDocument(TypedDict):
     created_at: datetime
     job_details: NotRequired[dict[str, object]]
     seeker_details: NotRequired[dict[str, object]]
+
+
+class SavedJobDocument(TypedDict):
+    """MongoDB SavedJob document structure."""
+
+    _id: ObjectId
+    job_seeker_id: str
+    job_id: str
+    notes: NotRequired[str]
+    saved_date: datetime
+    created_at: datetime

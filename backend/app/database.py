@@ -143,6 +143,12 @@ def get_recommendations_collection() -> AsyncIOMotorCollection:
     return db["recommendations"]
 
 
+def get_saved_jobs_collection() -> AsyncIOMotorCollection:
+    """Get saved_jobs collection from MongoDB."""
+    db = get_mongo_database()
+    return db["saved_jobs"]
+
+
 async def init_db_indexes() -> None:
     """Initialize all database indexes."""
     db = get_mongo_database()
@@ -209,3 +215,12 @@ async def init_db_indexes() -> None:
     await recommendations.create_index("status")
     await recommendations.create_index([("created_at", -1)])
     await recommendations.create_index([("job_seeker_id", 1), ("status", 1)])
+
+    # Saved Jobs collection indexes
+    saved_jobs = db["saved_jobs"]
+    await saved_jobs.create_index("job_seeker_id")
+    await saved_jobs.create_index("job_id")
+    await saved_jobs.create_index([("saved_date", -1)])
+    await saved_jobs.create_index(
+        [("job_seeker_id", 1), ("job_id", 1)], unique=True
+    )  # Prevent duplicate saves
