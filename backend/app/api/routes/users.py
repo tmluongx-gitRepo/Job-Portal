@@ -1,6 +1,7 @@
 """
 User API routes.
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth.dependencies import get_current_user, require_admin
@@ -11,23 +12,17 @@ router = APIRouter()
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(
-    user: UserCreate,
-    admin: dict = Depends(require_admin)
-):
+async def create_user(user: UserCreate, _admin: dict = Depends(require_admin)) -> UserResponse:
     """
     Create a new user.
-    
+
     **Requires:** Admin account
     **Note:** Regular users should use `/api/auth/register` instead
-    
+
     This endpoint is for admin user management only.
     """
     try:
-        created_user = await user_crud.create_user(
-            email=user.email,
-            account_type=user.account_type
-        )
+        created_user = await user_crud.create_user(email=user.email, account_type=user.account_type)
 
         # Convert ObjectId to string for response
         return UserResponse(
@@ -35,23 +30,21 @@ async def create_user(
             email=created_user["email"],
             account_type=created_user["account_type"],
             created_at=created_user["created_at"],
-            updated_at=created_user["updated_at"]
+            updated_at=created_user["updated_at"],
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("", response_model=list[UserResponse])
 async def get_users(
-    admin: dict = Depends(require_admin),
-    skip: int = 0,
-    limit: int = 100
-):
+    _admin: dict = Depends(require_admin), skip: int = 0, limit: int = 100
+) -> list[UserResponse]:
     """
     Get all users.
-    
+
     **Requires:** Admin account
-    
+
     For user management and system administration.
     """
     users = await user_crud.get_users(skip=skip, limit=limit)
@@ -62,19 +55,19 @@ async def get_users(
             email=user["email"],
             account_type=user["account_type"],
             created_at=user["created_at"],
-            updated_at=user["updated_at"]
+            updated_at=user["updated_at"],
         )
         for user in users
     ]
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user: dict = Depends(get_current_user)):
+async def get_current_user_info(current_user: dict = Depends(get_current_user)) -> UserResponse:
     """
     Get your own user information.
-    
+
     **Requires:** Authentication
-    
+
     Convenient endpoint to get your own account details.
     """
     user = await user_crud.get_user_by_id(current_user["id"])
@@ -87,21 +80,18 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
         email=user["email"],
         account_type=user["account_type"],
         created_at=user["created_at"],
-        updated_at=user["updated_at"]
+        updated_at=user["updated_at"],
     )
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-async def get_user(
-    user_id: str,
-    current_user: dict = Depends(get_current_user)
-):
+async def get_user(user_id: str, current_user: dict = Depends(get_current_user)) -> UserResponse:
     """
     Get user by ID.
-    
+
     **Requires:** Authentication
     **Authorization:** Owner or Admin
-    
+
     You can view your own account or admins can view any account.
     """
     # Check if viewing own account or is admin
@@ -109,8 +99,7 @@ async def get_user(
 
     if user_id != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only view your own account"
+            status_code=status.HTTP_403_FORBIDDEN, detail="You can only view your own account"
         )
 
     user = await user_crud.get_user_by_id(user_id)
@@ -123,20 +112,17 @@ async def get_user(
         email=user["email"],
         account_type=user["account_type"],
         created_at=user["created_at"],
-        updated_at=user["updated_at"]
+        updated_at=user["updated_at"],
     )
 
 
 @router.get("/email/{email}", response_model=UserResponse)
-async def get_user_by_email(
-    email: str,
-    admin: dict = Depends(require_admin)
-):
+async def get_user_by_email(email: str, _admin: dict = Depends(require_admin)) -> UserResponse:
     """
     Get user by email.
-    
+
     **Requires:** Admin account
-    
+
     For user lookup and administration.
     """
     user = await user_crud.get_user_by_email(email)
@@ -149,18 +135,17 @@ async def get_user_by_email(
         email=user["email"],
         account_type=user["account_type"],
         created_at=user["created_at"],
-        updated_at=user["updated_at"]
+        updated_at=user["updated_at"],
     )
 
 
 @router.put("/me", response_model=UserResponse)
 async def update_current_user(
-    user_update: UserUpdate,
-    current_user: dict = Depends(get_current_user)
-):
+    user_update: UserUpdate, current_user: dict = Depends(get_current_user)
+) -> UserResponse:
     """
     Update your own user information.
-    
+
     **Requires:** Authentication
     **Note:** You cannot change your account_type - contact an admin for that.
     """
@@ -174,7 +159,7 @@ async def update_current_user(
     if "account_type" in update_data:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You cannot change your account type. Contact an administrator."
+            detail="You cannot change your account type. Contact an administrator.",
         )
 
     updated_user = await user_crud.update_user(current_user["id"], update_data)
@@ -187,22 +172,20 @@ async def update_current_user(
         email=updated_user["email"],
         account_type=updated_user["account_type"],
         created_at=updated_user["created_at"],
-        updated_at=updated_user["updated_at"]
+        updated_at=updated_user["updated_at"],
     )
 
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
-    user_id: str,
-    user_update: UserUpdate,
-    current_user: dict = Depends(get_current_user)
-):
+    user_id: str, user_update: UserUpdate, current_user: dict = Depends(get_current_user)
+) -> UserResponse:
     """
     Update user by ID.
-    
+
     **Requires:** Authentication
     **Authorization:** Owner or Admin
-    
+
     - Regular users can only update their own account (and cannot change account_type)
     - Admins can update any account including account_type
     """
@@ -214,8 +197,7 @@ async def update_user(
 
     if not is_own_account and not is_admin_user:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only update your own account"
+            status_code=status.HTTP_403_FORBIDDEN, detail="You can only update your own account"
         )
 
     # Build update dict (only include provided fields)
@@ -227,8 +209,7 @@ async def update_user(
     # Non-admins cannot change account_type
     if "account_type" in update_data and not is_admin_user:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can change account type"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can change account type"
         )
 
     updated_user = await user_crud.update_user(user_id, update_data)
@@ -241,17 +222,17 @@ async def update_user(
         email=updated_user["email"],
         account_type=updated_user["account_type"],
         created_at=updated_user["created_at"],
-        updated_at=updated_user["updated_at"]
+        updated_at=updated_user["updated_at"],
     )
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_current_user(current_user: dict = Depends(get_current_user)):
+async def delete_current_user(current_user: dict = Depends(get_current_user)) -> None:
     """
     Delete your own account.
-    
+
     **Requires:** Authentication
-    
+
     Permanently deletes your account and all associated data.
     This action cannot be undone.
     """
@@ -261,21 +242,17 @@ async def delete_current_user(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="User not found")
 
 
-
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(
-    user_id: str,
-    current_user: dict = Depends(get_current_user)
-):
+async def delete_user(user_id: str, current_user: dict = Depends(get_current_user)) -> None:
     """
     Delete user by ID.
-    
+
     **Requires:** Authentication
     **Authorization:** Owner or Admin
-    
+
     - You can delete your own account
     - Admins can delete any account
-    
+
     Permanently deletes the account and all associated data.
     This action cannot be undone.
     """
@@ -284,13 +261,10 @@ async def delete_user(
 
     if user_id != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only delete your own account"
+            status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete your own account"
         )
 
     deleted = await user_crud.delete_user(user_id)
 
     if not deleted:
         raise HTTPException(status_code=404, detail="User not found")
-
-

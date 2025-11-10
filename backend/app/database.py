@@ -161,11 +161,9 @@ async def init_db_indexes() -> None:
     await job_seeker_profiles.create_index("location")
     await job_seeker_profiles.create_index("experience_years")
     await job_seeker_profiles.create_index([("updated_at", -1)])
-    await job_seeker_profiles.create_index([
-        ("skills", 1),
-        ("location", 1),
-        ("experience_years", 1)
-    ])
+    await job_seeker_profiles.create_index(
+        [("skills", 1), ("location", 1), ("experience_years", 1)]
+    )
 
     # Employer Profiles collection indexes
     employer_profiles = db["employer_profiles"]
@@ -185,21 +183,13 @@ async def init_db_indexes() -> None:
     await jobs.create_index("industry")
     await jobs.create_index("remote_ok")
     await jobs.create_index([("created_at", -1)])
-    await jobs.create_index([
-        ("is_active", 1),
-        ("created_at", -1)
-    ])
-    await jobs.create_index([
-        ("is_active", 1),
-        ("location", 1),
-        ("job_type", 1)
-    ])
+    await jobs.create_index([("is_active", 1), ("created_at", -1)])
+    await jobs.create_index([("is_active", 1), ("location", 1), ("job_type", 1)])
     # Text index for full-text search on title, description, company
-    await jobs.create_index([
-        ("title", "text"),
-        ("description", "text"),
-        ("company", "text")
-    ], weights={"title": 10, "company": 5, "description": 1})
+    await jobs.create_index(
+        [("title", "text"), ("description", "text"), ("company", "text")],
+        weights={"title": 10, "company": 5, "description": 1},
+    )
 
     # Applications collection indexes
     applications = db["applications"]
@@ -207,14 +197,10 @@ async def init_db_indexes() -> None:
     await applications.create_index("job_id")
     await applications.create_index("status")
     await applications.create_index([("applied_date", -1)])
-    await applications.create_index([
-        ("job_seeker_id", 1),
-        ("job_id", 1)
-    ], unique=True)  # Prevent duplicate applications
-    await applications.create_index([
-        ("job_id", 1),
-        ("status", 1)
-    ])
+    await applications.create_index(
+        [("job_seeker_id", 1), ("job_id", 1)], unique=True
+    )  # Prevent duplicate applications
+    await applications.create_index([("job_id", 1), ("status", 1)])
 
     # Recommendations collection indexes
     recommendations = db["recommendations"]
@@ -222,8 +208,4 @@ async def init_db_indexes() -> None:
     await recommendations.create_index("job_id")
     await recommendations.create_index("status")
     await recommendations.create_index([("created_at", -1)])
-    await recommendations.create_index([
-        ("job_seeker_id", 1),
-        ("status", 1)
-    ])
-
+    await recommendations.create_index([("job_seeker_id", 1), ("status", 1)])

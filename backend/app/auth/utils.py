@@ -1,6 +1,9 @@
 """
 Authentication utilities for JWT token validation and user extraction.
 """
+
+from typing import Any
+
 import jwt
 from jwt import PyJWTError
 
@@ -17,19 +20,19 @@ class ExpiredTokenError(AuthenticationError):
     """Raised when token has expired."""
 
 
-def decode_supabase_jwt(token: str) -> dict:
+def decode_supabase_jwt(token: str) -> dict[str, Any]:
     """
     Decode and validate Supabase JWT token.
-    
+
     Simplified version that trusts Supabase token validation.
     The token is already validated by Supabase on login/register.
-    
+
     Args:
         token: JWT token string from Authorization header
-        
+
     Returns:
         dict: Decoded token payload containing user information
-        
+
     Raises:
         InvalidTokenError: If token is invalid or malformed
         ExpiredTokenError: If token has expired
@@ -40,33 +43,36 @@ def decode_supabase_jwt(token: str) -> dict:
         payload = jwt.decode(
             token,
             options={"verify_signature": False},  # Trust Supabase's validation
-            algorithms=["HS256"]
+            algorithms=["HS256"],
         )
 
         # Check if token is expired
         if "exp" in payload:
-            from datetime import datetime
+            from datetime import UTC, datetime
+
             exp_timestamp = payload["exp"]
-            if datetime.utcnow().timestamp() > exp_timestamp:
+            if datetime.now(UTC).timestamp() > exp_timestamp:
                 raise ExpiredTokenError("Token has expired")
 
-        return payload
-
-    except jwt.ExpiredSignatureError:
-        raise ExpiredTokenError("Token has expired")
-    except jwt.InvalidTokenError:
-        raise InvalidTokenError("Invalid token")
+    except jwt.ExpiredSignatureError as e:
+        raise ExpiredTokenError("Token has expired") from e
+    except jwt.InvalidTokenError as e:
+        raise InvalidTokenError("Invalid token") from e
     except PyJWTError as e:
-        raise InvalidTokenError(f"Token validation failed: {e!s}")
+        raise InvalidTokenError(f"Token validation failed: {e!s}") from e
+    else:
+        # Type annotation to satisfy mypy
+        result: dict[str, Any] = payload
+        return result
 
 
 def extract_user_from_token(payload: dict) -> dict:
     """
     Extract user information from decoded JWT payload.
-    
+
     Args:
         payload: Decoded JWT payload
-        
+
     Returns:
         dict: User information including:
             - id: User ID (from 'sub' claim)
@@ -93,10 +99,10 @@ def extract_user_from_token(payload: dict) -> dict:
 def validate_account_type(account_type: str | None) -> bool:
     """
     Validate account type value.
-    
+
     Args:
         account_type: Account type to validate
-        
+
     Returns:
         bool: True if valid, False otherwise
     """
@@ -107,10 +113,10 @@ def validate_account_type(account_type: str | None) -> bool:
 def is_admin(user: dict) -> bool:
     """
     Check if user has admin privileges.
-    
+
     Args:
         user: User dict from extract_user_from_token
-        
+
     Returns:
         bool: True if user is admin
     """
@@ -120,10 +126,10 @@ def is_admin(user: dict) -> bool:
 def is_job_seeker(user: dict) -> bool:
     """
     Check if user is a job seeker.
-    
+
     Args:
         user: User dict from extract_user_from_token
-        
+
     Returns:
         bool: True if user is job seeker
     """
@@ -133,12 +139,11 @@ def is_job_seeker(user: dict) -> bool:
 def is_employer(user: dict) -> bool:
     """
     Check if user is an employer.
-    
+
     Args:
         user: User dict from extract_user_from_token
-        
+
     Returns:
         bool: True if user is employer
     """
     return user.get("account_type") == "employer"
-

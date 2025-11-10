@@ -1,6 +1,7 @@
 """
 Supabase client configuration and initialization.
 """
+
 from supabase import Client, create_client
 
 from app.config import settings
@@ -9,9 +10,9 @@ from app.config import settings
 def get_supabase_client() -> Client:
     """
     Create and return Supabase client instance.
-    
+
     Uses anon key for authentication operations.
-    
+
     Returns:
         Client: Configured Supabase client
     """
@@ -21,16 +22,12 @@ def get_supabase_client() -> Client:
             "SUPABASE_ANON_KEY in your environment variables."
         )
 
-    return create_client(
-        settings.SUPABASE_URL,
-        settings.SUPABASE_ANON_KEY
-    )
+    return create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
 
 
 # Global Supabase client instance
 try:
-    supabase: Client = get_supabase_client()
+    supabase: Client | None = get_supabase_client()
 except ValueError as e:
     print(f"⚠️  Supabase client not initialized: {e}")
     supabase = None
-

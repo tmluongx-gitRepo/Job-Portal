@@ -2,8 +2,15 @@
 RBAC tests for Users API.
 Tests authorization rules for different user roles.
 """
+
 import pytest
 from httpx import AsyncClient
+
+from tests.constants import (
+    HTTP_FORBIDDEN,
+    HTTP_NO_CONTENT,
+    HTTP_OK,
+)
 
 
 class TestUsersRBAC:
@@ -35,7 +42,7 @@ class TestUsersRBAC:
         headers = {"Authorization": f"Bearer {job_seeker_token}"}
         response = await client.get("/api/users/me", headers=headers)
 
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         data = response.json()
         assert data["account_type"] == "job_seeker"
         assert "email" in data
@@ -49,7 +56,7 @@ class TestUsersRBAC:
         headers = {"Authorization": f"Bearer {job_seeker_token}"}
         response = await client.get("/api/users", headers=headers)
 
-        assert response.status_code == 403
+        assert response.status_code == HTTP_FORBIDDEN
 
     @pytest.mark.asyncio
     async def test_job_seeker_can_update_own_account(self, client: AsyncClient, job_seeker_token):
@@ -61,9 +68,7 @@ class TestUsersRBAC:
 
         # Update email (if Supabase allows)
         response = await client.put(
-            "/api/users/me",
-            headers=headers,
-            json={"email": "newemail@example.com"}
+            "/api/users/me", headers=headers, json={"email": "newemail@example.com"}
         )
 
         # May succeed or fail depending on Supabase rules
@@ -71,7 +76,9 @@ class TestUsersRBAC:
         assert response.status_code in [200, 400, 422]
 
     @pytest.mark.asyncio
-    async def test_job_seeker_cannot_change_own_account_type(self, client: AsyncClient, job_seeker_token):
+    async def test_job_seeker_cannot_change_own_account_type(
+        self, client: AsyncClient, job_seeker_token
+    ):
         """Job seekers cannot change their own account_type."""
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -79,12 +86,10 @@ class TestUsersRBAC:
         headers = {"Authorization": f"Bearer {job_seeker_token}"}
 
         response = await client.put(
-            "/api/users/me",
-            headers=headers,
-            json={"account_type": "admin"}
+            "/api/users/me", headers=headers, json={"account_type": "admin"}
         )
 
-        assert response.status_code == 403
+        assert response.status_code == HTTP_FORBIDDEN
         assert "cannot change" in response.json()["detail"].lower()
 
     @pytest.mark.asyncio
@@ -97,7 +102,7 @@ class TestUsersRBAC:
 
         response = await client.delete("/api/users/me", headers=headers)
 
-        assert response.status_code == 204
+        assert response.status_code == HTTP_NO_CONTENT
 
     @pytest.mark.asyncio
     async def test_employer_can_view_own_account(self, client: AsyncClient, employer_token):
@@ -108,12 +113,14 @@ class TestUsersRBAC:
         headers = {"Authorization": f"Bearer {employer_token}"}
         response = await client.get("/api/users/me", headers=headers)
 
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         data = response.json()
         assert data["account_type"] == "employer"
 
     @pytest.mark.asyncio
-    async def test_employer_cannot_view_other_users(self, client: AsyncClient, employer_token, job_seeker_token):
+    async def test_employer_cannot_view_other_users(
+        self, client: AsyncClient, employer_token, job_seeker_token
+    ):
         """Employers cannot view other users' accounts."""
         if not employer_token or not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -127,7 +134,7 @@ class TestUsersRBAC:
         emp_headers = {"Authorization": f"Bearer {employer_token}"}
         response = await client.get(f"/api/users/{js_user_id}", headers=emp_headers)
 
-        assert response.status_code == 403
+        assert response.status_code == HTTP_FORBIDDEN
 
     @pytest.mark.asyncio
     async def test_admin_can_list_all_users(self, client: AsyncClient, admin_token):
@@ -138,12 +145,14 @@ class TestUsersRBAC:
         headers = {"Authorization": f"Bearer {admin_token}"}
         response = await client.get("/api/users", headers=headers)
 
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         data = response.json()
         assert isinstance(data, list)
 
     @pytest.mark.asyncio
-    async def test_admin_can_view_any_user(self, client: AsyncClient, admin_token, job_seeker_token):
+    async def test_admin_can_view_any_user(
+        self, client: AsyncClient, admin_token, job_seeker_token
+    ):
         """Admins can view any user's account."""
         if not admin_token or not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -157,7 +166,7 @@ class TestUsersRBAC:
         admin_headers = {"Authorization": f"Bearer {admin_token}"}
         response = await client.get(f"/api/users/{js_user_id}", headers=admin_headers)
 
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         data = response.json()
         assert data["id"] == js_user_id
 
@@ -171,10 +180,7 @@ class TestUsersRBAC:
         response = await client.post(
             "/api/users",
             headers=headers,
-            json={
-                "email": "admin_created@example.com",
-                "account_type": "job_seeker"
-            }
+            json={"email": "admin_created@example.com", "account_type": "job_seeker"},
         )
 
         # May succeed or fail based on validation
@@ -182,7 +188,9 @@ class TestUsersRBAC:
         assert response.status_code in [201, 400, 422]
 
     @pytest.mark.asyncio
-    async def test_admin_can_change_account_type(self, client: AsyncClient, admin_token, job_seeker_token):
+    async def test_admin_can_change_account_type(
+        self, client: AsyncClient, admin_token, job_seeker_token
+    ):
         """Admins can change a user's account_type."""
         if not admin_token or not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -195,17 +203,17 @@ class TestUsersRBAC:
         # Change account type as admin
         admin_headers = {"Authorization": f"Bearer {admin_token}"}
         response = await client.put(
-            f"/api/users/{js_user_id}",
-            headers=admin_headers,
-            json={"account_type": "employer"}
+            f"/api/users/{js_user_id}", headers=admin_headers, json={"account_type": "employer"}
         )
 
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         data = response.json()
         assert data["account_type"] == "employer"
 
     @pytest.mark.asyncio
-    async def test_admin_can_delete_any_user(self, client: AsyncClient, admin_token, job_seeker_token):
+    async def test_admin_can_delete_any_user(
+        self, client: AsyncClient, admin_token, job_seeker_token
+    ):
         """Admins can delete any user."""
         if not admin_token or not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
@@ -219,5 +227,4 @@ class TestUsersRBAC:
         admin_headers = {"Authorization": f"Bearer {admin_token}"}
         response = await client.delete(f"/api/users/{js_user_id}", headers=admin_headers)
 
-        assert response.status_code == 204
-
+        assert response.status_code == HTTP_NO_CONTENT

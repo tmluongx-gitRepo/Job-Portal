@@ -69,6 +69,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # Initialize Supabase connection
     try:
         from app.auth.supabase_client import supabase
+
         if supabase:
             print("✅ Supabase authentication configured")
             print(f"✅ Supabase URL: {settings.SUPABASE_URL}")

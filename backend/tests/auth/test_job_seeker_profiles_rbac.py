@@ -1,8 +1,16 @@
 """
 RBAC tests for Job Seeker Profiles API.
 """
+
 import pytest
 from httpx import AsyncClient
+
+from tests.constants import (
+    HTTP_CREATED,
+    HTTP_FORBIDDEN,
+    HTTP_NO_CONTENT,
+    HTTP_OK,
+)
 
 
 class TestJobSeekerProfilesRBAC:
@@ -17,7 +25,7 @@ class TestJobSeekerProfilesRBAC:
             response = await client.get("/api/job-seeker-profiles")
 
             # Should succeed (even if empty list)
-            assert response.status_code == 200
+            assert response.status_code == HTTP_OK
             assert isinstance(response.json(), list)
         except RuntimeError as e:
             if "Event loop is closed" in str(e):
@@ -29,11 +37,7 @@ class TestJobSeekerProfilesRBAC:
         """Unauthenticated users cannot create profiles."""
         response = await client.post(
             "/api/job-seeker-profiles",
-            json={
-                "full_name": "Test User",
-                "phone": "555-1234",
-                "location": "Test City"
-            }
+            json={"full_name": "Test User", "phone": "555-1234", "location": "Test City"},
         )
 
         # FastAPI HTTPBearer returns 403 when no credentials provided
@@ -56,16 +60,18 @@ class TestJobSeekerProfilesRBAC:
                 "skills": ["Python"],
                 "experience_level": "mid",
                 "desired_job_title": "Software Engineer",
-                "bio": "Test bio"
-            }
+                "bio": "Test bio",
+            },
         )
 
-        assert response.status_code == 201
+        assert response.status_code == HTTP_CREATED
         data = response.json()
         assert data["full_name"] == "Test Job Seeker"
 
     @pytest.mark.asyncio
-    async def test_employer_cannot_create_job_seeker_profile(self, client: AsyncClient, employer_token):
+    async def test_employer_cannot_create_job_seeker_profile(
+        self, client: AsyncClient, employer_token
+    ):
         """Employers cannot create job seeker profiles."""
         if not employer_token:
             pytest.skip("Email confirmation required for testing")
@@ -74,30 +80,24 @@ class TestJobSeekerProfilesRBAC:
         response = await client.post(
             "/api/job-seeker-profiles",
             headers=headers,
-            json={
-                "full_name": "Test",
-                "phone": "555-1234",
-                "location": "Test"
-            }
+            json={"full_name": "Test", "phone": "555-1234", "location": "Test"},
         )
 
-        assert response.status_code == 403
+        assert response.status_code == HTTP_FORBIDDEN
 
     @pytest.mark.asyncio
-    async def test_job_seeker_can_update_own_profile(self, client: AsyncClient, job_seeker_with_profile):
+    async def test_job_seeker_can_update_own_profile(
+        self, client: AsyncClient, job_seeker_with_profile
+    ):
         """Job seekers can update their own profile."""
         token, user_id, profile_id = job_seeker_with_profile
 
         headers = {"Authorization": f"Bearer {token}"}
         response = await client.put(
-            f"/api/job-seeker-profiles/{profile_id}",
-            headers=headers,
-            json={
-                "bio": "Updated bio"
-            }
+            f"/api/job-seeker-profiles/{profile_id}", headers=headers, json={"bio": "Updated bio"}
         )
 
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         data = response.json()
         assert data["bio"] == "Updated bio"
 
@@ -114,15 +114,15 @@ class TestJobSeekerProfilesRBAC:
         # Use different job seeker token
         headers = {"Authorization": f"Bearer {job_seeker_token}"}
         response = await client.put(
-            f"/api/job-seeker-profiles/{profile_id}",
-            headers=headers,
-            json={"bio": "Hacked!"}
+            f"/api/job-seeker-profiles/{profile_id}", headers=headers, json={"bio": "Hacked!"}
         )
 
-        assert response.status_code == 403
+        assert response.status_code == HTTP_FORBIDDEN
 
     @pytest.mark.asyncio
-    async def test_admin_can_update_any_profile(self, client: AsyncClient, admin_token, job_seeker_with_profile):
+    async def test_admin_can_update_any_profile(
+        self, client: AsyncClient, admin_token, job_seeker_with_profile
+    ):
         """Admins can update any job seeker profile."""
         if not admin_token:
             pytest.skip("Email confirmation required for testing")
@@ -131,24 +131,24 @@ class TestJobSeekerProfilesRBAC:
 
         headers = {"Authorization": f"Bearer {admin_token}"}
         response = await client.put(
-            f"/api/job-seeker-profiles/{profile_id}",
-            headers=headers,
-            json={"bio": "Admin updated"}
+            f"/api/job-seeker-profiles/{profile_id}", headers=headers, json={"bio": "Admin updated"}
         )
 
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         data = response.json()
         assert data["bio"] == "Admin updated"
 
     @pytest.mark.asyncio
-    async def test_job_seeker_can_delete_own_profile(self, client: AsyncClient, job_seeker_with_profile):
+    async def test_job_seeker_can_delete_own_profile(
+        self, client: AsyncClient, job_seeker_with_profile
+    ):
         """Job seekers can delete their own profile."""
         token, user_id, profile_id = job_seeker_with_profile
 
         headers = {"Authorization": f"Bearer {token}"}
         response = await client.delete(f"/api/job-seeker-profiles/{profile_id}", headers=headers)
 
-        assert response.status_code == 204
+        assert response.status_code == HTTP_NO_CONTENT
 
     @pytest.mark.asyncio
     async def test_employer_cannot_delete_job_seeker_profile(
@@ -163,5 +163,4 @@ class TestJobSeekerProfilesRBAC:
         headers = {"Authorization": f"Bearer {employer_token}"}
         response = await client.delete(f"/api/job-seeker-profiles/{profile_id}", headers=headers)
 
-        assert response.status_code == 403
-
+        assert response.status_code == HTTP_FORBIDDEN

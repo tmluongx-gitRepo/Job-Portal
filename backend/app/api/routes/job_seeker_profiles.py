@@ -2,6 +2,8 @@
 Job Seeker Profile API routes.
 """
 
+from typing import Any, cast
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.auth.dependencies import get_current_user, get_optional_user, require_job_seeker
@@ -17,15 +19,14 @@ router = APIRouter()
 
 @router.post("", response_model=JobSeekerProfileResponse, status_code=status.HTTP_201_CREATED)
 async def create_profile(
-    profile: JobSeekerProfileCreate,
-    job_seeker: dict = Depends(require_job_seeker)
-):
+    profile: JobSeekerProfileCreate, job_seeker: dict = Depends(require_job_seeker)
+) -> JobSeekerProfileResponse:
     """
     Create a new job seeker profile.
-    
+
     **Requires:** Job Seeker account
     **Limit:** One profile per user
-    
+
     The profile will be automatically linked to your user account.
     """
     try:
@@ -34,7 +35,7 @@ async def create_profile(
         if existing_profile:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You already have a job seeker profile"
+                detail="You already have a job seeker profile",
             )
 
         # Convert to dict and remove None values
@@ -42,28 +43,25 @@ async def create_profile(
 
         # Use authenticated user's ID
         created_profile = await profile_crud.create_profile(
-            user_id=job_seeker["id"],
-            profile_data=profile_data
+            user_id=job_seeker["id"], profile_data=profile_data
         )
 
         return JobSeekerProfileResponse(
             id=str(created_profile["_id"]),
             user_id=str(created_profile["user_id"]),
-            **{k: v for k, v in created_profile.items() if k not in ["_id", "user_id"]},
+            **cast(Any, {k: v for k, v in created_profile.items() if k not in ["_id", "user_id"]}),
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("", response_model=list[JobSeekerProfileResponse])
 async def get_profiles(
-    skip: int = 0,
-    limit: int = 100,
-    current_user: dict | None = Depends(get_optional_user)
-):
+    skip: int = 0, limit: int = 100, _current_user: dict | None = Depends(get_optional_user)
+) -> list[JobSeekerProfileResponse]:
     """
     Get all job seeker profiles.
-    
+
     **Public endpoint** - Employers can browse candidates
     """
     profiles = await profile_crud.get_profiles(skip=skip, limit=limit)
@@ -72,7 +70,7 @@ async def get_profiles(
         JobSeekerProfileResponse(
             id=str(profile["_id"]),
             user_id=str(profile["user_id"]),
-            **{k: v for k, v in profile.items() if k not in ["_id", "user_id"]},
+            **cast(Any, {k: v for k, v in profile.items() if k not in ["_id", "user_id"]}),
         )
         for profile in profiles
     ]
@@ -85,8 +83,8 @@ async def search_profiles(
     min_experience: int = Query(None, ge=0, description="Minimum years of experience"),
     max_experience: int = Query(None, ge=0, description="Maximum years of experience"),
     skip: int = 0,
-    limit: int = 100
-):
+    limit: int = 100,
+) -> list[JobSeekerProfileResponse]:
     """Search job seeker profiles by criteria."""
     profiles = await profile_crud.search_profiles(
         skills=skills,
@@ -94,21 +92,23 @@ async def search_profiles(
         min_experience=min_experience,
         max_experience=max_experience,
         skip=skip,
-        limit=limit
+        limit=limit,
     )
 
     return [
         JobSeekerProfileResponse(
             id=str(profile["_id"]),
             user_id=str(profile["user_id"]),
-            **{k: v for k, v in profile.items() if k not in ["_id", "user_id"]},
+            **cast(Any, {k: v for k, v in profile.items() if k not in ["_id", "user_id"]}),
         )
         for profile in profiles
     ]
 
 
 @router.get("/{profile_id}", response_model=JobSeekerProfileResponse)
-async def get_profile(profile_id: str, increment_views: bool = Query(False)):
+async def get_profile(
+    profile_id: str, increment_views: bool = Query(False)
+) -> JobSeekerProfileResponse:
     """Get profile by ID."""
     profile = await profile_crud.get_profile_by_id(profile_id)
 
@@ -123,12 +123,12 @@ async def get_profile(profile_id: str, increment_views: bool = Query(False)):
     return JobSeekerProfileResponse(
         id=str(profile["_id"]),
         user_id=str(profile["user_id"]),
-        **{k: v for k, v in profile.items() if k not in ["_id", "user_id"]},
+        **cast(Any, {k: v for k, v in profile.items() if k not in ["_id", "user_id"]}),
     )
 
 
 @router.get("/user/{user_id}", response_model=JobSeekerProfileResponse)
-async def get_profile_by_user(user_id: str):
+async def get_profile_by_user(user_id: str) -> JobSeekerProfileResponse:
     """Get profile by user ID."""
     profile = await profile_crud.get_profile_by_user_id(user_id)
 
@@ -138,7 +138,7 @@ async def get_profile_by_user(user_id: str):
     return JobSeekerProfileResponse(
         id=str(profile["_id"]),
         user_id=str(profile["user_id"]),
-        **{k: v for k, v in profile.items() if k not in ["_id", "user_id"]},
+        **cast(Any, {k: v for k, v in profile.items() if k not in ["_id", "user_id"]}),
     )
 
 
@@ -146,11 +146,11 @@ async def get_profile_by_user(user_id: str):
 async def update_profile(
     profile_id: str,
     profile_update: JobSeekerProfileUpdate,
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: dict = Depends(get_current_user),
+) -> JobSeekerProfileResponse:
     """
     Update profile.
-    
+
     **Requires:** Authentication
     **Authorization:** Owner only (or admin)
     """
@@ -161,10 +161,10 @@ async def update_profile(
 
     # Check ownership
     from app.auth.utils import is_admin
+
     if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only update your own profile"
+            status_code=status.HTTP_403_FORBIDDEN, detail="You can only update your own profile"
         )
 
     # Build update dict (only include provided fields)
@@ -181,18 +181,17 @@ async def update_profile(
     return JobSeekerProfileResponse(
         id=str(updated_profile["_id"]),
         user_id=str(updated_profile["user_id"]),
-        **{k: v for k, v in updated_profile.items() if k not in ["_id", "user_id"]},
+        **cast(Any, {k: v for k, v in updated_profile.items() if k not in ["_id", "user_id"]}),
     )
 
 
 @router.delete("/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_profile(
-    profile_id: str,
-    current_user: dict = Depends(get_current_user)
-):
+    profile_id: str, current_user: dict = Depends(get_current_user)
+) -> dict[str, str]:
     """
     Delete profile.
-    
+
     **Requires:** Authentication
     **Authorization:** Owner only (or admin)
     """
@@ -203,10 +202,10 @@ async def delete_profile(
 
     # Check ownership
     from app.auth.utils import is_admin
+
     if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only delete your own profile"
+            status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete your own profile"
         )
 
     deleted = await profile_crud.delete_profile(profile_id)
@@ -214,4 +213,4 @@ async def delete_profile(
     if not deleted:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-
+    return {"message": "Profile deleted successfully"}
