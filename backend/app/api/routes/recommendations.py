@@ -2,7 +2,7 @@
 API routes for recommendations.
 """
 
-from typing import Any, cast
+from collections.abc import Iterable
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -11,12 +11,49 @@ from app.crud import job as job_crud
 from app.crud import job_seeker_profile as profile_crud
 from app.crud import recommendation as recommendation_crud
 from app.schemas.recommendation import (
+    MatchFactorSchema,
     RecommendationCreate,
     RecommendationResponse,
     RecommendationUpdate,
 )
+from app.types import RecommendationDocument
 
 router = APIRouter()
+
+
+def _serialize_recommendation(document: RecommendationDocument) -> RecommendationResponse:
+    """Convert a database document to the response schema."""
+    job_seeker_id = document.get("job_seeker_id", "")
+    job_id = document.get("job_id", "")
+    match_percentage = document.get("match_percentage", 0)
+    reasoning = document.get("reasoning", "")
+    factors_data = document.get("factors", [])
+    factors = [MatchFactorSchema(**factor) for factor in factors_data]
+    ai_generated = document.get("ai_generated", True)
+    viewed = document.get("viewed", False)
+    dismissed = document.get("dismissed", False)
+    applied = document.get("applied", False)
+
+    return RecommendationResponse(
+        id=str(document["_id"]),
+        job_seeker_id=job_seeker_id,
+        job_id=job_id,
+        match_percentage=match_percentage,
+        reasoning=reasoning,
+        factors=factors,
+        ai_generated=ai_generated,
+        viewed=viewed,
+        dismissed=dismissed,
+        applied=applied,
+        created_at=document["created_at"],
+    )
+
+
+def _serialize_recommendations(
+    documents: Iterable[RecommendationDocument],
+) -> list[RecommendationResponse]:
+    """Convert multiple recommendation documents into API response schemas."""
+    return [_serialize_recommendation(doc) for doc in documents]
 
 
 @router.post("", response_model=RecommendationResponse, status_code=status.HTTP_201_CREATED)
@@ -65,10 +102,7 @@ async def create_recommendation(
     recommendation_data = recommendation.model_dump()
     created_recommendation = await recommendation_crud.create_recommendation(recommendation_data)
 
-    return RecommendationResponse(
-        id=str(created_recommendation["_id"]),
-        **cast(Any, {k: v for k, v in created_recommendation.items() if k != "_id"}),
-    )
+    return _serialize_recommendation(created_recommendation)
 
 
 @router.get("/job-seeker/{job_seeker_id}", response_model=list[dict])
@@ -234,10 +268,7 @@ async def get_recommendation(
                 detail="You can only view your own recommendations",
             )
 
-    return RecommendationResponse(
-        id=str(recommendation["_id"]),
-        **cast(Any, {k: v for k, v in recommendation.items() if k != "_id"}),
-    )
+    return _serialize_recommendation(recommendation)
 
 
 @router.put("/{recommendation_id}", response_model=RecommendationResponse)
@@ -269,9 +300,7 @@ async def update_recommendation(
             detail=f"Recommendation {recommendation_id} not found",
         )
 
-    return RecommendationResponse(
-        id=str(updated["_id"]), **cast(Any, {k: v for k, v in updated.items() if k != "_id"})
-    )
+    return _serialize_recommendation(updated)
 
 
 @router.post("/{recommendation_id}/view", status_code=status.HTTP_200_OK)

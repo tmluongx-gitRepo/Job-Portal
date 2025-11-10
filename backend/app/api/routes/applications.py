@@ -1,4 +1,4 @@
-from typing import Any, cast
+from collections.abc import Iterable
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -6,9 +6,51 @@ from app.auth.dependencies import get_current_user, require_job_seeker
 from app.crud import application as application_crud
 from app.crud import job as job_crud
 from app.crud import job_seeker_profile as profile_crud
-from app.schemas.application import ApplicationCreate, ApplicationResponse, ApplicationUpdate
+from app.schemas.application import (
+    ApplicationCreate,
+    ApplicationResponse,
+    ApplicationUpdate,
+    StatusHistoryEntrySchema,
+)
+from app.types import ApplicationDocument
 
 router = APIRouter()
+
+
+def _serialize_application(document: ApplicationDocument) -> ApplicationResponse:
+    """Convert a database document to the response schema."""
+    job_id = document.get("job_id", "")
+    job_seeker_id = document.get("job_seeker_id", "")
+    status_value = document.get("status", "Application Submitted")
+    notes = document.get("notes")
+    applied_date = document["applied_date"]
+    next_step = document.get("next_step")
+    interview_scheduled_date = document.get("interview_scheduled_date")
+    rejection_reason = document.get("rejection_reason")
+    status_history_data = document.get("status_history", [])
+    status_history = [StatusHistoryEntrySchema(**entry) for entry in status_history_data]
+
+    return ApplicationResponse(
+        id=str(document["_id"]),
+        job_id=job_id,
+        job_seeker_id=job_seeker_id,
+        status=status_value,
+        notes=notes,
+        applied_date=applied_date,
+        next_step=next_step,
+        interview_scheduled_date=interview_scheduled_date,
+        rejection_reason=rejection_reason,
+        status_history=status_history,
+        created_at=document["created_at"],
+        updated_at=document["updated_at"],
+    )
+
+
+def _serialize_applications(
+    documents: Iterable[ApplicationDocument],
+) -> list[ApplicationResponse]:
+    """Convert multiple application documents into API response schemas."""
+    return [_serialize_application(doc) for doc in documents]
 
 
 @router.post("", response_model=ApplicationResponse, status_code=status.HTTP_201_CREATED)
@@ -77,10 +119,7 @@ async def create_application(
     # Increment the job's application count
     await job_crud.increment_application_count(application.job_id)
 
-    return ApplicationResponse(
-        id=str(created_application["_id"]),
-        **cast(Any, {k: v for k, v in created_application.items() if k != "_id"}),
-    )
+    return _serialize_application(created_application)
 
 
 @router.get("", response_model=list[ApplicationResponse])
@@ -163,12 +202,7 @@ async def list_applications(
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid account type")
 
-    return [
-        ApplicationResponse(
-            id=str(app["_id"]), **cast(Any, {k: v for k, v in app.items() if k != "_id"})
-        )
-        for app in applications
-    ]
+    return _serialize_applications(applications)
 
 
 @router.get("/count")
@@ -231,10 +265,7 @@ async def get_application(
                 detail="You can only view your own applications or applications to your jobs",
             )
 
-    return ApplicationResponse(
-        id=str(application["_id"]),
-        **cast(Any, {k: v for k, v in application.items() if k != "_id"}),
-    )
+    return _serialize_application(application)
 
 
 @router.put("/{application_id}", response_model=ApplicationResponse)
@@ -307,10 +338,7 @@ async def update_application(
             detail=f"Application with id {application_id} not found",
         )
 
-    return ApplicationResponse(
-        id=str(updated_application["_id"]),
-        **cast(Any, {k: v for k, v in updated_application.items() if k != "_id"}),
-    )
+    return _serialize_application(updated_application)
 
 
 @router.delete("/{application_id}", status_code=status.HTTP_204_NO_CONTENT)

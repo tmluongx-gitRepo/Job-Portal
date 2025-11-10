@@ -2,7 +2,7 @@
 Employer Profile API routes.
 """
 
-from typing import Any, cast
+from collections.abc import Iterable
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -13,8 +13,57 @@ from app.schemas.employer import (
     EmployerProfileResponse,
     EmployerProfileUpdate,
 )
+from app.types import EmployerProfileDocument
 
 router = APIRouter()
+
+
+def _serialize_profile(document: EmployerProfileDocument) -> EmployerProfileResponse:
+    """Convert a database document to the response schema."""
+    company_name = document.get("company_name", "")
+    company_website = document.get("website")
+    company_logo_url = document.get("logo_url")
+    industry = document.get("industry")
+    company_size = document.get("company_size")
+    location = document.get("location")
+    company_description = document.get("company_description")
+    founded_year = document.get("founded_year")
+    contact_email = document.get("contact_email")
+    contact_phone = document.get("contact_phone")
+    benefits = document.get("benefits_offered", [])
+    company_culture = document.get("company_culture")
+    jobs_posted_count = document.get("jobs_posted_count", 0)
+    active_jobs_count = document.get("active_jobs_count", 0)
+    verified = document.get("verified", False)
+
+    return EmployerProfileResponse(
+        id=str(document["_id"]),
+        user_id=str(document["user_id"]),
+        company_name=company_name,
+        company_website=company_website,
+        company_logo_url=company_logo_url,
+        industry=industry,
+        company_size=company_size,
+        location=location,
+        description=company_description,
+        founded_year=founded_year,
+        contact_email=contact_email,
+        contact_phone=contact_phone,
+        benefits_offered=benefits,
+        company_culture=company_culture,
+        jobs_posted_count=jobs_posted_count,
+        active_jobs_count=active_jobs_count,
+        verified=verified,
+        created_at=document["created_at"],
+        updated_at=document["updated_at"],
+    )
+
+
+def _serialize_profiles(
+    documents: Iterable[EmployerProfileDocument],
+) -> list[EmployerProfileResponse]:
+    """Convert multiple employer profile documents into API response schemas."""
+    return [_serialize_profile(doc) for doc in documents]
 
 
 @router.post("", response_model=EmployerProfileResponse, status_code=status.HTTP_201_CREATED)
@@ -46,11 +95,7 @@ async def create_profile(
             profile_data=profile_data,
         )
 
-        return EmployerProfileResponse(
-            id=str(created_profile["_id"]),
-            user_id=str(created_profile["user_id"]),
-            **cast(Any, {k: v for k, v in created_profile.items() if k not in ["_id", "user_id"]}),
-        )
+        return _serialize_profile(created_profile)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -66,14 +111,7 @@ async def get_profiles(
     """
     profiles = await profile_crud.get_profiles(skip=skip, limit=limit)
 
-    return [
-        EmployerProfileResponse(
-            id=str(profile["_id"]),
-            user_id=str(profile["user_id"]),
-            **cast(Any, {k: v for k, v in profile.items() if k not in ["_id", "user_id"]}),
-        )
-        for profile in profiles
-    ]
+    return _serialize_profiles(profiles)
 
 
 @router.get("/{profile_id}", response_model=EmployerProfileResponse)
@@ -84,11 +122,7 @@ async def get_profile(profile_id: str) -> EmployerProfileResponse:
     if not profile:
         raise HTTPException(status_code=404, detail="Employer profile not found")
 
-    return EmployerProfileResponse(
-        id=str(profile["_id"]),
-        user_id=str(profile["user_id"]),
-        **cast(Any, {k: v for k, v in profile.items() if k not in ["_id", "user_id"]}),
-    )
+    return _serialize_profile(profile)
 
 
 @router.get("/user/{user_id}", response_model=EmployerProfileResponse)
@@ -99,11 +133,7 @@ async def get_profile_by_user(user_id: str) -> EmployerProfileResponse:
     if not profile:
         raise HTTPException(status_code=404, detail="Employer profile not found for this user")
 
-    return EmployerProfileResponse(
-        id=str(profile["_id"]),
-        user_id=str(profile["user_id"]),
-        **cast(Any, {k: v for k, v in profile.items() if k not in ["_id", "user_id"]}),
-    )
+    return _serialize_profile(profile)
 
 
 @router.put("/{profile_id}", response_model=EmployerProfileResponse)
@@ -141,11 +171,7 @@ async def update_profile(
     if not updated_profile:
         raise HTTPException(status_code=404, detail="Employer profile not found")
 
-    return EmployerProfileResponse(
-        id=str(updated_profile["_id"]),
-        user_id=str(updated_profile["user_id"]),
-        **cast(Any, {k: v for k, v in updated_profile.items() if k not in ["_id", "user_id"]}),
-    )
+    return _serialize_profile(updated_profile)
 
 
 @router.delete("/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)

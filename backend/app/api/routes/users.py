@@ -2,13 +2,35 @@
 User API routes.
 """
 
+from collections.abc import Iterable
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth.dependencies import get_current_user, require_admin
 from app.crud import user as user_crud
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.types import UserDocument
 
 router = APIRouter()
+
+
+def _serialize_user(document: UserDocument) -> UserResponse:
+    """Convert a database document to the response schema."""
+    email = document.get("email", "")
+    account_type = document.get("account_type", "job_seeker")
+
+    return UserResponse(
+        id=str(document["_id"]),
+        email=email,
+        account_type=account_type,
+        created_at=document["created_at"],
+        updated_at=document["updated_at"],
+    )
+
+
+def _serialize_users(documents: Iterable[UserDocument]) -> list[UserResponse]:
+    """Convert multiple user documents into API response schemas."""
+    return [_serialize_user(doc) for doc in documents]
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -25,13 +47,7 @@ async def create_user(user: UserCreate, _admin: dict = Depends(require_admin)) -
         created_user = await user_crud.create_user(email=user.email, account_type=user.account_type)
 
         # Convert ObjectId to string for response
-        return UserResponse(
-            id=str(created_user["_id"]),
-            email=created_user["email"],
-            account_type=created_user["account_type"],
-            created_at=created_user["created_at"],
-            updated_at=created_user["updated_at"],
-        )
+        return _serialize_user(created_user)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -49,16 +65,7 @@ async def get_users(
     """
     users = await user_crud.get_users(skip=skip, limit=limit)
 
-    return [
-        UserResponse(
-            id=str(user["_id"]),
-            email=user["email"],
-            account_type=user["account_type"],
-            created_at=user["created_at"],
-            updated_at=user["updated_at"],
-        )
-        for user in users
-    ]
+    return _serialize_users(users)
 
 
 @router.get("/me", response_model=UserResponse)
@@ -75,13 +82,7 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)) 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    return UserResponse(
-        id=str(user["_id"]),
-        email=user["email"],
-        account_type=user["account_type"],
-        created_at=user["created_at"],
-        updated_at=user["updated_at"],
-    )
+    return _serialize_user(user)
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -107,13 +108,7 @@ async def get_user(user_id: str, current_user: dict = Depends(get_current_user))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    return UserResponse(
-        id=str(user["_id"]),
-        email=user["email"],
-        account_type=user["account_type"],
-        created_at=user["created_at"],
-        updated_at=user["updated_at"],
-    )
+    return _serialize_user(user)
 
 
 @router.get("/email/{email}", response_model=UserResponse)
@@ -130,13 +125,7 @@ async def get_user_by_email(email: str, _admin: dict = Depends(require_admin)) -
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    return UserResponse(
-        id=str(user["_id"]),
-        email=user["email"],
-        account_type=user["account_type"],
-        created_at=user["created_at"],
-        updated_at=user["updated_at"],
-    )
+    return _serialize_user(user)
 
 
 @router.put("/me", response_model=UserResponse)
@@ -167,13 +156,7 @@ async def update_current_user(
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    return UserResponse(
-        id=str(updated_user["_id"]),
-        email=updated_user["email"],
-        account_type=updated_user["account_type"],
-        created_at=updated_user["created_at"],
-        updated_at=updated_user["updated_at"],
-    )
+    return _serialize_user(updated_user)
 
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -217,13 +200,7 @@ async def update_user(
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    return UserResponse(
-        id=str(updated_user["_id"]),
-        email=updated_user["email"],
-        account_type=updated_user["account_type"],
-        created_at=updated_user["created_at"],
-        updated_at=updated_user["updated_at"],
-    )
+    return _serialize_user(updated_user)
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)

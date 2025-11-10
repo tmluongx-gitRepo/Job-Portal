@@ -2,19 +2,68 @@
 Job Seeker Profile API routes.
 """
 
-from typing import Any, cast
+from collections.abc import Iterable
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.auth.dependencies import get_current_user, get_optional_user, require_job_seeker
 from app.crud import job_seeker_profile as profile_crud
 from app.schemas.job_seeker import (
+    JobSeekerPreferencesSchema,
     JobSeekerProfileCreate,
     JobSeekerProfileResponse,
     JobSeekerProfileUpdate,
 )
+from app.types import JobSeekerProfileDocument
 
 router = APIRouter()
+
+
+def _serialize_profile(document: JobSeekerProfileDocument) -> JobSeekerProfileResponse:
+    """Convert a database document to the response schema."""
+    first_name = document.get("first_name", "")
+    last_name = document.get("last_name", "")
+    email = document.get("email", "")
+    phone = document.get("phone")
+    location = document.get("location")
+    bio = document.get("bio")
+    skills = document.get("skills", [])
+    experience_years = document.get("experience_years", 0)
+    education_level = document.get("education_level")
+    resume_file_url = document.get("resume_file_url")
+    resume_file_name = document.get("resume_file_name")
+    preferences_data = document.get("preferences")
+    preferences = JobSeekerPreferencesSchema(**preferences_data) if preferences_data else None
+    profile_views = document.get("profile_views", 0)
+    profile_completion_percentage = document.get("profile_completion_percentage")
+
+    return JobSeekerProfileResponse(
+        id=str(document["_id"]),
+        user_id=str(document["user_id"]),
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        phone=phone,
+        location=location,
+        bio=bio,
+        skills=skills,
+        experience_years=experience_years,
+        education_level=education_level,
+        resume_file_url=resume_file_url,
+        resume_file_name=resume_file_name,
+        preferences=preferences,
+        profile_views=profile_views,
+        profile_completion_percentage=profile_completion_percentage,
+        created_at=document["created_at"],
+        updated_at=document["updated_at"],
+    )
+
+
+def _serialize_profiles(
+    documents: Iterable[JobSeekerProfileDocument],
+) -> list[JobSeekerProfileResponse]:
+    """Convert multiple job seeker profile documents into API response schemas."""
+    return [_serialize_profile(doc) for doc in documents]
 
 
 @router.post("", response_model=JobSeekerProfileResponse, status_code=status.HTTP_201_CREATED)
@@ -46,11 +95,7 @@ async def create_profile(
             user_id=job_seeker["id"], profile_data=profile_data
         )
 
-        return JobSeekerProfileResponse(
-            id=str(created_profile["_id"]),
-            user_id=str(created_profile["user_id"]),
-            **cast(Any, {k: v for k, v in created_profile.items() if k not in ["_id", "user_id"]}),
-        )
+        return _serialize_profile(created_profile)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -66,14 +111,7 @@ async def get_profiles(
     """
     profiles = await profile_crud.get_profiles(skip=skip, limit=limit)
 
-    return [
-        JobSeekerProfileResponse(
-            id=str(profile["_id"]),
-            user_id=str(profile["user_id"]),
-            **cast(Any, {k: v for k, v in profile.items() if k not in ["_id", "user_id"]}),
-        )
-        for profile in profiles
-    ]
+    return _serialize_profiles(profiles)
 
 
 @router.get("/search", response_model=list[JobSeekerProfileResponse])
@@ -95,14 +133,7 @@ async def search_profiles(
         limit=limit,
     )
 
-    return [
-        JobSeekerProfileResponse(
-            id=str(profile["_id"]),
-            user_id=str(profile["user_id"]),
-            **cast(Any, {k: v for k, v in profile.items() if k not in ["_id", "user_id"]}),
-        )
-        for profile in profiles
-    ]
+    return _serialize_profiles(profiles)
 
 
 @router.get("/{profile_id}", response_model=JobSeekerProfileResponse)
@@ -120,11 +151,7 @@ async def get_profile(
         await profile_crud.increment_profile_views(profile_id)
         profile["profile_views"] = profile.get("profile_views", 0) + 1
 
-    return JobSeekerProfileResponse(
-        id=str(profile["_id"]),
-        user_id=str(profile["user_id"]),
-        **cast(Any, {k: v for k, v in profile.items() if k not in ["_id", "user_id"]}),
-    )
+    return _serialize_profile(profile)
 
 
 @router.get("/user/{user_id}", response_model=JobSeekerProfileResponse)
@@ -135,11 +162,7 @@ async def get_profile_by_user(user_id: str) -> JobSeekerProfileResponse:
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found for this user")
 
-    return JobSeekerProfileResponse(
-        id=str(profile["_id"]),
-        user_id=str(profile["user_id"]),
-        **cast(Any, {k: v for k, v in profile.items() if k not in ["_id", "user_id"]}),
-    )
+    return _serialize_profile(profile)
 
 
 @router.put("/{profile_id}", response_model=JobSeekerProfileResponse)
@@ -178,11 +201,7 @@ async def update_profile(
     if not updated_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    return JobSeekerProfileResponse(
-        id=str(updated_profile["_id"]),
-        user_id=str(updated_profile["user_id"]),
-        **cast(Any, {k: v for k, v in updated_profile.items() if k not in ["_id", "user_id"]}),
-    )
+    return _serialize_profile(updated_profile)
 
 
 @router.delete("/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
