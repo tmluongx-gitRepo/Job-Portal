@@ -149,9 +149,7 @@ async def update_profile(
 
 
 @router.delete("/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_profile(
-    profile_id: str, current_user: dict = Depends(get_current_user)
-) -> dict[str, str]:
+async def delete_profile(profile_id: str, current_user: dict = Depends(get_current_user)) -> None:
     """
     Delete employer profile.
 
@@ -175,5 +173,3 @@ async def delete_profile(
 
     if not deleted:
         raise HTTPException(status_code=404, detail="Employer profile not found")
-
-    return {"message": "Employer profile deleted successfully"}

@@ -199,7 +199,7 @@ async def update_job(
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)) -> dict[str, str]:
+async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)) -> None:
     """
     Delete a job (hard delete).
 
@@ -227,5 +227,3 @@ async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Job with id {job_id} not found"
         )
-
-    return {"message": "Job deleted successfully"}

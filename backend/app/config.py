@@ -1,4 +1,11 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Find .env file - check backend dir first, then project root
+ENV_FILE = Path(__file__).parent.parent / ".env"
+if not ENV_FILE.exists():
+    ENV_FILE = Path(__file__).parent.parent.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -17,6 +24,7 @@ class Settings(BaseSettings):
     # MongoDB
     MONGO_URI: str = "mongodb://localhost:27017"
     MONGO_DB_NAME: str = "job_portal"
+    MONGO_TEST_DB_NAME: str = "job_portal_test"  # Test database name
 
     # Redis
     REDIS_URL: str = "redis://redis:6379/0"
@@ -33,7 +41,7 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://frontend:3000"]
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
+    model_config = SettingsConfigDict(env_file=str(ENV_FILE), case_sensitive=True, extra="ignore")
 
 
 settings = Settings()

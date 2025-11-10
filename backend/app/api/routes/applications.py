@@ -316,7 +316,7 @@ async def update_application(
 @router.delete("/{application_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_application(
     application_id: str, current_user: dict = Depends(get_current_user)
-) -> dict[str, str]:
+) -> None:
     """
     Delete (withdraw) an application.
 
@@ -356,5 +356,3 @@ async def delete_application(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Application with id {application_id} not found",
         )
-
-    return {"message": "Application deleted successfully"}

@@ -35,6 +35,7 @@ import pytest_asyncio
 from bson import ObjectId
 from httpx import ASGITransport, AsyncClient
 
+from app.config import settings
 from app.database import get_mongo_database
 from app.main import app
 from tests.constants import HTTP_CREATED, HTTP_OK
@@ -50,6 +51,26 @@ async def client():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+def _configure_test_database():
+    """Configure the application to use test database for all tests."""
+    import os
+
+    # Override database name for tests
+    original_db_name = os.environ.get("MONGO_DB_NAME")
+    os.environ["MONGO_DB_NAME"] = settings.MONGO_TEST_DB_NAME
+
+    # Force settings reload
+    settings.MONGO_DB_NAME = settings.MONGO_TEST_DB_NAME
+
+    yield
+
+    # Restore original (if any)
+    if original_db_name:
+        os.environ["MONGO_DB_NAME"] = original_db_name
+        settings.MONGO_DB_NAME = original_db_name
 
 
 @pytest_asyncio.fixture
