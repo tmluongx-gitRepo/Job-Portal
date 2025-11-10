@@ -34,7 +34,7 @@ async def health_check() -> dict[str, str]:
     try:
         redis = await aioredis.from_url(settings.REDIS_URL)
         await redis.ping()
-        await redis.aclose()
+        await redis.aclose()  # type: ignore[attr-defined]
         health_status["redis"] = "healthy"
     except Exception as e:
         health_status["redis"] = f"unhealthy: {e!s}"

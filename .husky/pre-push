@@ -119,7 +119,7 @@ if [ -n "$BACKEND_CHANGED" ]; then
         .venv/bin/ruff format --check .
 
         echo "  🔷 Running MyPy type check..."
-        .venv/bin/mypy app/ --config-file=pyproject.toml
+        .venv/bin/mypy .
 
         # Set up test environment variables
         export REDIS_URL="redis://localhost:6379"
