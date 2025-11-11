@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactElement } from "react";
+import { useState, useEffect, type ReactElement } from "react";
+import Link from "next/link";
 
 import {
   Building2,
@@ -15,119 +16,11 @@ import {
   Eye,
   Star,
 } from "lucide-react";
+import { api, ApiError, ValidationError } from "../../lib/api";
+import type { Job, Application, EmployerProfile } from "../../lib/api";
 
-// TODO: Replace with API call to fetch employer info
-const employerInfo = {
-  name: "Sarah Martinez",
-  role: "Senior Recruiter",
-  companies: [
-    { id: "techflow", name: "TechFlow Solutions", role: "Lead Recruiter" },
-    { id: "innovate", name: "InnovateNow Corp", role: "HR Consultant" },
-    { id: "datacore", name: "DataCore Industries", role: "Talent Acquisition" },
-  ],
-};
-
-// TODO: Replace with API call to fetch job postings
-const jobPostings = [
-  {
-    id: 1,
-    title: "Marketing Coordinator",
-    company: "TechFlow Solutions",
-    status: "Active",
-    posted: "2 weeks ago",
-    applications: 28,
-    newApplications: 5,
-    interviews: 3,
-    hired: 0,
-    location: "Phoenix, AZ",
-    salary: "$45,000 - $55,000",
-  },
-  {
-    id: 2,
-    title: "Senior Developer",
-    company: "InnovateNow Corp",
-    status: "Active",
-    posted: "1 week ago",
-    applications: 45,
-    newApplications: 12,
-    interviews: 8,
-    hired: 1,
-    location: "Remote",
-    salary: "$85,000 - $105,000",
-  },
-  {
-    id: 3,
-    title: "Business Analyst",
-    company: "DataCore Industries",
-    status: "Paused",
-    posted: "3 weeks ago",
-    applications: 67,
-    newApplications: 2,
-    interviews: 15,
-    hired: 2,
-    location: "Scottsdale, AZ",
-    salary: "$65,000 - $75,000",
-  },
-];
-
-// TODO: Replace with API call to fetch recent applications
-const recentApplications = [
-  {
-    id: 1,
-    candidateName: "Alex Johnson",
-    jobTitle: "Marketing Coordinator",
-    company: "TechFlow Solutions",
-    appliedDate: "2 hours ago",
-    status: "Unreviewed",
-    matchScore: 89,
-    experience: "3 years",
-    location: "Phoenix, AZ",
-  },
-  {
-    id: 2,
-    candidateName: "Maria Garcia",
-    jobTitle: "Senior Developer",
-    company: "InnovateNow Corp",
-    appliedDate: "5 hours ago",
-    status: "Unreviewed",
-    matchScore: 94,
-    experience: "7 years",
-    location: "Remote",
-  },
-  {
-    id: 3,
-    candidateName: "David Chen",
-    jobTitle: "Business Analyst",
-    company: "DataCore Industries",
-    appliedDate: "1 day ago",
-    status: "Reviewed",
-    matchScore: 76,
-    experience: "4 years",
-    location: "Tempe, AZ",
-  },
-];
-
-// TODO: Replace with API call to fetch upcoming interviews
-const upcomingInterviews = [
-  {
-    id: 1,
-    candidateName: "Jessica Williams",
-    jobTitle: "Marketing Coordinator",
-    company: "TechFlow Solutions",
-    interviewDate: "Today at 2:00 PM",
-    interviewType: "Phone Screen",
-    interviewer: "Sarah Martinez",
-  },
-  {
-    id: 2,
-    candidateName: "Robert Kumar",
-    jobTitle: "Senior Developer",
-    company: "InnovateNow Corp",
-    interviewDate: "Tomorrow at 10:00 AM",
-    interviewType: "Technical Interview",
-    interviewer: "Mike Thompson",
-  },
-];
+// ⚠️ TODO: Replace with actual user data from auth context when authentication is implemented
+const userId = "507f1f77bcf86cd799439011"; // PLACEHOLDER - Valid ObjectId format for testing
 
 // Employer-focused healthy reminders
 const healthyReminders = [
@@ -155,45 +48,266 @@ const getStatusBadge = (status: string): { bg: string; text: string } => {
   return statusConfig[status] || { bg: "bg-gray-100", text: "text-gray-800" };
 };
 
+interface TransformedJobPosting {
+  id: string;
+  title: string;
+  company: string;
+  status: string;
+  posted: string;
+  applications: number;
+  newApplications: number;
+  interviews: number;
+  hired: number;
+  location: string;
+  salary: string;
+}
+
+interface TransformedApplication {
+  id: string;
+  candidateName: string;
+  jobTitle: string;
+  company: string;
+  appliedDate: string;
+  status: string;
+  matchScore: number;
+  experience: string;
+  location: string;
+}
+
+interface TransformedInterview {
+  id: string;
+  candidateName: string;
+  jobTitle: string;
+  company: string;
+  interviewDate: string;
+  interviewType: string;
+  interviewer: string;
+}
+
+function formatDateAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "1 day ago";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 14) return "1 week ago";
+  if (diffDays < 21) return "2 weeks ago";
+  if (diffDays < 30) return "3 weeks ago";
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths === 1) return "1 month ago";
+  return `${diffMonths} months ago`;
+}
+
+function formatSalary(min: number | null | undefined, max: number | null | undefined): string {
+  if (!min && !max) return "Salary not specified";
+  if (!min) return `Up to $${max?.toLocaleString()}`;
+  if (!max) return `$${min.toLocaleString()}+`;
+  return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
+}
+
 export default function EmployerDashboard(): ReactElement {
   const [selectedCompany, setSelectedCompany] = useState("all");
   const [currentReminder, setCurrentReminder] = useState(healthyReminders[0]);
+  
+  // API state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [employerProfile, setEmployerProfile] = useState<EmployerProfile | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [allApplications, setAllApplications] = useState<Application[]>([]);
+  
+  // Transformed data
+  const [jobPostings, setJobPostings] = useState<TransformedJobPosting[]>([]);
+  const [recentApplications, setRecentApplications] = useState<TransformedApplication[]>([]);
+  const [upcomingInterviews, setUpcomingInterviews] = useState<TransformedInterview[]>([]);
 
   const generateReminder = (): void => {
     const randomIndex = Math.floor(Math.random() * healthyReminders.length);
     setCurrentReminder(healthyReminders[randomIndex]);
   };
 
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Fetch employer profile
+        let profile: EmployerProfile | null = null;
+        let employerProfileId: string | null = null;
+        try {
+          profile = await api.employerProfiles.getByUserId(userId);
+          setEmployerProfile(profile);
+          employerProfileId = profile.id;
+        } catch (err) {
+          console.info("[Employer Dashboard] Profile not found - cannot fetch jobs/applications");
+        }
+
+        if (employerProfileId) {
+          // Fetch jobs posted by this employer
+          const employerJobs = await api.jobs.getAll({
+            posted_by: employerProfileId,
+            limit: 100,
+          });
+          setJobs(employerJobs);
+
+          // Fetch applications for all jobs
+          const jobIds = employerJobs.map((job) => job.id);
+          const applicationsPromises = jobIds.map((jobId) =>
+            api.applications.getAll({ job_id: jobId, limit: 100 })
+          );
+          const applicationsArrays = await Promise.all(applicationsPromises);
+          const flatApplications = applicationsArrays.flat();
+          setAllApplications(flatApplications);
+
+          // Transform jobs
+          const transformedJobs: TransformedJobPosting[] = employerJobs.map((job) => {
+            const jobApplications = flatApplications.filter((app) => app.job_id === job.id);
+            const newApplications = jobApplications.filter((app) => {
+              const appliedDate = new Date(app.applied_date);
+              const sevenDaysAgo = new Date();
+              sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+              return appliedDate >= sevenDaysAgo;
+            });
+            const interviews = jobApplications.filter(
+              (app) => app.status === "interview_scheduled" || app.status === "interviewed"
+            ).length;
+            const hired = jobApplications.filter((app) => app.status === "hired").length;
+
+            return {
+              id: job.id,
+              title: job.title,
+              company: job.company,
+              status: job.is_active ? "Active" : "Paused",
+              posted: formatDateAgo(new Date(job.created_at)),
+              applications: jobApplications.length,
+              newApplications: newApplications.length,
+              interviews,
+              hired,
+              location: job.remote_ok ? "Remote" : job.location,
+              salary: formatSalary(job.salary_min, job.salary_max),
+            };
+          });
+          setJobPostings(transformedJobs);
+
+          // Transform recent applications (last 10, sorted by date)
+          const sortedApplications = flatApplications
+            .sort((a, b) => new Date(b.applied_date).getTime() - new Date(a.applied_date).getTime())
+            .slice(0, 10);
+          
+          const transformedApplications: TransformedApplication[] = await Promise.all(
+            sortedApplications.map(async (app) => {
+              const job = employerJobs.find((j) => j.id === app.job_id);
+              // TODO: Fetch job seeker profile to get name, experience, location
+              // For now, using placeholder data
+              return {
+                id: app.id,
+                candidateName: `Candidate ${app.job_seeker_id.slice(0, 8)}`,
+                jobTitle: job?.title || "Unknown Job",
+                company: job?.company || "Unknown Company",
+                appliedDate: formatDateAgo(new Date(app.applied_date)),
+                status: app.status === "pending" ? "Unreviewed" : "Reviewed",
+                matchScore: 0, // TODO: Calculate match score
+                experience: "Unknown", // TODO: Get from job seeker profile
+                location: job?.location || "Unknown",
+              };
+            })
+          );
+          setRecentApplications(transformedApplications);
+
+          // Transform upcoming interviews
+          const interviewApplications = flatApplications.filter(
+            (app) =>
+              app.status === "interview_scheduled" &&
+              app.interview_scheduled_date &&
+              new Date(app.interview_scheduled_date) >= new Date()
+          );
+          const transformedInterviews: TransformedInterview[] = await Promise.all(
+            interviewApplications.map(async (app) => {
+              const job = employerJobs.find((j) => j.id === app.job_id);
+              const interviewDate = app.interview_scheduled_date
+                ? new Date(app.interview_scheduled_date)
+                : new Date();
+              const isToday = interviewDate.toDateString() === new Date().toDateString();
+              const isTomorrow =
+                interviewDate.toDateString() ===
+                new Date(Date.now() + 86400000).toDateString();
+              
+              let dateStr = "";
+              if (isToday) {
+                dateStr = `Today at ${interviewDate.toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}`;
+              } else if (isTomorrow) {
+                dateStr = `Tomorrow at ${interviewDate.toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}`;
+              } else {
+                dateStr = interviewDate.toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                });
+              }
+
+              return {
+                id: app.id,
+                candidateName: `Candidate ${app.job_seeker_id.slice(0, 8)}`, // TODO: Get from profile
+                jobTitle: job?.title || "Unknown Job",
+                company: job?.company || "Unknown Company",
+                interviewDate: dateStr,
+                interviewType: "Interview", // TODO: Get from application data
+                interviewer: profile?.name || "Unknown", // TODO: Get from employer profile
+              };
+            })
+          );
+          setUpcomingInterviews(transformedInterviews);
+        } else {
+          // No profile means no data
+          setJobPostings([]);
+          setRecentApplications([]);
+          setUpcomingInterviews([]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch dashboard data:", err);
+        if (err instanceof ApiError) {
+          setError(`Failed to load dashboard: ${err.message}`);
+        } else {
+          setError("An unexpected error occurred. Please try again.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [userId]);
+
+  // Get unique companies from jobs
+  const companies = Array.from(new Set(jobs.map((job) => job.company)));
+
   // Filter data based on selected company
   const filteredJobPostings =
     selectedCompany === "all"
       ? jobPostings
-      : jobPostings.filter((job) => {
-          const company = employerInfo.companies.find(
-            (c) => c.id === selectedCompany
-          );
-          return job.company === company?.name;
-        });
+      : jobPostings.filter((job) => job.company === selectedCompany);
 
   const filteredApplications =
     selectedCompany === "all"
       ? recentApplications
-      : recentApplications.filter((app) => {
-          const company = employerInfo.companies.find(
-            (c) => c.id === selectedCompany
-          );
-          return app.company === company?.name;
-        });
+      : recentApplications.filter((app) => app.company === selectedCompany);
 
   const filteredInterviews =
     selectedCompany === "all"
       ? upcomingInterviews
-      : upcomingInterviews.filter((interview) => {
-          const company = employerInfo.companies.find(
-            (c) => c.id === selectedCompany
-          );
-          return interview.company === company?.name;
-        });
+      : upcomingInterviews.filter((interview) => interview.company === selectedCompany);
 
   // Calculate summary metrics based on filtered data
   const totalActiveJobs = filteredJobPostings.filter(
@@ -212,6 +326,29 @@ export default function EmployerDashboard(): ReactElement {
     0
   );
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-green-100 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="w-12 h-12 mx-auto text-green-600 animate-spin mb-4" />
+          <p className="text-green-800">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-green-100 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <Building2 className="w-12 h-12 mx-auto text-red-500 mb-4" />
+          <p className="text-red-800 font-semibold mb-2">Error loading dashboard</p>
+          <p className="text-red-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-green-100">
       {/* Main Content */}
@@ -221,7 +358,7 @@ export default function EmployerDashboard(): ReactElement {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-green-900 mb-2 flex items-center">
-                Good morning, {employerInfo.name}!
+                Good morning, {employerProfile?.name || "Employer"}!
                 <Building2 className="w-8 h-8 ml-3 text-green-600" />
               </h1>
               <p className="text-green-700">
@@ -230,23 +367,25 @@ export default function EmployerDashboard(): ReactElement {
             </div>
 
             {/* Company Selector */}
-            <div className="relative text-right w-full md:w-auto">
-              <label className="block text-sm font-medium text-green-800 mb-2">
-                Company Filter:
-              </label>
-              <select
-                value={selectedCompany}
-                onChange={(e) => setSelectedCompany(e.target.value)}
-                className="px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 bg-white/80 min-w-[200px] w-full md:w-auto"
-              >
-                <option value="all">All Companies</option>
-                {employerInfo.companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {companies.length > 0 && (
+              <div className="relative text-right w-full md:w-auto">
+                <label className="block text-sm font-medium text-green-800 mb-2">
+                  Company Filter:
+                </label>
+                <select
+                  value={selectedCompany}
+                  onChange={(e) => setSelectedCompany(e.target.value)}
+                  className="px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 bg-white/80 min-w-[200px] w-full md:w-auto"
+                >
+                  <option value="all">All Companies</option>
+                  {companies.map((company) => (
+                    <option key={company} value={company}>
+                      {company}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
 
@@ -289,10 +428,13 @@ export default function EmployerDashboard(): ReactElement {
               <Building2 className="w-3 h-3 ml-1 text-green-500" />
             </p>
             <div className="space-y-2">
-              <button className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-2 px-4 rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center text-sm">
+              <Link
+                href="/job-posting"
+                className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-2 px-4 rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center text-sm"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Post New Job
-              </button>
+              </Link>
               <button className="w-full bg-green-50 text-green-700 border border-green-300 py-2 px-4 rounded-lg font-medium hover:bg-green-100 transition-all flex items-center justify-center text-sm">
                 <Eye className="w-4 h-4 mr-2" />
                 Manage Jobs
@@ -314,10 +456,15 @@ export default function EmployerDashboard(): ReactElement {
               Awaiting your review
               <Clock className="w-3 h-3 ml-1 text-amber-500" />
             </p>
-            <button className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-2 px-4 rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center text-sm">
-              <Eye className="w-4 h-4 mr-2" />
-              Review Applications
-            </button>
+            {filteredJobPostings.length > 0 && filteredJobPostings[0] && (
+              <Link
+                href={`/applications?jobId=${filteredJobPostings[0].id}`}
+                className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-2 px-4 rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center text-sm"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Review Applications
+              </Link>
+            )}
           </div>
 
           <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
@@ -429,9 +576,31 @@ export default function EmployerDashboard(): ReactElement {
                     </div>
                   </div>
 
-                  <p className="text-xs text-green-600 mt-2">
-                    Posted {job.posted}
-                  </p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-xs text-green-600">
+                      Posted {job.posted}
+                    </p>
+                    {process.env.NODE_ENV === 'development' && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(job.id);
+                          alert(`Job ID copied: ${job.id}`);
+                        }}
+                        className="text-xs text-green-500 font-mono hover:text-green-700 hover:underline cursor-pointer"
+                        title="Click to copy full Job ID (Dev Only)"
+                      >
+                        ID: {job.id.slice(0, 8)}...
+                      </button>
+                    )}
+                  </div>
+                  
+                  <Link
+                    href={`/applications?jobId=${job.id}`}
+                    className="mt-3 block w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-2 px-4 rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center text-sm"
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Applications ({job.applications})
+                  </Link>
                 </div>
               ))}
             </div>
@@ -441,20 +610,19 @@ export default function EmployerDashboard(): ReactElement {
                 <Briefcase className="w-12 h-12 mx-auto text-green-300 mb-4" />
                 <p className="text-green-600">
                   {selectedCompany === "all"
-                    ? "No job postings found across all companies"
-                    : `No job postings found for ${
-                        employerInfo.companies.find(
-                          (c) => c.id === selectedCompany
-                        )?.name
-                      }`}
+                    ? "No job postings found. Create your first job posting to get started!"
+                    : `No job postings found for ${selectedCompany}`}
                 </p>
               </div>
             )}
 
-            <button className="w-full mt-4 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center">
+            <Link
+              href="/job-posting"
+              className="w-full mt-4 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center"
+            >
               <Plus className="w-5 h-5 mr-2" />
               Create New Job Posting
-            </button>
+            </Link>
           </div>
 
           {/* Recent Applications */}
@@ -525,12 +693,8 @@ export default function EmployerDashboard(): ReactElement {
                 <Users className="w-12 h-12 mx-auto text-green-300 mb-4" />
                 <p className="text-green-600">
                   {selectedCompany === "all"
-                    ? "No recent applications across all companies"
-                    : `No recent applications for ${
-                        employerInfo.companies.find(
-                          (c) => c.id === selectedCompany
-                        )?.name
-                      }`}
+                    ? "No recent applications yet. Applications will appear here once candidates apply to your jobs."
+                    : `No recent applications for ${selectedCompany}`}
                 </p>
               </div>
             )}
@@ -601,12 +765,8 @@ export default function EmployerDashboard(): ReactElement {
               <Calendar className="w-12 h-12 mx-auto text-green-300 mb-4" />
               <p className="text-green-600">
                 {selectedCompany === "all"
-                  ? "No upcoming interviews across all companies"
-                  : `No upcoming interviews for ${
-                      employerInfo.companies.find(
-                        (c) => c.id === selectedCompany
-                      )?.name
-                    }`}
+                  ? "No upcoming interviews scheduled. Interviews will appear here once scheduled."
+                  : `No upcoming interviews for ${selectedCompany}`}
               </p>
             </div>
           )}
