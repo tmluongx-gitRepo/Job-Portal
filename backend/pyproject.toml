@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 
 [tool.mypy]
 # Python version
-python_version = "3.12"
+python_version = "3.11"
 
 # Package resolution
 explicit_package_bases = false
