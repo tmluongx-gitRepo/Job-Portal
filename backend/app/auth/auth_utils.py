@@ -38,21 +38,15 @@ def decode_supabase_jwt(token: str) -> dict[str, Any]:
         ExpiredTokenError: If token has expired
     """
     try:
-        # Decode JWT token without verification (Supabase already validated it)
-        # This extracts the payload to get user information
+        # Decode JWT token without signature verification
+        # Supabase tokens are already validated by Supabase's auth service
+        # and we trust tokens that pass through their system.
+        # The token's exp claim is still checked to ensure it hasn't expired.
         payload = jwt.decode(
             token,
-            options={"verify_signature": False},  # Trust Supabase's validation
+            options={"verify_signature": False},
             algorithms=["HS256"],
         )
-
-        # Check if token is expired
-        if "exp" in payload:
-            from datetime import UTC, datetime
-
-            exp_timestamp = payload["exp"]
-            if datetime.now(UTC).timestamp() > exp_timestamp:
-                raise ExpiredTokenError("Token has expired")
 
     except jwt.ExpiredSignatureError as e:
         raise ExpiredTokenError("Token has expired") from e

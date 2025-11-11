@@ -74,10 +74,15 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         )
 
         # Return user info with MongoDB ObjectId as primary ID
+        # Include all fields required by CurrentUser schema
         return {
             "id": str(user_doc["_id"]),  # MongoDB ObjectId (primary ID)
             "email": user_doc["email"],
             "account_type": user_doc["account_type"],
+            "provider": user.get("provider", "email"),
+            "email_verified": user.get("email_verified", False),
+            "role": user.get("role", "authenticated"),
+            "metadata": user.get("metadata", {}),
         }
 
     except ExpiredTokenError as e:
@@ -107,12 +112,13 @@ async def get_optional_user(
     Dependency to get current user if authenticated, None otherwise.
 
     Useful for endpoints that work for both authenticated and anonymous users.
+    Returns MongoDB user document with _id (not Supabase UUID).
 
     Args:
         credentials: Optional HTTP Bearer credentials
 
     Returns:
-        dict | None: User information if authenticated, None otherwise
+        dict | None: User information with MongoDB _id if authenticated, None otherwise
 
     Usage:
         @router.get("/jobs")
@@ -128,7 +134,29 @@ async def get_optional_user(
     try:
         token = credentials.credentials
         payload = decode_supabase_jwt(token)
-        return extract_user_from_token(payload)
+        supabase_user = extract_user_from_token(payload)
+
+        # Just-in-time user provisioning - get or create MongoDB user
+        from app.auth.user_service import get_or_create_user_by_supabase_id
+
+        account_type = supabase_user.get("account_type") or "job_seeker"
+        user_doc = await get_or_create_user_by_supabase_id(
+            supabase_id=supabase_user["id"],
+            email=supabase_user["email"],
+            account_type=account_type,
+        )
+
+        # Return MongoDB user with ObjectId as 'id'
+        # Include all fields for consistency with get_current_user
+        return {
+            "id": user_doc["_id"],
+            "email": user_doc["email"],
+            "account_type": user_doc["account_type"],
+            "provider": supabase_user.get("provider", "email"),
+            "email_verified": supabase_user.get("email_verified", False),
+            "role": supabase_user.get("role", "authenticated"),
+            "metadata": supabase_user.get("metadata", {}),
+        }
     except (InvalidTokenError, ExpiredTokenError):
         return None
 

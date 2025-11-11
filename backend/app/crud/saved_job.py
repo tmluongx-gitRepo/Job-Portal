@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from typing import cast
 
 from bson import ObjectId
+from pymongo import ReturnDocument
 
 from app.database import get_jobs_collection, get_saved_jobs_collection
 from app.type_definitions import SavedJobDocument
@@ -154,7 +155,7 @@ async def update_saved_job(saved_job_id: str, update_data: dict) -> SavedJobDocu
         result = await saved_jobs.find_one_and_update(
             {"_id": ObjectId(saved_job_id)},
             {"$set": update_data},
-            return_document=True,
+            return_document=ReturnDocument.AFTER,
         )
         return cast(SavedJobDocument, result) if result else None
     except Exception:

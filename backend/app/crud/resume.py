@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from typing import cast
 
 from bson import ObjectId
+from pymongo import ReturnDocument
 
 from app.database import get_resumes_collection
 from app.type_definitions import ResumeDocument
@@ -46,7 +47,7 @@ async def create_or_update_resume(
             "$setOnInsert": {"created_at": now},
         },
         upsert=True,
-        return_document=True,
+        return_document=ReturnDocument.AFTER,
     )
 
     return cast(ResumeDocument, result)
