@@ -159,23 +159,30 @@ async def schedule_interview(
             detail="Interview already scheduled for this application",
         )
 
-    # Create the interview
-    interview = await interview_crud.create_interview(
-        application_id=interview_data.application_id,
-        job_id=application["job_id"],
-        job_seeker_id=application["job_seeker_id"],
-        employer_id=current_user["id"],
-        interview_type=interview_data.interview_type,
-        scheduled_date=interview_data.scheduled_date,
-        duration_minutes=interview_data.duration_minutes,
-        timezone=interview_data.timezone,
-        location=interview_data.location,
-        interviewer_name=interview_data.interviewer_name,
-        interviewer_email=interview_data.interviewer_email,
-        interviewer_phone=interview_data.interviewer_phone,
-        notes=interview_data.notes,
-        internal_notes=interview_data.internal_notes,
-    )
+    # Create the interview - ensure IDs are strings for type safety
+    try:
+        interview = await interview_crud.create_interview(
+            application_id=interview_data.application_id,
+            job_id=str(application["job_id"]),
+            job_seeker_id=str(application["job_seeker_id"]),
+            employer_id=current_user["id"],
+            interview_type=interview_data.interview_type,
+            scheduled_date=interview_data.scheduled_date,
+            duration_minutes=interview_data.duration_minutes,
+            timezone=interview_data.timezone,
+            location=interview_data.location,
+            interviewer_name=interview_data.interviewer_name,
+            interviewer_email=str(interview_data.interviewer_email) if interview_data.interviewer_email else None,
+            interviewer_phone=interview_data.interviewer_phone,
+            notes=interview_data.notes,
+            internal_notes=interview_data.internal_notes,
+        )
+    except ValueError as e:
+        # DuplicateKeyError caught in CRUD - race condition
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from None
 
     # Update application with interview date
     await application_crud.update_application(

@@ -29,8 +29,10 @@ export const interviewApi = {
     upcoming_only?: boolean;
   }) {
     const query = new URLSearchParams();
-    if (params?.skip) query.set("skip", params.skip.toString());
-    if (params?.limit) query.set("limit", params.limit.toString());
+    // Use explicit undefined checks to allow 0 as valid values
+    if (params?.skip !== undefined) query.set("skip", params.skip.toString());
+    if (params?.limit !== undefined)
+      query.set("limit", params.limit.toString());
     if (params?.status) query.set("status", params.status);
     if (params?.upcoming_only) query.set("upcoming_only", "true");
 
@@ -42,8 +44,10 @@ export const interviewApi = {
 
   async getUpcoming(params?: { skip?: number; limit?: number }) {
     const query = new URLSearchParams();
-    if (params?.skip) query.set("skip", params.skip.toString());
-    if (params?.limit) query.set("limit", params.limit.toString());
+    // Use explicit undefined checks to allow 0 as valid values
+    if (params?.skip !== undefined) query.set("skip", params.skip.toString());
+    if (params?.limit !== undefined)
+      query.set("limit", params.limit.toString());
 
     return apiRequest(`/interviews/upcoming?${query}`, {
       method: "GET",

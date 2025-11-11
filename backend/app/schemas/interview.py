@@ -5,7 +5,7 @@ Pydantic schemas for Interview API.
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from app.constants import InterviewStatus, InterviewType
 
@@ -30,7 +30,7 @@ class InterviewCreate(BaseModel):
     timezone: str = Field(..., description="Timezone (e.g., America/New_York)")
     location: str | None = Field(None, description="Physical address or meeting link")
     interviewer_name: str | None = Field(None, description="Interviewer's name")
-    interviewer_email: str | None = Field(None, description="Interviewer's email")
+    interviewer_email: EmailStr | None = Field(None, description="Interviewer's email")
     interviewer_phone: str | None = Field(None, description="Interviewer's phone")
     notes: str | None = Field(None, description="Notes visible to job seeker")
     internal_notes: str | None = Field(None, description="Internal notes (employer only)")
@@ -44,7 +44,7 @@ class InterviewUpdate(BaseModel):
     timezone: str | None = Field(None, description="Timezone")
     location: str | None = Field(None, description="Physical address or meeting link")
     interviewer_name: str | None = Field(None, description="Interviewer's name")
-    interviewer_email: str | None = Field(None, description="Interviewer's email")
+    interviewer_email: EmailStr | None = Field(None, description="Interviewer's email")
     interviewer_phone: str | None = Field(None, description="Interviewer's phone")
     notes: str | None = Field(None, description="Notes visible to job seeker")
     internal_notes: str | None = Field(None, description="Internal notes (employer only)")

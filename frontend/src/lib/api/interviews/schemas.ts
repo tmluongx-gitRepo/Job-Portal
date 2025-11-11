@@ -64,7 +64,7 @@ export const InterviewResponseSchema = z.object({
   job_id: z.string(),
   job_seeker_id: z.string(),
   employer_id: z.string(),
-  interview_type: z.string(),
+  interview_type: z.enum(INTERVIEW_TYPES), // Use enum for stricter validation
   scheduled_date: z.coerce.date(),
   duration_minutes: z.number().int(),
   timezone: z.string(),

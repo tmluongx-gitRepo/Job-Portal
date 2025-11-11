@@ -49,7 +49,12 @@ async def create_interview(
 
     Returns:
         Created interview document
+
+    Raises:
+        ValueError: If an interview already exists for this application
     """
+    from pymongo.errors import DuplicateKeyError
+
     collection = get_interviews_collection()
 
     interview_data: dict[str, Any] = {
@@ -82,7 +87,13 @@ async def create_interview(
     if internal_notes:
         interview_data["internal_notes"] = internal_notes
 
-    await collection.insert_one(interview_data)
+    try:
+        await collection.insert_one(interview_data)
+    except DuplicateKeyError:
+        raise ValueError(
+            f"Interview already exists for application {application_id}"
+        ) from None
+
     return cast(InterviewDocument, interview_data)
 
 
@@ -96,15 +107,22 @@ async def get_interview_by_id(interview_id: str) -> InterviewDocument | None:
     Returns:
         Interview document if found, None otherwise
     """
+    from bson.errors import InvalidId
+
     collection = get_interviews_collection()
 
     try:
-        return await collection.find_one({"_id": ObjectId(interview_id)})  # type: ignore[return-value]
-    except Exception as e:
-        # Log the exception but return None for invalid ObjectId
+        # Validate ObjectId format before querying
+        obj_id = ObjectId(interview_id)
+        return await collection.find_one({"_id": obj_id})  # type: ignore[return-value]
+    except InvalidId:
+        # Invalid ObjectId format - return None (not found)
+        return None
+    except Exception:
+        # Unexpected errors should be logged
         import logging
 
-        logging.warning(f"Failed to get interview {interview_id}: {e}")
+        logging.exception(f"Unexpected error getting interview {interview_id}")
         return None
 
 
@@ -189,6 +207,9 @@ async def update_interview(
     Returns:
         Updated interview document if found, None otherwise
     """
+    from bson.errors import InvalidId
+    from pymongo.errors import OperationFailure
+
     collection = get_interviews_collection()
 
     # Add updated_at timestamp
@@ -200,23 +221,36 @@ async def update_interview(
         current_interview = await get_interview_by_id(interview_id)
         if current_interview:
             current_status = current_interview.get("status")
-            # Only allow rescheduling if status is 'scheduled' or 'rescheduled'
+            # Allow rescheduling if status is 'scheduled' or 'rescheduled'
+            # This supports chained rescheduling (rescheduled -> rescheduled again)
             # Do not allow rescheduling cancelled or completed interviews
             if current_status in ["scheduled", "rescheduled"]:
                 update_data["status"] = "rescheduled"
-                update_data["rescheduled_from"] = current_interview["scheduled_date"]
+                # Track the original scheduled date (not the previous rescheduled_from)
+                if "rescheduled_from" not in current_interview:
+                    update_data["rescheduled_from"] = current_interview["scheduled_date"]
+                # If already rescheduled, keep the original rescheduled_from
 
     try:
+        obj_id = ObjectId(interview_id)
         updated_interview = await collection.find_one_and_update(
-            {"_id": ObjectId(interview_id)},
+            {"_id": obj_id},
             {"$set": update_data},
             return_document=ReturnDocument.AFTER,
         )
         return cast(InterviewDocument, updated_interview) if updated_interview else None
+    except InvalidId:
+        # Invalid ObjectId format
+        return None
+    except OperationFailure:
+        import logging
+
+        logging.exception(f"Database operation failed for interview {interview_id}")
+        return None
     except Exception:
         import logging
 
-        logging.exception(f"Failed to update interview {interview_id}")
+        logging.exception(f"Unexpected error updating interview {interview_id}")
         return None
 
 
@@ -252,7 +286,7 @@ async def complete_interview(
 
     Args:
         interview_id: Interview ID
-        feedback: Interview feedback
+        feedback: Interview feedback (can be empty string)
         rating: Rating (1-5)
 
     Returns:
@@ -263,9 +297,10 @@ async def complete_interview(
         "updated_at": datetime.now(UTC),
     }
 
-    if feedback:
+    # Use 'is not None' to allow empty strings and rating=0 (though 0 is invalid by schema)
+    if feedback is not None:
         update_data["feedback"] = feedback
-    if rating:
+    if rating is not None:
         update_data["rating"] = rating
 
     return await update_interview(interview_id, update_data)

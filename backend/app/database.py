@@ -248,7 +248,10 @@ async def _init_feature_indexes(db: Any) -> None:
 
     # Interviews collection indexes
     interviews = db["interviews"]
-    await interviews.create_index("application_id", unique=True)  # One interview per application
+    # One active interview per application (not historical)
+    # This enforces that rescheduled interviews update the same document
+    # If you need interview history, consider a separate interviews_history collection
+    await interviews.create_index("application_id", unique=True)
     await interviews.create_index("job_id")
     await interviews.create_index("job_seeker_id")
     await interviews.create_index("employer_id")
