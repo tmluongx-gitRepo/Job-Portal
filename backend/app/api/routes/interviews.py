@@ -22,17 +22,19 @@ from app.schemas.interview import (
 router = APIRouter(tags=["Interviews"])
 
 
-def _serialize_interview(interview: dict) -> dict:
+def _serialize_interview(interview: dict, current_user: dict | None = None) -> dict:
     """
-    Serialize interview document for API response.
+    Serialize interview document for API response with role-based filtering.
 
     Args:
         interview: Interview document from MongoDB
+        current_user: Current authenticated user (for role-based filtering)
 
     Returns:
-        Serialized interview dictionary
+        Serialized interview dictionary with appropriate fields based on user role
     """
-    return {
+    # Base serialization
+    serialized = {
         "id": str(interview["_id"]),
         "application_id": interview["application_id"],
         "job_id": interview["job_id"],
@@ -46,11 +48,8 @@ def _serialize_interview(interview: dict) -> dict:
         "interviewer_name": interview.get("interviewer_name"),
         "interviewer_email": interview.get("interviewer_email"),
         "interviewer_phone": interview.get("interviewer_phone"),
-        "notes": interview.get("notes"),
-        "internal_notes": interview.get("internal_notes"),
+        "notes": interview.get("notes"),  # Public notes visible to job seekers
         "status": interview["status"],
-        "feedback": interview.get("feedback"),
-        "rating": interview.get("rating"),
         "reminder_sent": interview.get("reminder_sent", False),
         "cancelled_by": interview.get("cancelled_by"),
         "cancelled_reason": interview.get("cancelled_reason"),
@@ -60,17 +59,47 @@ def _serialize_interview(interview: dict) -> dict:
         # Populated fields
         "job_title": interview.get("job_title"),
         "company": interview.get("company"),
-        "job_seeker_name": interview.get("job_seeker_name"),
-        "job_seeker_email": interview.get("job_seeker_email"),
     }
 
+    # Role-based field inclusion to prevent information leakage
+    if current_user:
+        is_employer_or_admin = is_employer(current_user) or is_admin(current_user)
 
-async def _serialize_interviews(interviews: list) -> list[dict]:
+        # Internal notes: Only visible to employers and admins
+        if is_employer_or_admin:
+            serialized["internal_notes"] = interview.get("internal_notes")
+            # Feedback and rating: Only visible to employers and admins
+            serialized["feedback"] = interview.get("feedback")
+            serialized["rating"] = interview.get("rating")
+            # Job seeker contact info: Only visible to employers and admins
+            serialized["job_seeker_name"] = interview.get("job_seeker_name")
+            serialized["job_seeker_email"] = interview.get("job_seeker_email")
+        else:
+            # Job seekers don't see internal notes, feedback, or rating
+            serialized["internal_notes"] = None
+            serialized["feedback"] = None
+            serialized["rating"] = None
+            # Job seekers can see their own name (populated from their profile)
+            serialized["job_seeker_name"] = interview.get("job_seeker_name")
+            serialized["job_seeker_email"] = None  # Don't leak email
+    else:
+        # No user context - return minimal sensitive data
+        serialized["internal_notes"] = None
+        serialized["feedback"] = None
+        serialized["rating"] = None
+        serialized["job_seeker_name"] = None
+        serialized["job_seeker_email"] = None
+
+    return serialized
+
+
+async def _serialize_interviews(interviews: list, current_user: dict | None = None) -> list[dict]:
     """
     Serialize multiple interview documents for API response.
 
     Args:
         interviews: List of interview documents from MongoDB
+        current_user: Current authenticated user (for role-based filtering)
 
     Returns:
         List of serialized interview dictionaries with populated details
@@ -79,7 +108,7 @@ async def _serialize_interviews(interviews: list) -> list[dict]:
     for interview in interviews:
         interview_dict = dict(interview)
         interview_dict = await _populate_interview_details(interview_dict)
-        serialized.append(_serialize_interview(interview_dict))
+        serialized.append(_serialize_interview(interview_dict, current_user))
     return serialized
 
 
@@ -199,7 +228,7 @@ async def schedule_interview(
     # Populate details and return
     interview_dict = dict(interview)
     interview_dict = await _populate_interview_details(interview_dict)
-    return InterviewResponse(**_serialize_interview(interview_dict))
+    return InterviewResponse(**_serialize_interview(interview_dict, current_user))
 
 
 @router.get("")
@@ -263,7 +292,7 @@ async def list_interviews(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid account type")
 
     # Serialize interviews with populated details
-    serialized = await _serialize_interviews(interviews)
+    serialized = await _serialize_interviews(interviews, current_user)
     return InterviewListResponse(
         interviews=[InterviewResponse(**i) for i in serialized],
         total=total,
@@ -334,7 +363,7 @@ async def get_interview(
     # Populate details and return
     interview_dict = dict(interview)
     interview_dict = await _populate_interview_details(interview_dict)
-    return InterviewResponse(**_serialize_interview(interview_dict))
+    return InterviewResponse(**_serialize_interview(interview_dict, current_user))
 
 
 @router.put("/{interview_id}")
@@ -390,7 +419,7 @@ async def update_interview(
     # Populate details and return
     interview_dict = dict(updated_interview)
     interview_dict = await _populate_interview_details(interview_dict)
-    return InterviewResponse(**_serialize_interview(interview_dict))
+    return InterviewResponse(**_serialize_interview(interview_dict, current_user))
 
 
 @router.delete("/{interview_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -442,10 +471,11 @@ async def cancel_interview(
         reason=cancellation_data.reason,
     )
 
-    # Update application
+    # Update application status to reflect cancellation
     await application_crud.update_application(
         interview["application_id"],
         {
+            "status": "interview_cancelled",  # Update status for better tracking
             "interview_scheduled_date": None,
             "next_step": "Interview cancelled",
         },
@@ -505,4 +535,4 @@ async def complete_interview(
     # Populate details and return
     interview_dict = dict(updated_interview)
     interview_dict = await _populate_interview_details(interview_dict)
-    return InterviewResponse(**_serialize_interview(interview_dict))
+    return InterviewResponse(**_serialize_interview(interview_dict, current_user))

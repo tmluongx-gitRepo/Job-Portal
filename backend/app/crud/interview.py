@@ -150,14 +150,18 @@ async def get_interviews(
     """
     Get interviews with optional filters.
 
+    Note: This function relies on database indexes for performance.
+    Indexes are created during database initialization (database.py: _init_feature_indexes).
+    If index creation fails, queries may be slow but will still function correctly.
+
     Args:
         skip: Number of documents to skip
         limit: Maximum number of documents to return
-        job_seeker_id: Filter by job seeker ID
-        employer_id: Filter by employer ID
-        job_id: Filter by job ID
-        status: Filter by status (if upcoming_only=True, will intersect with upcoming statuses)
-        upcoming_only: Only return upcoming interviews
+        job_seeker_id: Filter by job seeker ID (indexed)
+        employer_id: Filter by employer ID (indexed)
+        job_id: Filter by job ID (indexed)
+        status: Filter by status (indexed, if upcoming_only=True, will intersect with upcoming statuses)
+        upcoming_only: Only return upcoming interviews (uses scheduled_date index)
 
     Returns:
         List of interview documents

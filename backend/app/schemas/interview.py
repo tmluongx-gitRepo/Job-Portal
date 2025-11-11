@@ -37,7 +37,14 @@ class InterviewCreate(BaseModel):
 
 
 class InterviewUpdate(BaseModel):
-    """Schema for updating an interview."""
+    """
+    Schema for updating an interview.
+
+    Note: Field-level authorization is enforced at the route level.
+    - Employers/Admins: Can update all fields
+    - Job Seekers: Cannot update interviews (403 Forbidden)
+    - Sensitive fields (internal_notes, feedback, rating) are only visible to employers/admins
+    """
 
     scheduled_date: datetime | None = Field(None, description="New scheduled date and time")
     duration_minutes: int | None = Field(None, description="Duration in minutes", ge=15, le=480)
