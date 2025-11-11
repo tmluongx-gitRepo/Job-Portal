@@ -71,8 +71,80 @@ async def _serialize_profile(document: JobSeekerProfileDocument) -> JobSeekerPro
 async def _serialize_profiles(
     documents: Iterable[JobSeekerProfileDocument],
 ) -> list[JobSeekerProfileResponse]:
-    """Convert multiple job seeker profile documents into API response schemas."""
-    return [await _serialize_profile(doc) for doc in documents]
+    """
+    Convert multiple job seeker profile documents into API response schemas.
+
+    Optimized to batch-fetch resumes to avoid N+1 queries.
+    """
+    from app.database import get_resumes_collection
+
+    # Convert to list to allow multiple iterations
+    docs_list = list(documents)
+
+    if not docs_list:
+        return []
+
+    # Batch fetch all resumes for these profiles
+    user_ids = [str(doc["user_id"]) for doc in docs_list]
+    resumes_collection = get_resumes_collection()
+    resumes_cursor = resumes_collection.find({"job_seeker_id": {"$in": user_ids}})
+    resumes_list = await resumes_cursor.to_list(length=None)
+
+    # Create a map of user_id -> resume for O(1) lookup
+    resume_map = {resume["job_seeker_id"]: resume for resume in resumes_list}
+
+    # Serialize profiles with pre-fetched resumes
+    results = []
+    for doc in docs_list:
+        user_id_str = str(doc["user_id"])
+        resume = resume_map.get(user_id_str)
+
+        # Build resume fields
+        resume_file_url = None
+        resume_file_name = None
+        if resume:
+            resume_file_url = f"/api/resumes/{resume['_id']}/download"
+            resume_file_name = resume["original_filename"]
+
+        # Serialize profile without additional DB call
+        first_name = doc.get("first_name", "")
+        last_name = doc.get("last_name", "")
+        email = doc.get("email", "")
+        phone = doc.get("phone")
+        location = doc.get("location")
+        bio = doc.get("bio")
+        skills = doc.get("skills", [])
+        experience_years = doc.get("experience_years", 0)
+        education_level = doc.get("education_level")
+        preferences_data = doc.get("preferences")
+        preferences = JobSeekerPreferencesSchema(**preferences_data) if preferences_data else None
+        profile_views = doc.get("profile_views", 0)
+        profile_completion_percentage = doc.get("profile_completion_percentage")
+
+        results.append(
+            JobSeekerProfileResponse(
+                id=str(doc["_id"]),
+                user_id=user_id_str,
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
+                phone=phone,
+                location=location,
+                bio=bio,
+                skills=skills,
+                experience_years=experience_years,
+                education_level=education_level,
+                resume_file_url=resume_file_url,
+                resume_file_name=resume_file_name,
+                preferences=preferences,
+                profile_views=profile_views,
+                profile_completion_percentage=profile_completion_percentage,
+                created_at=doc["created_at"],
+                updated_at=doc["updated_at"],
+            )
+        )
+
+    return results
 
 
 @router.post("", response_model=JobSeekerProfileResponse, status_code=status.HTTP_201_CREATED)

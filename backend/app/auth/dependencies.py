@@ -149,7 +149,7 @@ async def get_optional_user(
         # Return MongoDB user with ObjectId as 'id'
         # Include all fields for consistency with get_current_user
         return {
-            "id": user_doc["_id"],
+            "id": str(user_doc["_id"]),  # Convert ObjectId to string for comparison
             "email": user_doc["email"],
             "account_type": user_doc["account_type"],
             "provider": supabase_user.get("provider", "email"),
