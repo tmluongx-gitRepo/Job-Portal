@@ -8,15 +8,34 @@ from typing import cast
 from bson import ObjectId
 
 from app.database import get_users_collection
-from app.types import UserDocument
+from app.type_definitions import UserDocument
 
 
-async def create_user(email: str, account_type: str = "job_seeker") -> UserDocument:
-    """Create a new user."""
+async def create_user(
+    email: str, account_type: str = "job_seeker", supabase_id: str | None = None
+) -> UserDocument:
+    """
+    Create a new user.
+
+    Args:
+        email: User's email address
+        account_type: Type of account (job_seeker, employer, admin)
+        supabase_id: Optional Supabase user ID for auth integration
+
+    Returns:
+        Created user document
+
+    Raises:
+        ValueError: If user with email already exists
+    """
     collection = get_users_collection()
 
-    # Check if user already exists
-    existing_user = await collection.find_one({"email": email})
+    # Check if user already exists by email or Supabase ID
+    query = {"$or": [{"email": email}]}
+    if supabase_id:
+        query["$or"].append({"supabase_id": supabase_id})
+
+    existing_user = await collection.find_one(query)
     if existing_user:
         raise ValueError(f"User with email {email} already exists")
 
@@ -27,13 +46,25 @@ async def create_user(email: str, account_type: str = "job_seeker") -> UserDocum
         "updated_at": datetime.now(UTC),
     }
 
+    # Add Supabase ID if provided
+    if supabase_id:
+        user_doc["supabase_id"] = supabase_id
+
     result = await collection.insert_one(user_doc)
     user_doc["_id"] = result.inserted_id
     return cast(UserDocument, user_doc)
 
 
 async def get_user_by_id(user_id: str) -> UserDocument | None:
-    """Get user by ID."""
+    """
+    Get user by MongoDB ObjectId.
+
+    Args:
+        user_id: MongoDB ObjectId as string
+
+    Returns:
+        User document if found, None otherwise
+    """
     collection = get_users_collection()
 
     try:
@@ -50,6 +81,13 @@ async def get_user_by_email(email: str) -> UserDocument | None:
     return cast(UserDocument, result) if result else None
 
 
+async def get_user_by_supabase_id(supabase_id: str) -> UserDocument | None:
+    """Get user by Supabase ID."""
+    collection = get_users_collection()
+    result = await collection.find_one({"supabase_id": supabase_id})
+    return cast(UserDocument, result) if result else None
+
+
 async def get_users(skip: int = 0, limit: int = 100) -> list[UserDocument]:
     """Get all users with pagination."""
     collection = get_users_collection()
@@ -59,7 +97,16 @@ async def get_users(skip: int = 0, limit: int = 100) -> list[UserDocument]:
 
 
 async def update_user(user_id: str, update_data: dict[str, object]) -> UserDocument | None:
-    """Update user."""
+    """
+    Update user by MongoDB ObjectId.
+
+    Args:
+        user_id: MongoDB ObjectId as string
+        update_data: Fields to update
+
+    Returns:
+        Updated user document if found, None otherwise
+    """
     collection = get_users_collection()
 
     # Add updated_at timestamp
@@ -75,12 +122,19 @@ async def update_user(user_id: str, update_data: dict[str, object]) -> UserDocum
 
 
 async def delete_user(user_id: str) -> bool:
-    """Delete user."""
+    """
+    Delete user by MongoDB ObjectId.
+
+    Args:
+        user_id: MongoDB ObjectId as string
+
+    Returns:
+        True if user was deleted, False otherwise
+    """
     collection = get_users_collection()
 
     try:
         result = await collection.delete_one({"_id": ObjectId(user_id)})
+        return bool(result.deleted_count > 0)
     except Exception:
         return False
-    else:
-        return bool(result.deleted_count > 0)

@@ -27,6 +27,13 @@ from app.schemas.recommendation import (
     RecommendationUpdate,
     RecommendationWithDetails,
 )
+from app.schemas.resume import ResumeMetadataResponse, ResumeUploadResponse
+from app.schemas.saved_job import (
+    SavedJobBase,
+    SavedJobCreate,
+    SavedJobResponse,
+    SavedJobUpdate,
+)
 from app.schemas.user import UserBase, UserCreate, UserResponse, UserUpdate
 
 __all__ = [
@@ -53,6 +60,12 @@ __all__ = [
     "RecommendationResponse",
     "RecommendationUpdate",
     "RecommendationWithDetails",
+    "ResumeMetadataResponse",
+    "ResumeUploadResponse",
+    "SavedJobBase",
+    "SavedJobCreate",
+    "SavedJobResponse",
+    "SavedJobUpdate",
     "StatusHistoryEntrySchema",
     "UserBase",
     "UserCreate",

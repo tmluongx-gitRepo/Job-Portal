@@ -4,7 +4,7 @@ from typing import cast
 from bson import ObjectId
 
 from app.database import get_applications_collection
-from app.types import ApplicationDocument
+from app.type_definitions import ApplicationDocument
 
 
 async def create_application(

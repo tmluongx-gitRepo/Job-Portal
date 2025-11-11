@@ -4,7 +4,7 @@ from typing import cast
 from bson import ObjectId
 
 from app.database import get_jobs_collection
-from app.types import JobDocument
+from app.type_definitions import JobDocument
 
 
 async def create_job(job_data: dict[str, object], posted_by: str | None = None) -> JobDocument:

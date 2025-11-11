@@ -16,6 +16,7 @@ class UserDocument(TypedDict):
     _id: ObjectId
     email: str
     account_type: str
+    supabase_id: NotRequired[str]  # Supabase UUID - only for auth lookup
     created_at: datetime
     updated_at: datetime
 
@@ -158,3 +159,27 @@ class RecommendationDocument(TypedDict):
     created_at: datetime
     job_details: NotRequired[dict[str, object]]
     seeker_details: NotRequired[dict[str, object]]
+
+
+class SavedJobDocument(TypedDict):
+    """MongoDB SavedJob document structure."""
+
+    _id: ObjectId
+    job_seeker_id: str
+    job_id: str
+    notes: NotRequired[str]
+    saved_date: datetime
+    created_at: datetime
+
+
+class ResumeDocument(TypedDict):
+    """MongoDB Resume document structure."""
+
+    _id: ObjectId
+    job_seeker_id: str
+    dropbox_path: str
+    original_filename: str
+    uploaded_at: datetime
+    content_type: str
+    created_at: datetime
+    updated_at: datetime

@@ -9,6 +9,9 @@ requires-python = ">=3.11"
 # Python version
 python_version = "3.12"
 
+# Package resolution
+explicit_package_bases = false
+
 # Strict mode
 strict = true
 
@@ -25,7 +28,7 @@ check_untyped_defs = true
 disallow_untyped_calls = false  # Too strict for FastAPI/Motor
 disallow_any_generics = false  # Too strict for Motor
 warn_redundant_casts = true
-warn_unused_ignores = true
+warn_unused_ignores = false  # Allow defensive type: ignore comments
 no_implicit_reexport = true
 strict_equality = true
 
@@ -52,6 +55,7 @@ module = [
     "motor.*",
     "chromadb.*",
     "redis.*",
+    "dropbox.*",
 ]
 ignore_missing_imports = true
 

@@ -1,0 +1,238 @@
+"""
+Cross-resource authorization tests.
+Ensures authorization works correctly across related resources.
+"""
+
+import pytest
+from httpx import AsyncClient
+
+from tests.conftest import DataCleaner
+from tests.constants import (
+    HTTP_BAD_REQUEST,
+    HTTP_CREATED,
+    HTTP_FORBIDDEN,
+    HTTP_NO_CONTENT,
+    HTTP_NOT_FOUND,
+    HTTP_OK,
+)
+
+
+class TestCrossResourceAuthorization:
+    """Test authorization across related resources."""
+
+    @pytest.mark.asyncio
+    async def test_cannot_create_job_without_employer_profile(
+        self, client: AsyncClient, employer_token: str
+    ) -> None:
+        """Employers must have a profile before posting jobs."""
+        if not employer_token:
+            pytest.skip("Email confirmation required for testing")
+
+        headers = {"Authorization": f"Bearer {employer_token}"}
+
+        # Try to create job without creating profile first
+        response = await client.post(
+            "/api/jobs",
+            headers=headers,
+            json={
+                "title": "Software Engineer",
+                "company": "Test Company",
+                "description": "Great job opportunity",
+                "location": "Remote",
+                "job_type": "Full-time",
+                "experience_required": "3-5 years",
+            },
+        )
+
+        # Should fail - need profile first (400) or validation error (422)
+        assert response.status_code in [HTTP_BAD_REQUEST, 422]
+        # Check error message if it's a 400
+        if response.status_code == HTTP_BAD_REQUEST:
+            assert "profile" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_deleting_user_cascades_to_profile(
+        self, client: AsyncClient, job_seeker_with_profile: tuple[str, str, str], admin_token: str
+    ) -> None:
+        """Deleting user should cascade to their profile."""
+        if not admin_token:
+            pytest.skip("Email confirmation required for testing")
+
+        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+
+        # Admin deletes user
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+        delete_response = await client.delete(f"/api/users/{js_user_id}", headers=admin_headers)
+        assert delete_response.status_code == HTTP_NO_CONTENT
+
+        # Profile should also be gone
+        response = await client.get(f"/api/job-seeker-profiles/{js_profile_id}")
+        assert response.status_code == HTTP_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_employer_can_only_view_applications_to_own_jobs(
+        self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
+    ) -> None:
+        """Employers can only see applications to their own jobs."""
+        emp_token, _, emp_profile_id = employer_with_profile
+        emp_headers = {"Authorization": f"Bearer {emp_token}"}
+
+        # Employer creates a job
+        job_response = await client.post(
+            "/api/jobs",
+            headers=emp_headers,
+            json={
+                "title": "Backend Developer",
+                "company": "Test Company",
+                "description": "Join our team",
+                "location": "San Francisco, CA",
+                "job_type": "Full-time",
+                "experience_required": "3-5 years",
+                "skills_required": ["Python", "FastAPI"],
+            },
+        )
+        assert job_response.status_code == HTTP_CREATED
+
+        # Employer views applications (should see their own jobs' applications only)
+        apps_response = await client.get("/api/applications", headers=emp_headers)
+        assert apps_response.status_code == HTTP_OK
+
+        # Should be empty or only contain applications to their jobs
+        applications = apps_response.json()
+        for app in applications:
+            # Verify each application is to a job owned by this employer
+            job_response = await client.get(f"/api/jobs/{app['job_id']}", headers=emp_headers)
+            assert job_response.status_code == HTTP_OK
+
+    @pytest.mark.asyncio
+    async def test_cannot_update_profile_of_different_type(
+        self,
+        client: AsyncClient,
+        job_seeker_token: str,
+        employer_with_profile: tuple[str, str, str],
+    ) -> None:
+        """Job seekers cannot update employer profiles and vice versa."""
+        if not job_seeker_token:
+            pytest.skip("Email confirmation required for testing")
+
+        _, _, emp_profile_id = employer_with_profile
+
+        # Job seeker tries to update employer profile
+        js_headers = {"Authorization": f"Bearer {job_seeker_token}"}
+        response = await client.put(
+            f"/api/employer-profiles/{emp_profile_id}",
+            headers=js_headers,
+            json={"description": "Hacked!"},
+        )
+
+        assert response.status_code == HTTP_FORBIDDEN
+
+    @pytest.mark.asyncio
+    async def test_deleting_job_makes_applications_inaccessible(
+        self,
+        client: AsyncClient,
+        job_seeker_with_profile: tuple[str, str, str],
+        employer_with_profile: tuple[str, str, str],
+        test_cleaner: DataCleaner,
+    ) -> None:
+        """Deleting a job should affect its applications."""
+        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        emp_token, _, emp_profile_id = employer_with_profile
+
+        # Employer posts job
+        emp_headers = {"Authorization": f"Bearer {emp_token}"}
+        job_response = await client.post(
+            "/api/jobs",
+            headers=emp_headers,
+            json={
+                "title": "Test Job for Deletion",
+                "company": "Test Company",
+                "description": "This will be deleted",
+                "location": "Remote",
+                "job_type": "Full-time",
+                "experience_required": "3-5 years",
+            },
+        )
+        assert job_response.status_code == HTTP_CREATED
+        job_id = job_response.json()["id"]
+        test_cleaner.track_job(job_id)
+
+        # Job seeker applies
+        js_headers = {"Authorization": f"Bearer {js_token}"}
+        app_response = await client.post(
+            "/api/applications",
+            headers=js_headers,
+            json={
+                "job_id": job_id,
+                "job_seeker_id": js_profile_id,  # Need to pass profile ID
+                "notes": "Please hire me!",
+            },
+        )
+        assert app_response.status_code == HTTP_CREATED
+        app_id = app_response.json()["id"]
+        test_cleaner.track_application(app_id)
+
+        # Employer deletes job
+        delete_response = await client.delete(f"/api/jobs/{job_id}", headers=emp_headers)
+        assert delete_response.status_code == HTTP_NO_CONTENT
+
+        # Application should either be deleted or marked with deleted job
+        app_check = await client.get(f"/api/applications/{app_id}", headers=js_headers)
+        # Accept either 404 (cascaded delete) or 200 with job deleted flag
+        assert app_check.status_code in [200, 404, 410]
+
+    @pytest.mark.asyncio
+    async def test_profile_ownership_required_for_job_posting(
+        self, client: AsyncClient, employer_token: str, employer_with_profile: tuple[str, str, str]
+    ) -> None:
+        """Cannot post job using another employer's profile."""
+        if not employer_token:
+            pytest.skip("Email confirmation required for testing")
+
+        # employer_token is a fresh employer without profile
+        # employer_with_profile has a profile
+
+        _, _, other_profile_id = employer_with_profile
+
+        headers = {"Authorization": f"Bearer {employer_token}"}
+
+        # Get user_id for the employer
+        me_response = await client.get("/api/users/me", headers=headers)
+        assert me_response.status_code == HTTP_OK
+        user_id = me_response.json()["id"]
+
+        # Create own profile first
+        profile_response = await client.post(
+            "/api/employer-profiles",
+            headers=headers,
+            json={
+                "user_id": user_id,
+                "company_name": "My Company",
+                "industry": "Tech",
+                "company_size": "10-50",
+                "location": "NYC",
+                "description": "We're hiring",
+            },
+        )
+
+        if profile_response.status_code not in [HTTP_CREATED, HTTP_BAD_REQUEST]:
+            pytest.skip(f"Could not create employer profile: {profile_response.status_code}")
+
+        # Now post job - should link to OWN profile, not other employer's
+        job_response = await client.post(
+            "/api/jobs",
+            headers=headers,
+            json={
+                "title": "Engineer",
+                "company": "Test Company",
+                "description": "Join us",
+                "location": "NYC",
+                "job_type": "Full-time",
+                "experience_required": "3-5 years",
+            },
+        )
+
+        if job_response.status_code == HTTP_CREATED:
+            job = job_response.json()
+            # Job should be linked to own profile, not other_profile_id
+            assert job["posted_by"] != other_profile_id

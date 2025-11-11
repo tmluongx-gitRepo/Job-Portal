@@ -141,3 +141,109 @@ def get_recommendations_collection() -> AsyncIOMotorCollection:
     """Get recommendations collection from MongoDB."""
     db = get_mongo_database()
     return db["recommendations"]
+
+
+def get_saved_jobs_collection() -> AsyncIOMotorCollection:
+    """Get saved_jobs collection from MongoDB."""
+    db = get_mongo_database()
+    return db["saved_jobs"]
+
+
+def get_resumes_collection() -> AsyncIOMotorCollection:
+    """Get resumes collection from MongoDB."""
+    db = get_mongo_database()
+    return db["resumes"]
+
+
+async def _init_user_indexes(db: Any) -> None:
+    """Initialize indexes for users and profiles."""
+    # Users collection indexes
+    users = db["users"]
+    await users.create_index("email", unique=True)
+    await users.create_index("account_type")
+    await users.create_index([("created_at", -1)])
+
+    # Job Seeker Profiles collection indexes
+    job_seeker_profiles = db["job_seeker_profiles"]
+    await job_seeker_profiles.create_index("user_id", unique=True)
+    await job_seeker_profiles.create_index("email")
+    await job_seeker_profiles.create_index("skills")
+    await job_seeker_profiles.create_index("location")
+    await job_seeker_profiles.create_index("experience_years")
+    await job_seeker_profiles.create_index([("updated_at", -1)])
+    await job_seeker_profiles.create_index(
+        [("skills", 1), ("location", 1), ("experience_years", 1)]
+    )
+
+    # Employer Profiles collection indexes
+    employer_profiles = db["employer_profiles"]
+    await employer_profiles.create_index("user_id", unique=True)
+    await employer_profiles.create_index("company_name")
+    await employer_profiles.create_index("industry")
+    await employer_profiles.create_index("location")
+    await employer_profiles.create_index([("created_at", -1)])
+
+
+async def _init_job_indexes(db: Any) -> None:
+    """Initialize indexes for jobs and applications."""
+    # Jobs collection indexes
+    jobs = db["jobs"]
+    await jobs.create_index("posted_by")
+    await jobs.create_index("is_active")
+    await jobs.create_index("location")
+    await jobs.create_index("job_type")
+    await jobs.create_index("skills_required")
+    await jobs.create_index("industry")
+    await jobs.create_index("remote_ok")
+    await jobs.create_index([("created_at", -1)])
+    await jobs.create_index([("is_active", 1), ("created_at", -1)])
+    await jobs.create_index([("is_active", 1), ("location", 1), ("job_type", 1)])
+    # Text index for full-text search on title, description, company
+    await jobs.create_index(
+        [("title", "text"), ("description", "text"), ("company", "text")],
+        weights={"title": 10, "company": 5, "description": 1},
+    )
+
+    # Applications collection indexes
+    applications = db["applications"]
+    await applications.create_index("job_seeker_id")
+    await applications.create_index("job_id")
+    await applications.create_index("status")
+    await applications.create_index([("applied_date", -1)])
+    await applications.create_index(
+        [("job_seeker_id", 1), ("job_id", 1)], unique=True
+    )  # Prevent duplicate applications
+    await applications.create_index([("job_id", 1), ("status", 1)])
+
+
+async def _init_feature_indexes(db: Any) -> None:
+    """Initialize indexes for recommendations, saved jobs, and resumes."""
+    # Recommendations collection indexes
+    recommendations = db["recommendations"]
+    await recommendations.create_index("job_seeker_id")
+    await recommendations.create_index("job_id")
+    await recommendations.create_index("status")
+    await recommendations.create_index([("created_at", -1)])
+    await recommendations.create_index([("job_seeker_id", 1), ("status", 1)])
+
+    # Saved Jobs collection indexes
+    saved_jobs = db["saved_jobs"]
+    await saved_jobs.create_index("job_seeker_id")
+    await saved_jobs.create_index("job_id")
+    await saved_jobs.create_index([("saved_date", -1)])
+    await saved_jobs.create_index(
+        [("job_seeker_id", 1), ("job_id", 1)], unique=True
+    )  # Prevent duplicate saves
+
+    # Resumes collection indexes
+    resumes = db["resumes"]
+    await resumes.create_index("job_seeker_id", unique=True)  # One resume per user
+    await resumes.create_index([("uploaded_at", -1)])
+
+
+async def init_db_indexes() -> None:
+    """Initialize all database indexes."""
+    db = get_mongo_database()
+    await _init_user_indexes(db)
+    await _init_job_indexes(db)
+    await _init_feature_indexes(db)

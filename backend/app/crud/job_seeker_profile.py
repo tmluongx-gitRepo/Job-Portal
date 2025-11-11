@@ -8,20 +8,22 @@ from typing import cast
 from bson import ObjectId
 
 from app.database import get_job_seeker_profiles_collection
-from app.types import JobSeekerProfileDocument
+from app.type_definitions import JobSeekerProfileDocument
 
 
 async def create_profile(user_id: str, profile_data: dict[str, object]) -> JobSeekerProfileDocument:
     """Create a new job seeker profile."""
     collection = get_job_seeker_profiles_collection()
 
-    # Check if profile already exists for this user
-    existing_profile = await collection.find_one({"user_id": ObjectId(user_id)})
+    # Convert user_id string (MongoDB ObjectId) to ObjectId
+    user_object_id = ObjectId(user_id)
+
+    existing_profile = await collection.find_one({"user_id": user_object_id})
     if existing_profile:
         raise ValueError(f"Profile already exists for user {user_id}")
 
     profile_doc = {
-        "user_id": ObjectId(user_id),
+        "user_id": user_object_id,  # Store as ObjectId
         **profile_data,
         "profile_views": 0,
         "created_at": datetime.now(UTC),
@@ -45,11 +47,12 @@ async def get_profile_by_id(profile_id: str) -> JobSeekerProfileDocument | None:
 
 
 async def get_profile_by_user_id(user_id: str) -> JobSeekerProfileDocument | None:
-    """Get profile by user ID."""
+    """Get profile by user ID (MongoDB ObjectId)."""
     collection = get_job_seeker_profiles_collection()
 
     try:
-        result = await collection.find_one({"user_id": ObjectId(user_id)})
+        user_object_id = ObjectId(user_id)
+        result = await collection.find_one({"user_id": user_object_id})
         return cast(JobSeekerProfileDocument, result) if result else None
     except Exception:
         return None

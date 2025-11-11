@@ -1,9 +1,5 @@
 #!/usr/bin/env sh
 
-if [ -f "$(dirname -- "$0")/_/husky.sh" ]; then
-  . "$(dirname -- "$0")/_/husky.sh"
-fi
-
 # Job Portal Pre-Commit Hook
 # Prefers running tooling directly in this environment,
 # and falls back to docker compose when needed.

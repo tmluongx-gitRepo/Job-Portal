@@ -12,7 +12,7 @@ from app.database import (
     get_jobs_collection,
     get_recommendations_collection,
 )
-from app.types import RecommendationDocument
+from app.type_definitions import RecommendationDocument
 
 
 async def create_recommendation(recommendation_data: dict[str, object]) -> RecommendationDocument:
