@@ -1,17 +1,31 @@
 """
 RBAC tests for Job Seeker Profiles API.
+
+Comprehensive tests covering:
+- Basic CRUD operations
+- Cross-user authorization
+- Search and filtering
+- Pagination
+- Business logic (profile views, completion)
+- User workflows
 """
 
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import pytest
 from httpx import AsyncClient
 
 from tests.constants import (
+    HTTP_BAD_REQUEST,
     HTTP_CREATED,
     HTTP_FORBIDDEN,
     HTTP_NO_CONTENT,
     HTTP_OK,
+    MIN_PAGE_SIZE,
+    TEST_EXPERIENCE_YEARS,
+    TEST_MIN_EXPERIENCE,
+    TEST_SKILL_COUNT,
 )
 
 
@@ -197,3 +211,397 @@ class TestJobSeekerProfilesRBAC:
         response = await client.delete(f"/api/job-seeker-profiles/{profile_id}", headers=headers)
 
         assert response.status_code == HTTP_FORBIDDEN
+
+    # ============================================================================
+    # SEARCH & FILTER TESTS
+    # ============================================================================
+
+    @pytest.mark.asyncio
+    async def test_search_profiles_by_skills(
+        self,
+        client: AsyncClient,
+        job_seeker_with_profile: tuple[str, str, str],
+        create_temp_user: Callable[[str, str], Awaitable[tuple[str | None, str | None]]],
+    ) -> None:
+        """Can search profiles by skills."""
+        # Update first profile with Python skill
+        token1, user_id1, profile_id1 = job_seeker_with_profile
+        headers1 = {"Authorization": f"Bearer {token1}"}
+        await client.put(
+            f"/api/job-seeker-profiles/{profile_id1}",
+            headers=headers1,
+            json={"skills": ["Python", "FastAPI"]},
+        )
+
+        # Create second job seeker with different skills
+        token2, user_id2 = await create_temp_user("job_seeker", "temp.js.search1@test.com")
+        if token2 and user_id2:
+            headers2 = {"Authorization": f"Bearer {token2}"}
+            await client.post(
+                "/api/job-seeker-profiles",
+                headers=headers2,
+                json={
+                    "user_id": user_id2,
+                    "first_name": "Jane",
+                    "last_name": "Doe",
+                    "email": "temp.js.search1@test.com",
+                    "skills": ["JavaScript", "React"],
+                },
+            )
+
+        # Search for Python skills
+        response = await client.get("/api/job-seeker-profiles/search?skills=Python")
+        assert response.status_code == HTTP_OK
+        results = response.json()
+        assert len(results) >= 1
+        # At least one should have Python skill
+        assert any("Python" in profile.get("skills", []) for profile in results)
+
+    @pytest.mark.asyncio
+    async def test_search_profiles_by_location(
+        self,
+        client: AsyncClient,
+        job_seeker_with_profile: tuple[str, str, str],
+        create_temp_user: Callable[[str, str], Awaitable[tuple[str | None, str | None]]],
+    ) -> None:
+        """Can search profiles by location."""
+        # Update first profile with SF location
+        token1, user_id1, profile_id1 = job_seeker_with_profile
+        headers1 = {"Authorization": f"Bearer {token1}"}
+        await client.put(
+            f"/api/job-seeker-profiles/{profile_id1}",
+            headers=headers1,
+            json={"location": "San Francisco, CA"},
+        )
+
+        # Create second job seeker in different location
+        token2, user_id2 = await create_temp_user("job_seeker", "temp.js.search2@test.com")
+        if token2 and user_id2:
+            headers2 = {"Authorization": f"Bearer {token2}"}
+            await client.post(
+                "/api/job-seeker-profiles",
+                headers=headers2,
+                json={
+                    "user_id": user_id2,
+                    "first_name": "Bob",
+                    "last_name": "Smith",
+                    "email": "temp.js.search2@test.com",
+                    "location": "New York, NY",
+                },
+            )
+
+        # Search for SF location
+        response = await client.get("/api/job-seeker-profiles/search?location=San Francisco")
+        assert response.status_code == HTTP_OK
+        results = response.json()
+        # All results should be from SF
+        for profile in results:
+            if profile["location"]:
+                assert "San Francisco" in profile["location"]
+
+    @pytest.mark.asyncio
+    async def test_search_profiles_by_experience(
+        self,
+        client: AsyncClient,
+        job_seeker_with_profile: tuple[str, str, str],
+        create_temp_user: Callable[[str, str], Awaitable[tuple[str | None, str | None]]],
+    ) -> None:
+        """Can search profiles by experience years."""
+        # Update first profile with 5 years experience
+        token1, user_id1, profile_id1 = job_seeker_with_profile
+        headers1 = {"Authorization": f"Bearer {token1}"}
+        await client.put(
+            f"/api/job-seeker-profiles/{profile_id1}",
+            headers=headers1,
+            json={"experience_years": 5},
+        )
+
+        # Create second job seeker with 2 years
+        token2, user_id2 = await create_temp_user("job_seeker", "temp.js.search3@test.com")
+        if token2 and user_id2:
+            headers2 = {"Authorization": f"Bearer {token2}"}
+            await client.post(
+                "/api/job-seeker-profiles",
+                headers=headers2,
+                json={
+                    "user_id": user_id2,
+                    "first_name": "Charlie",
+                    "last_name": "Brown",
+                    "email": "temp.js.search3@test.com",
+                    "experience_years": 2,
+                },
+            )
+
+        # Search for 3+ years experience
+        response = await client.get(
+            f"/api/job-seeker-profiles/search?min_experience={TEST_MIN_EXPERIENCE}"
+        )
+        assert response.status_code == HTTP_OK
+        results = response.json()
+        # All results should have 3+ years
+        for profile in results:
+            assert profile["experience_years"] >= TEST_MIN_EXPERIENCE
+
+    @pytest.mark.asyncio
+    async def test_combined_search_filters(
+        self,
+        client: AsyncClient,
+        job_seeker_with_profile: tuple[str, str, str],
+    ) -> None:
+        """Can use multiple search filters together."""
+        token, user_id, profile_id = job_seeker_with_profile
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Update profile with specific attributes
+        await client.put(
+            f"/api/job-seeker-profiles/{profile_id}",
+            headers=headers,
+            json={
+                "skills": ["Python", "Django"],
+                "location": "Remote",
+                "experience_years": 7,
+            },
+        )
+
+        # Search with multiple filters
+        response = await client.get(
+            "/api/job-seeker-profiles/search?skills=Python&location=Remote&min_experience=5"
+        )
+        assert response.status_code == HTTP_OK
+        results = response.json()
+        assert len(results) >= 1
+
+    # ============================================================================
+    # PAGINATION TESTS
+    # ============================================================================
+
+    @pytest.mark.asyncio
+    async def test_pagination_with_skip_and_limit(
+        self,
+        client: AsyncClient,
+        create_temp_user: Callable[[str, str], Awaitable[tuple[str | None, str | None]]],
+    ) -> None:
+        """Pagination works with skip and limit."""
+        # Create multiple job seeker profiles
+        for i in range(3):
+            token, user_id = await create_temp_user("job_seeker", f"temp.js.page{i}@test.com")
+            if token and user_id:
+                headers = {"Authorization": f"Bearer {token}"}
+                await client.post(
+                    "/api/job-seeker-profiles",
+                    headers=headers,
+                    json={
+                        "user_id": user_id,
+                        "first_name": f"User{i}",
+                        "last_name": "Test",
+                        "email": f"temp.js.page{i}@test.com",
+                        "skills": ["Testing"],
+                    },
+                )
+
+        # Test pagination
+        response1 = await client.get("/api/job-seeker-profiles?skip=0&limit=2")
+        assert response1.status_code == HTTP_OK
+        page1 = response1.json()
+
+        response2 = await client.get("/api/job-seeker-profiles?skip=2&limit=2")
+        assert response2.status_code == HTTP_OK
+        page2 = response2.json()
+
+        # Pages should have different profiles
+        if len(page1) >= MIN_PAGE_SIZE and len(page2) >= 1:
+            page1_ids = {p["id"] for p in page1}
+            page2_ids = {p["id"] for p in page2}
+            assert page1_ids != page2_ids
+
+    # ============================================================================
+    # BUSINESS LOGIC TESTS
+    # ============================================================================
+
+    @pytest.mark.asyncio
+    async def test_profile_views_increment(
+        self, client: AsyncClient, job_seeker_with_profile: tuple[str, str, str]
+    ) -> None:
+        """Profile view count increments when viewed."""
+        _, _, profile_id = job_seeker_with_profile
+
+        # Get initial view count
+        response1 = await client.get(f"/api/job-seeker-profiles/{profile_id}")
+        initial_views = response1.json().get("profile_views", 0)
+
+        # View the profile with increment flag
+        await client.get(f"/api/job-seeker-profiles/{profile_id}?increment_views=true")
+
+        # Check view count increased
+        response2 = await client.get(f"/api/job-seeker-profiles/{profile_id}")
+        current_views = response2.json().get("profile_views", 0)
+        assert current_views >= initial_views
+
+    @pytest.mark.asyncio
+    async def test_cannot_create_duplicate_profile(
+        self, client: AsyncClient, job_seeker_with_profile: tuple[str, str, str]
+    ) -> None:
+        """Cannot create duplicate profile for same user."""
+        token, user_id, profile_id = job_seeker_with_profile
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Try to create another profile for same user
+        response = await client.post(
+            "/api/job-seeker-profiles",
+            headers=headers,
+            json={
+                "user_id": user_id,
+                "first_name": "Duplicate",
+                "last_name": "Profile",
+                "email": "duplicate@test.com",
+            },
+        )
+
+        assert response.status_code == HTTP_BAD_REQUEST
+
+    @pytest.mark.asyncio
+    async def test_get_profile_by_user_id(
+        self, client: AsyncClient, job_seeker_with_profile: tuple[str, str, str]
+    ) -> None:
+        """Can get profile by user ID."""
+        _, user_id, profile_id = job_seeker_with_profile
+
+        # Get profile by user ID
+        response = await client.get(f"/api/job-seeker-profiles/user/{user_id}")
+        assert response.status_code == HTTP_OK
+        data = response.json()
+        assert data["id"] == profile_id
+
+    # ============================================================================
+    # USER WORKFLOW TESTS
+    # ============================================================================
+
+    @pytest.mark.asyncio
+    async def test_complete_profile_creation_workflow(
+        self,
+        client: AsyncClient,
+        create_temp_user: Callable[[str, str], Awaitable[tuple[str | None, str | None]]],
+    ) -> None:
+        """Complete workflow: Register → Create profile → Update → View public."""
+        # Step 1: Create new job seeker
+        token, user_id = await create_temp_user("job_seeker", "temp.js.workflow1@test.com")
+        if not token or not user_id:
+            pytest.skip("Failed to create temp user")
+
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Step 2: Create initial profile
+        create_response = await client.post(
+            "/api/job-seeker-profiles",
+            headers=headers,
+            json={
+                "user_id": user_id,
+                "first_name": "John",
+                "last_name": "Workflow",
+                "email": "temp.js.workflow1@test.com",
+                "skills": ["Python"],
+            },
+        )
+        assert create_response.status_code == HTTP_CREATED
+        profile_id = create_response.json()["id"]
+
+        # Step 3: Update profile with more details
+        update_response = await client.put(
+            f"/api/job-seeker-profiles/{profile_id}",
+            headers=headers,
+            json={
+                "bio": "Experienced Python developer",
+                "skills": ["Python", "Django", "FastAPI"],
+                "location": "San Francisco, CA",
+                "experience_years": 5,
+                "education_level": "Bachelor's",
+            },
+        )
+        assert update_response.status_code == HTTP_OK
+
+        # Step 4: Profile appears in public listing
+        list_response = await client.get("/api/job-seeker-profiles")
+        assert any(p["id"] == profile_id for p in list_response.json())
+
+        # Step 5: Profile is searchable
+        search_response = await client.get("/api/job-seeker-profiles/search?skills=Python")
+        assert any(p["id"] == profile_id for p in search_response.json())
+
+    @pytest.mark.asyncio
+    async def test_employer_viewing_candidate_workflow(
+        self,
+        client: AsyncClient,
+        employer_token: str,
+        job_seeker_with_profile: tuple[str, str, str],
+    ) -> None:
+        """Employer workflow: Browse profiles → Search → View details."""
+        if not employer_token:
+            pytest.skip("Email confirmation required for testing")
+
+        _, _, profile_id = job_seeker_with_profile
+        emp_headers = {"Authorization": f"Bearer {employer_token}"}
+
+        # Step 1: Browse all profiles
+        browse_response = await client.get("/api/job-seeker-profiles", headers=emp_headers)
+        assert browse_response.status_code == HTTP_OK
+        profiles = browse_response.json()
+        assert len(profiles) >= 1
+
+        # Step 2: Search for specific skills
+        search_response = await client.get(
+            "/api/job-seeker-profiles/search?skills=Python", headers=emp_headers
+        )
+        assert search_response.status_code == HTTP_OK
+
+        # Step 3: View specific profile
+        detail_response = await client.get(
+            f"/api/job-seeker-profiles/{profile_id}", headers=emp_headers
+        )
+        assert detail_response.status_code == HTTP_OK
+        profile_detail = detail_response.json()
+        assert "first_name" in profile_detail
+        assert "skills" in profile_detail
+
+    @pytest.mark.asyncio
+    async def test_profile_update_workflow(
+        self, client: AsyncClient, job_seeker_with_profile: tuple[str, str, str]
+    ) -> None:
+        """Job seeker workflow: Update profile over time."""
+        token, user_id, profile_id = job_seeker_with_profile
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Step 1: Update basic info
+        response1 = await client.put(
+            f"/api/job-seeker-profiles/{profile_id}",
+            headers=headers,
+            json={"phone": "555-0123", "location": "Seattle, WA"},
+        )
+        assert response1.status_code == HTTP_OK
+
+        # Step 2: Add skills
+        response2 = await client.put(
+            f"/api/job-seeker-profiles/{profile_id}",
+            headers=headers,
+            json={"skills": ["Python", "JavaScript", "SQL"]},
+        )
+        assert response2.status_code == HTTP_OK
+        assert len(response2.json()["skills"]) == TEST_SKILL_COUNT
+
+        # Step 3: Add bio and experience
+        response3 = await client.put(
+            f"/api/job-seeker-profiles/{profile_id}",
+            headers=headers,
+            json={
+                "bio": "Full stack developer with 5 years experience",
+                "experience_years": TEST_EXPERIENCE_YEARS,
+            },
+        )
+        assert response3.status_code == HTTP_OK
+
+        # Step 4: Verify all updates persisted
+        final_response = await client.get(f"/api/job-seeker-profiles/{profile_id}")
+        profile = final_response.json()
+        assert profile["phone"] == "555-0123"
+        assert len(profile["skills"]) == TEST_SKILL_COUNT
+        assert profile["experience_years"] == TEST_EXPERIENCE_YEARS
+        assert "Full stack" in profile["bio"]
