@@ -11,6 +11,14 @@ from app.schemas.employer import (
     EmployerProfileResponse,
     EmployerProfileUpdate,
 )
+from app.schemas.interview import (
+    InterviewCancel,
+    InterviewComplete,
+    InterviewCreate,
+    InterviewListResponse,
+    InterviewResponse,
+    InterviewUpdate,
+)
 from app.schemas.job import JobBase, JobCreate, JobResponse, JobUpdate
 from app.schemas.job_seeker import (
     JobSeekerPreferencesSchema,
@@ -45,6 +53,12 @@ __all__ = [
     "EmployerProfileCreate",
     "EmployerProfileResponse",
     "EmployerProfileUpdate",
+    "InterviewCancel",
+    "InterviewComplete",
+    "InterviewCreate",
+    "InterviewListResponse",
+    "InterviewResponse",
+    "InterviewUpdate",
     "JobBase",
     "JobCreate",
     "JobResponse",

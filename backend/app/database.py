@@ -155,6 +155,12 @@ def get_resumes_collection() -> AsyncIOMotorCollection:
     return db["resumes"]
 
 
+def get_interviews_collection() -> AsyncIOMotorCollection:
+    """Get interviews collection from MongoDB."""
+    db = get_mongo_database()
+    return db["interviews"]
+
+
 async def _init_user_indexes(db: Any) -> None:
     """Initialize indexes for users and profiles."""
     # Users collection indexes
@@ -217,7 +223,7 @@ async def _init_job_indexes(db: Any) -> None:
 
 
 async def _init_feature_indexes(db: Any) -> None:
-    """Initialize indexes for recommendations, saved jobs, and resumes."""
+    """Initialize indexes for recommendations, saved jobs, resumes, and interviews."""
     # Recommendations collection indexes
     recommendations = db["recommendations"]
     await recommendations.create_index("job_seeker_id")
@@ -239,6 +245,18 @@ async def _init_feature_indexes(db: Any) -> None:
     resumes = db["resumes"]
     await resumes.create_index("job_seeker_id", unique=True)  # One resume per user
     await resumes.create_index([("uploaded_at", -1)])
+
+    # Interviews collection indexes
+    interviews = db["interviews"]
+    await interviews.create_index("application_id", unique=True)  # One interview per application
+    await interviews.create_index("job_id")
+    await interviews.create_index("job_seeker_id")
+    await interviews.create_index("employer_id")
+    await interviews.create_index("status")
+    await interviews.create_index([("scheduled_date", 1)])  # For upcoming interviews
+    await interviews.create_index([("created_at", -1)])
+    await interviews.create_index([("employer_id", 1), ("status", 1)])  # Employer filtering
+    await interviews.create_index([("job_seeker_id", 1), ("status", 1)])  # Job seeker filtering
 
 
 async def init_db_indexes() -> None:
