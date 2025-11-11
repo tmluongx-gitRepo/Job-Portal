@@ -267,6 +267,29 @@ Job-Portal/
 
 > The backend connects to MongoDB (e.g., MongoDB Atlas). Provide your connection string via `MONGO_URI` in a `.env` file or shell environment before starting the containers.
 
+## ✨ Features
+
+### Company Registration
+- **Route:** `/company-registration`
+- **Features:**
+  - Multi-step registration form (Create Account → Company Profile → Preview)
+  - Comprehensive field validation with real-time feedback
+  - Email format validation
+  - Phone number validation
+  - Website URL validation
+  - Character counter for company description
+  - Navigation guards to prevent incomplete submissions
+- **Access:** Click "Register Company" button on home page or navigate to http://localhost:3000/company-registration
+
+### Jobs Portal
+- Browse job listings at http://localhost:3000/jobs
+- Connect to backend API for dynamic job data
+
+📖 **For detailed documentation, see:**
+- [Company Registration Routing Guide](/ROUTING_GUIDE.md)
+- [Field Validation Documentation](/VALIDATION_DOCUMENTATION.md)
+- [Deployment Guide](/DEPLOYMENT_GUIDE.md)
+
 ## 🔄 Common Commands
 
 ### Stop All Services
