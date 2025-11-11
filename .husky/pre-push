@@ -4,6 +4,9 @@
 # Job Portal Pre-Push Hook
 # Runs comprehensive validation before pushing to remote
 
+# Add common tool paths to PATH
+export PATH="$HOME/.cargo/bin:$HOME/.bun/bin:$PATH"
+
 set -e
 
 echo "🚀 Running pre-push validation..."
