@@ -7,6 +7,8 @@ from typing import Any
 import jwt
 from jwt import PyJWTError
 
+from app.config import settings
+
 
 class AuthenticationError(Exception):
     """Base authentication error."""
@@ -22,10 +24,10 @@ class ExpiredTokenError(AuthenticationError):
 
 def decode_supabase_jwt(token: str) -> dict[str, Any]:
     """
-    Decode and validate Supabase JWT token.
+    Decode and validate Supabase JWT token with signature verification.
 
-    Simplified version that trusts Supabase token validation.
-    The token is already validated by Supabase on login/register.
+    Verifies the JWT signature using Supabase's JWT secret to prevent
+    token forgery and privilege escalation attacks.
 
     Args:
         token: JWT token string from Authorization header
@@ -34,18 +36,22 @@ def decode_supabase_jwt(token: str) -> dict[str, Any]:
         dict: Decoded token payload containing user information
 
     Raises:
-        InvalidTokenError: If token is invalid or malformed
+        InvalidTokenError: If token is invalid, malformed, or signature is invalid
         ExpiredTokenError: If token has expired
     """
+    if not settings.SUPABASE_JWT_SECRET:
+        msg = "SUPABASE_JWT_SECRET is not configured"
+        raise InvalidTokenError(msg)
+
     try:
-        # Decode JWT token without signature verification
-        # Supabase tokens are already validated by Supabase's auth service
-        # and we trust tokens that pass through their system.
-        # The token's exp claim is still checked to ensure it hasn't expired.
+        # Decode JWT token WITH signature verification
+        # This prevents token forgery and privilege escalation attacks
         payload = jwt.decode(
             token,
-            options={"verify_signature": False},
+            settings.SUPABASE_JWT_SECRET,
             algorithms=["HS256"],
+            audience="authenticated",  # Supabase uses "authenticated" as the audience
+            options={"verify_signature": True},
         )
 
     except jwt.ExpiredSignatureError as e:
