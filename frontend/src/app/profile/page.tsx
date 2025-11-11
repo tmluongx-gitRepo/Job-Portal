@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactElement } from "react";
+import { useState, useEffect, type ReactElement } from "react";
 
 import {
   User,
@@ -19,7 +19,11 @@ import {
   Award,
   Heart,
   Zap,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
+import { api, ApiError, ValidationError } from "../../lib/api";
+import type { JobSeekerProfile } from "../../lib/api";
 
 // TODO: Replace with API call to fetch user profile data
 const initialProfileData = {
@@ -107,13 +111,78 @@ const completionItems = [
 export default function ProfilePage(): ReactElement {
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState(initialProfileData);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [apiProfile, setApiProfile] = useState<JobSeekerProfile | null>(null);
+
+  // ⚠️ TODO: Replace with actual user ID from auth context when authentication is implemented
+  // This should come from: useAuth() hook, session, or auth context
+  // Example: const { user } = useAuth(); const userId = user?.id;
+  // Note: Backend expects MongoDB ObjectId format (24 hex characters)
+  // For testing, you can create a user via the API and use that user's ID
+  const userId = "507f1f77bcf86cd799439011"; // PLACEHOLDER - Valid ObjectId format for testing
+
+  // Fetch profile on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Try to get profile by user ID
+        const profile = await api.jobSeekerProfiles.getByUserId(userId);
+        setApiProfile(profile);
+        setProfileId(profile.id);
+        
+        // Transform API profile to form format
+        setProfileData({
+          firstName: profile.first_name,
+          lastName: profile.last_name,
+          email: profile.email,
+          phone: profile.phone || "",
+          location: profile.location || "",
+          title: "", // Not in API, could derive from bio
+          summary: profile.bio || "",
+          experience: [], // Not in API schema yet
+          projects: [], // Not in API schema yet
+          education: profile.education_level
+            ? [
+                {
+                  school: "",
+                  degree: profile.education_level,
+                  year: "",
+                },
+              ]
+            : [],
+          skills: profile.skills || [],
+        });
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) {
+          // Profile doesn't exist yet - that's okay, user can create one
+          // This is expected behavior, not an error
+          console.info("[Profile] No profile found for user - user can create one");
+          // Don't set error state - this is normal for new users
+        } else {
+          console.error("Failed to fetch profile:", err);
+          setError("Failed to load profile. Please try again.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [userId]);
 
   const completedCount = completionItems.filter(
     (item) => item.completed
   ).length;
-  const completionPercentage = Math.round(
-    (completedCount / completionItems.length) * 100
-  );
+  const completionPercentage = apiProfile?.profile_completion_percentage
+    ? apiProfile.profile_completion_percentage
+    : Math.round((completedCount / completionItems.length) * 100);
 
   const handleInputChange = (field: string, value: string): void => {
     setProfileData((prev) => ({
@@ -122,10 +191,63 @@ export default function ProfilePage(): ReactElement {
     }));
   };
 
-  const handleSave = (): void => {
-    // TODO: Implement API call to save profile data
-    console.log("Saving profile:", profileData);
-    setIsEditing(false);
+  const handleSave = async (): Promise<void> => {
+    setSaving(true);
+    setError(null);
+    setSuccess(false);
+
+    try {
+      const updateData = {
+        first_name: profileData.firstName,
+        last_name: profileData.lastName,
+        email: profileData.email,
+        phone: profileData.phone || null,
+        location: profileData.location || null,
+        bio: profileData.summary || null,
+        skills: profileData.skills,
+        education_level: profileData.education.length > 0
+          ? profileData.education[0].degree
+          : null,
+        // Note: experience, projects not in API schema yet
+        // Could store in bio or add to schema later
+      };
+
+      if (profileId) {
+        // Update existing profile
+        const updated = await api.jobSeekerProfiles.update(profileId, updateData);
+        setApiProfile(updated);
+        setSuccess(true);
+      } else {
+        // Create new profile
+        const created = await api.jobSeekerProfiles.create({
+          ...updateData,
+          user_id: userId,
+        });
+        setApiProfile(created);
+        setProfileId(created.id);
+        setSuccess(true);
+      }
+
+      setIsEditing(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      console.error("Failed to save profile:", err);
+      if (err instanceof ValidationError) {
+        const errorMessages = err.issues.map((issue) => {
+          const field = issue.path.join(".");
+          return `${field}: ${issue.message}`;
+        });
+        setError(`Validation error: ${errorMessages.join(", ")}`);
+      } else if (err instanceof ApiError) {
+        setError(`Failed to save profile: ${err.message}`);
+      } else {
+        setError("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -142,22 +264,63 @@ export default function ProfilePage(): ReactElement {
               Tell your professional story with confidence
             </p>
           </div>
+
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center text-green-600">
+              <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+              <span>Loading profile...</span>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-start">
+              <AlertCircle className="w-5 h-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {success && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 flex items-start">
+              <Check className="w-5 h-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-green-800">Profile saved successfully!</p>
+            </div>
+          )}
           <button
             onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
-            className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all flex items-center"
+            disabled={loading || saving}
+            className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isEditing ? (
-              <Save className="w-5 h-5 mr-2" />
+            {saving ? (
+              <>
+                <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : isEditing ? (
+              <>
+                <Save className="w-5 h-5 mr-2" />
+                Save Changes
+              </>
             ) : (
-              <Edit3 className="w-5 h-5 mr-2" />
+              <>
+                <Edit3 className="w-5 h-5 mr-2" />
+                Edit Profile
+              </>
             )}
-            {isEditing ? "Save Changes" : "Edit Profile"}
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Profile Completion */}
-          <div className="lg:col-span-1 space-y-6">
+        {loading ? (
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-12 text-center">
+            <RefreshCw className="w-8 h-8 text-green-600 animate-spin mx-auto mb-4" />
+            <p className="text-green-700">Loading profile...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column - Profile Completion */}
+            <div className="lg:col-span-1 space-y-6">
             {/* Profile Completion Card */}
             <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -531,6 +694,7 @@ export default function ProfilePage(): ReactElement {
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   );
