@@ -11,7 +11,7 @@ import {
 
 export const recommendationApi = {
   async create(data: z.infer<typeof RecommendationCreateSchema>) {
-    return apiRequest("/recommendations", {
+    return apiRequest("/api/recommendations", {
       method: "POST",
       requestSchema: RecommendationCreateSchema,
       responseSchema: RecommendationResponseSchema,
@@ -41,10 +41,13 @@ export const recommendationApi = {
     if (params?.include_applied !== undefined)
       query.set("include_applied", params.include_applied.toString());
 
-    return apiRequest(`/recommendations/job-seeker/${jobSeekerId}?${query}`, {
-      method: "GET",
-      responseSchema: z.array(z.any()), // Complex enriched response
-    });
+    return apiRequest(
+      `/api/recommendations/job-seeker/${jobSeekerId}?${query}`,
+      {
+        method: "GET",
+        responseSchema: z.array(z.any()), // Complex enriched response
+      }
+    );
   },
 
   async getCandidatesForJob(
@@ -60,14 +63,14 @@ export const recommendationApi = {
     if (params?.limit) query.set("limit", params.limit.toString());
     if (params?.min_match) query.set("min_match", params.min_match.toString());
 
-    return apiRequest(`/recommendations/job/${jobId}/candidates?${query}`, {
+    return apiRequest(`/api/recommendations/job/${jobId}/candidates?${query}`, {
       method: "GET",
       responseSchema: z.array(z.any()), // Complex enriched response
     });
   },
 
   async getById(recommendationId: string) {
-    return apiRequest(`/recommendations/${recommendationId}`, {
+    return apiRequest(`/api/recommendations/${recommendationId}`, {
       method: "GET",
       responseSchema: RecommendationResponseSchema,
     });
@@ -77,7 +80,7 @@ export const recommendationApi = {
     recommendationId: string,
     data: z.infer<typeof RecommendationUpdateSchema>
   ) {
-    return apiRequest(`/recommendations/${recommendationId}`, {
+    return apiRequest(`/api/recommendations/${recommendationId}`, {
       method: "PUT",
       requestSchema: RecommendationUpdateSchema,
       responseSchema: RecommendationResponseSchema,
@@ -86,21 +89,21 @@ export const recommendationApi = {
   },
 
   async markViewed(recommendationId: string) {
-    return apiRequest(`/recommendations/${recommendationId}/view`, {
+    return apiRequest(`/api/recommendations/${recommendationId}/view`, {
       method: "POST",
       responseSchema: z.object({ message: z.string() }),
     });
   },
 
   async dismiss(recommendationId: string) {
-    return apiRequest(`/recommendations/${recommendationId}/dismiss`, {
+    return apiRequest(`/api/recommendations/${recommendationId}/dismiss`, {
       method: "POST",
       responseSchema: z.object({ message: z.string() }),
     });
   },
 
   async delete(recommendationId: string) {
-    return apiRequest(`/recommendations/${recommendationId}`, {
+    return apiRequest(`/api/recommendations/${recommendationId}`, {
       method: "DELETE",
       responseSchema: z.null(),
     });
@@ -119,7 +122,7 @@ export const recommendationApi = {
     if (params?.dismissed !== undefined)
       query.set("dismissed", params.dismissed.toString());
 
-    return apiRequest(`/recommendations/count/${jobSeekerId}?${query}`, {
+    return apiRequest(`/api/recommendations/count/${jobSeekerId}?${query}`, {
       method: "GET",
       responseSchema: z.object({ count: z.number() }),
     });

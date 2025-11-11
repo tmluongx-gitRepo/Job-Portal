@@ -11,7 +11,7 @@ import {
 
 export const employerProfileApi = {
   async create(data: z.infer<typeof EmployerProfileCreateSchema>) {
-    return apiRequest("/employer-profiles", {
+    return apiRequest("/api/employer-profiles", {
       method: "POST",
       requestSchema: EmployerProfileCreateSchema,
       responseSchema: EmployerProfileResponseSchema,
@@ -24,21 +24,21 @@ export const employerProfileApi = {
     if (params?.skip) query.set("skip", params.skip.toString());
     if (params?.limit) query.set("limit", params.limit.toString());
 
-    return apiRequest(`/employer-profiles?${query}`, {
+    return apiRequest(`/api/employer-profiles?${query}`, {
       method: "GET",
       responseSchema: z.array(EmployerProfileResponseSchema),
     });
   },
 
   async getById(profileId: string) {
-    return apiRequest(`/employer-profiles/${profileId}`, {
+    return apiRequest(`/api/employer-profiles/${profileId}`, {
       method: "GET",
       responseSchema: EmployerProfileResponseSchema,
     });
   },
 
   async getByUserId(userId: string) {
-    return apiRequest(`/employer-profiles/user/${userId}`, {
+    return apiRequest(`/api/employer-profiles/user/${userId}`, {
       method: "GET",
       responseSchema: EmployerProfileResponseSchema,
     });
@@ -48,7 +48,7 @@ export const employerProfileApi = {
     profileId: string,
     data: z.infer<typeof EmployerProfileUpdateSchema>
   ) {
-    return apiRequest(`/employer-profiles/${profileId}`, {
+    return apiRequest(`/api/employer-profiles/${profileId}`, {
       method: "PUT",
       requestSchema: EmployerProfileUpdateSchema,
       responseSchema: EmployerProfileResponseSchema,
@@ -57,7 +57,7 @@ export const employerProfileApi = {
   },
 
   async delete(profileId: string) {
-    return apiRequest(`/employer-profiles/${profileId}`, {
+    return apiRequest(`/api/employer-profiles/${profileId}`, {
       method: "DELETE",
       responseSchema: z.null(),
     });
