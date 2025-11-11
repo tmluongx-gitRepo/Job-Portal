@@ -133,7 +133,7 @@ export default function ProfilePage(): ReactElement {
 
       try {
         // Try to get profile by user ID
-        const profile = await api.jobSeekerProfiles.getByUserId(userId);
+        const profile: JobSeekerProfile = (await api.jobSeekerProfiles.getByUserId(userId)) as JobSeekerProfile;
         setApiProfile(profile);
         setProfileId(profile.id);
         
@@ -219,10 +219,10 @@ export default function ProfilePage(): ReactElement {
         setSuccess(true);
       } else {
         // Create new profile
-        const created = await api.jobSeekerProfiles.create({
+        const created: JobSeekerProfile = (await api.jobSeekerProfiles.create({
           ...updateData,
           user_id: userId,
-        });
+        })) as JobSeekerProfile;
         setApiProfile(created);
         setProfileId(created.id);
         setSuccess(true);
@@ -470,7 +470,7 @@ export default function ProfilePage(): ReactElement {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-green-800 mb-2 flex items-center">
+                  <label className="text-sm font-medium text-green-800 mb-2 flex items-center">
                     <Mail className="w-4 h-4 mr-1" />
                     Email
                   </label>
@@ -491,7 +491,7 @@ export default function ProfilePage(): ReactElement {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-green-800 mb-2 flex items-center">
+                  <label className="text-sm font-medium text-green-800 mb-2 flex items-center">
                     <Phone className="w-4 h-4 mr-1" />
                     Phone
                   </label>
@@ -512,7 +512,7 @@ export default function ProfilePage(): ReactElement {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-green-800 mb-2 flex items-center">
+                  <label className="text-sm font-medium text-green-800 mb-2 flex items-center">
                     <MapPin className="w-4 h-4 mr-1" />
                     Location
                   </label>

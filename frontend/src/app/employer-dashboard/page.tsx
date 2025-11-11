@@ -148,34 +148,34 @@ export default function EmployerDashboard(): ReactElement {
 
         if (employerProfileId) {
           // Fetch jobs posted by this employer
-          const employerJobs = await api.jobs.getAll({
+          const employerJobs = (await api.jobs.getAll({
             posted_by: employerProfileId,
             limit: 100,
-          });
+          })) as Job[];
           setJobs(employerJobs);
 
           // Fetch applications for all jobs
-          const jobIds = employerJobs.map((job) => job.id);
-          const applicationsPromises = jobIds.map((jobId) =>
+          const jobIds = employerJobs.map((job: Job) => job.id);
+          const applicationsPromises = jobIds.map((jobId: string) =>
             api.applications.getAll({ job_id: jobId, limit: 100 })
           );
           const applicationsArrays = await Promise.all(applicationsPromises);
-          const flatApplications = applicationsArrays.flat();
+          const flatApplications: Application[] = applicationsArrays.flat();
           setAllApplications(flatApplications);
 
           // Transform jobs
-          const transformedJobs: TransformedJobPosting[] = employerJobs.map((job) => {
-            const jobApplications = flatApplications.filter((app) => app.job_id === job.id);
-            const newApplications = jobApplications.filter((app) => {
+          const transformedJobs: TransformedJobPosting[] = employerJobs.map((job: Job) => {
+            const jobApplications = flatApplications.filter((app: Application) => app.job_id === job.id);
+            const newApplications = jobApplications.filter((app: Application) => {
               const appliedDate = new Date(app.applied_date);
               const sevenDaysAgo = new Date();
               sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
               return appliedDate >= sevenDaysAgo;
             });
             const interviews = jobApplications.filter(
-              (app) => app.status === "interview_scheduled" || app.status === "interviewed"
+              (app: Application) => app.status === "interview_scheduled" || app.status === "interviewed"
             ).length;
-            const hired = jobApplications.filter((app) => app.status === "hired").length;
+            const hired = jobApplications.filter((app: Application) => app.status === "hired").length;
 
             return {
               id: job.id,
@@ -195,12 +195,12 @@ export default function EmployerDashboard(): ReactElement {
 
           // Transform recent applications (last 10, sorted by date)
           const sortedApplications = flatApplications
-            .sort((a, b) => new Date(b.applied_date).getTime() - new Date(a.applied_date).getTime())
+            .sort((a: Application, b: Application) => new Date(b.applied_date).getTime() - new Date(a.applied_date).getTime())
             .slice(0, 10);
           
           const transformedApplications: TransformedApplication[] = await Promise.all(
-            sortedApplications.map(async (app) => {
-              const job = employerJobs.find((j) => j.id === app.job_id);
+            sortedApplications.map(async (app: Application) => {
+              const job = employerJobs.find((j: Job) => j.id === app.job_id);
               // TODO: Fetch job seeker profile to get name, experience, location
               // For now, using placeholder data
               return {
@@ -220,14 +220,14 @@ export default function EmployerDashboard(): ReactElement {
 
           // Transform upcoming interviews
           const interviewApplications = flatApplications.filter(
-            (app) =>
+            (app: Application) =>
               app.status === "interview_scheduled" &&
               app.interview_scheduled_date &&
               new Date(app.interview_scheduled_date) >= new Date()
           );
           const transformedInterviews: TransformedInterview[] = await Promise.all(
-            interviewApplications.map(async (app) => {
-              const job = employerJobs.find((j) => j.id === app.job_id);
+            interviewApplications.map(async (app: Application) => {
+              const job = employerJobs.find((j: Job) => j.id === app.job_id);
               const interviewDate = app.interview_scheduled_date
                 ? new Date(app.interview_scheduled_date)
                 : new Date();
@@ -596,7 +596,7 @@ export default function EmployerDashboard(): ReactElement {
                   
                   <Link
                     href={`/applications?jobId=${job.id}`}
-                    className="mt-3 block w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-2 px-4 rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center text-sm"
+                    className="mt-3 w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-2 px-4 rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center text-sm"
                   >
                     <Eye className="w-4 h-4 mr-2" />
                     View Applications ({job.applications})

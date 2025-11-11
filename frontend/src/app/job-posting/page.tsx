@@ -17,7 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { api, ApiError, ValidationError } from "../../lib/api";
-import type { JobCreate } from "../../lib/api";
+import type { JobCreate, EmployerProfile } from "../../lib/api";
 
 // ⚠️ TODO: Replace with actual user data from auth context when authentication is implemented
 const userId = "507f1f77bcf86cd799439011"; // PLACEHOLDER - Valid ObjectId format for testing
@@ -344,7 +344,7 @@ export default function JobPostingPage(): ReactElement {
       let employerProfileId: string;
       try {
         // Try to get existing employer profile
-        const existingProfile = await api.employerProfiles.getByUserId(userId);
+        const existingProfile: EmployerProfile = (await api.employerProfiles.getByUserId(userId)) as EmployerProfile;
         employerProfileId = existingProfile.id;
       } catch (err) {
         // Profile doesn't exist, create one
@@ -358,10 +358,10 @@ export default function JobPostingPage(): ReactElement {
             throw new Error("Company name is required to create employer profile");
           }
           
-          const newProfile = await api.employerProfiles.create({
+          const newProfile: EmployerProfile = (await api.employerProfiles.create({
             user_id: userId,
             company_name: companyName,
-          });
+          })) as EmployerProfile;
           employerProfileId = newProfile.id;
         } else {
           throw err;
