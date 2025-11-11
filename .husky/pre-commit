@@ -8,9 +8,6 @@ fi
 # Prefers running tooling directly in this environment,
 # and falls back to docker compose when needed.
 
-# Add common tool paths to PATH
-export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.bun/bin:$PATH"
-
 set -e
 
 echo "🔍 Running pre-commit checks..."
