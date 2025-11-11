@@ -3,15 +3,25 @@ Pydantic schemas for Interview API.
 """
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+from app.constants import InterviewStatus, InterviewType
 
 
 class InterviewCreate(BaseModel):
     """Schema for creating a new interview."""
 
     application_id: str = Field(..., description="Application ID")
-    interview_type: str = Field(
+    interview_type: Literal[
+        InterviewType.PHONE,
+        InterviewType.VIDEO,
+        InterviewType.IN_PERSON,
+        InterviewType.TECHNICAL,
+        InterviewType.BEHAVIORAL,
+        InterviewType.PANEL,
+    ] = Field(
         ...,
         description="Type of interview (phone, video, in-person, technical, behavioral, panel)",
     )
@@ -72,7 +82,13 @@ class InterviewResponse(BaseModel):
     interviewer_phone: str | None = None
     notes: str | None = None
     internal_notes: str | None = None
-    status: str
+    status: Literal[
+        InterviewStatus.SCHEDULED,
+        InterviewStatus.RESCHEDULED,
+        InterviewStatus.COMPLETED,
+        InterviewStatus.CANCELLED,
+        InterviewStatus.NO_SHOW,
+    ]
     feedback: str | None = None
     rating: int | None = None
     reminder_sent: bool

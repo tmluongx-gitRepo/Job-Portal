@@ -4,16 +4,27 @@
  */
 import { z } from "zod";
 
+// Centralized enum definitions to avoid drift
+export const INTERVIEW_TYPES = [
+  "phone",
+  "video",
+  "in-person",
+  "technical",
+  "behavioral",
+  "panel",
+] as const;
+
+export const INTERVIEW_STATUSES = [
+  "scheduled",
+  "rescheduled",
+  "completed",
+  "cancelled",
+  "no_show",
+] as const;
+
 export const InterviewCreateSchema = z.object({
   application_id: z.string(),
-  interview_type: z.enum([
-    "phone",
-    "video",
-    "in-person",
-    "technical",
-    "behavioral",
-    "panel",
-  ]),
+  interview_type: z.enum(INTERVIEW_TYPES),
   scheduled_date: z.coerce.date(),
   duration_minutes: z.number().int().min(15).max(480),
   timezone: z.string(),
@@ -63,13 +74,7 @@ export const InterviewResponseSchema = z.object({
   interviewer_phone: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   internal_notes: z.string().nullable().optional(),
-  status: z.enum([
-    "scheduled",
-    "rescheduled",
-    "completed",
-    "cancelled",
-    "no_show",
-  ]),
+  status: z.enum(INTERVIEW_STATUSES),
   feedback: z.string().nullable().optional(),
   rating: z.number().int().nullable().optional(),
   reminder_sent: z.boolean(),

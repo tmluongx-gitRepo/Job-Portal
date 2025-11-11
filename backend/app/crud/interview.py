@@ -100,7 +100,11 @@ async def get_interview_by_id(interview_id: str) -> InterviewDocument | None:
 
     try:
         return await collection.find_one({"_id": ObjectId(interview_id)})  # type: ignore[return-value]
-    except Exception:
+    except Exception as e:
+        # Log the exception but return None for invalid ObjectId
+        import logging
+
+        logging.warning(f"Failed to get interview {interview_id}: {e}")
         return None
 
 
@@ -136,7 +140,7 @@ async def get_interviews(
         job_seeker_id: Filter by job seeker ID
         employer_id: Filter by employer ID
         job_id: Filter by job ID
-        status: Filter by status
+        status: Filter by status (if upcoming_only=True, will intersect with upcoming statuses)
         upcoming_only: Only return upcoming interviews
 
     Returns:
@@ -151,11 +155,22 @@ async def get_interviews(
         query["employer_id"] = employer_id
     if job_id:
         query["job_id"] = job_id
-    if status:
-        query["status"] = status
+
+    # Handle status and upcoming_only filters carefully
     if upcoming_only:
         query["scheduled_date"] = {"$gt": datetime.now(UTC)}
-        query["status"] = {"$in": ["scheduled", "rescheduled"]}
+        # If status is also provided, intersect with upcoming statuses
+        if status:
+            # Only show if status matches AND is in upcoming statuses
+            if status in ["scheduled", "rescheduled"]:
+                query["status"] = status
+            else:
+                # Status filter incompatible with upcoming_only
+                return []
+        else:
+            query["status"] = {"$in": ["scheduled", "rescheduled"]}
+    elif status:
+        query["status"] = status
 
     cursor = collection.find(query).sort("scheduled_date", -1).skip(skip).limit(limit)
     return await cursor.to_list(length=limit)  # type: ignore[return-value]
@@ -183,9 +198,13 @@ async def update_interview(
     if "scheduled_date" in update_data:
         # Get current interview to save original date
         current_interview = await get_interview_by_id(interview_id)
-        if current_interview and current_interview.get("status") == "scheduled":
-            update_data["status"] = "rescheduled"
-            update_data["rescheduled_from"] = current_interview["scheduled_date"]
+        if current_interview:
+            current_status = current_interview.get("status")
+            # Only allow rescheduling if status is 'scheduled' or 'rescheduled'
+            # Do not allow rescheduling cancelled or completed interviews
+            if current_status in ["scheduled", "rescheduled"]:
+                update_data["status"] = "rescheduled"
+                update_data["rescheduled_from"] = current_interview["scheduled_date"]
 
     try:
         updated_interview = await collection.find_one_and_update(
@@ -195,6 +214,9 @@ async def update_interview(
         )
         return cast(InterviewDocument, updated_interview) if updated_interview else None
     except Exception:
+        import logging
+
+        logging.exception(f"Failed to update interview {interview_id}")
         return None
 
 
@@ -297,6 +319,9 @@ async def delete_interview(interview_id: str) -> bool:
     try:
         result = await collection.delete_one({"_id": ObjectId(interview_id)})
     except Exception:
+        import logging
+
+        logging.exception(f"Failed to delete interview {interview_id}")
         return False
     else:
         return result.deleted_count > 0

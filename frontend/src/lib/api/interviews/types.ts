@@ -10,6 +10,8 @@ import {
   InterviewCancelSchema,
   InterviewCompleteSchema,
   InterviewListResponseSchema,
+  INTERVIEW_TYPES,
+  INTERVIEW_STATUSES,
 } from "./schemas";
 
 export type Interview = z.infer<typeof InterviewResponseSchema>;
@@ -19,17 +21,6 @@ export type InterviewCancel = z.infer<typeof InterviewCancelSchema>;
 export type InterviewComplete = z.infer<typeof InterviewCompleteSchema>;
 export type InterviewListResponse = z.infer<typeof InterviewListResponseSchema>;
 
-export type InterviewType =
-  | "phone"
-  | "video"
-  | "in-person"
-  | "technical"
-  | "behavioral"
-  | "panel";
-
-export type InterviewStatus =
-  | "scheduled"
-  | "rescheduled"
-  | "completed"
-  | "cancelled"
-  | "no_show";
+// Derive types from centralized enum arrays to avoid drift
+export type InterviewType = (typeof INTERVIEW_TYPES)[number];
+export type InterviewStatus = (typeof INTERVIEW_STATUSES)[number];

@@ -141,7 +141,9 @@ async def schedule_interview(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Check if user is the job owner or admin
-    if not is_admin(current_user) and str(job.get("posted_by")) != current_user["id"]:
+    # Ensure posted_by is always a string for comparison
+    job_posted_by = str(job.get("posted_by", ""))
+    if not is_admin(current_user) and job_posted_by != current_user["id"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only schedule interviews for your own job postings",
