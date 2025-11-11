@@ -62,16 +62,18 @@ export async function apiRequest<TResponse>(
 
   // Make the request
   // Ensure endpoint starts with /api prefix
-  const apiEndpoint = endpoint.startsWith("/api") ? endpoint : `/api${endpoint}`;
+  const apiEndpoint = endpoint.startsWith("/api")
+    ? endpoint
+    : `/api${endpoint}`;
   const fullUrl = `${API_URL}${apiEndpoint}`;
-  
+
   // Log the request for debugging (only in browser)
   if (typeof window !== "undefined") {
     console.log(`[API Client] Original endpoint: ${endpoint}`);
     console.log(`[API Client] API endpoint: ${apiEndpoint}`);
     console.log(`[API Client] Full URL: ${fullUrl}`);
   }
-  
+
   const response = await fetch(fullUrl, {
     ...fetchOptions,
     headers: {
@@ -89,15 +91,18 @@ export async function apiRequest<TResponse>(
     } catch {
       errorData = await response.text();
     }
-    
+
     // Log error details in development (only in browser)
-    if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+    if (
+      typeof window !== "undefined" &&
+      process.env.NODE_ENV === "development"
+    ) {
       console.error(`[API Error] ${response.status} ${response.statusText}`, {
         url: fullUrl,
         errorData,
       });
     }
-    
+
     throw new ApiError(
       `API request failed: ${response.statusText}`,
       response.status,
