@@ -19,6 +19,9 @@ import {
 import { api, ApiError, ValidationError } from "../../lib/api";
 import type { JobCreate } from "../../lib/api";
 
+// ⚠️ TODO: Replace with actual user data from auth context when authentication is implemented
+const userId = "507f1f77bcf86cd799439011"; // PLACEHOLDER - Valid ObjectId format for testing
+
 // TODO: Replace with API call to fetch employer info
 const employerInfo = {
   name: "Sarah Martinez",
@@ -337,8 +340,37 @@ export default function JobPostingPage(): ReactElement {
     }
 
     try {
+      // Get or create employer profile
+      let employerProfileId: string;
+      try {
+        // Try to get existing employer profile
+        const existingProfile = await api.employerProfiles.getByUserId(userId);
+        employerProfileId = existingProfile.id;
+      } catch (err) {
+        // Profile doesn't exist, create one
+        if (err instanceof ApiError && err.status === 404) {
+          // Get company name from form (same logic as transformToApiFormat)
+          const companyName =
+            employerInfo.companies.find((c) => c.id === selectedCompany)?.name ||
+            selectedCompany;
+          
+          if (!companyName || companyName.trim() === "") {
+            throw new Error("Company name is required to create employer profile");
+          }
+          
+          const newProfile = await api.employerProfiles.create({
+            user_id: userId,
+            company_name: companyName,
+          });
+          employerProfileId = newProfile.id;
+        } else {
+          throw err;
+        }
+      }
+
+      // Create job with employer profile ID
       const apiData = transformToApiFormat(jobData);
-      const createdJob = await api.jobs.create(apiData);
+      const createdJob = await api.jobs.create(apiData, employerProfileId);
 
       console.log("Job created successfully:", createdJob);
       setSubmitSuccess(true);

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactElement } from "react";
+import { useState, useEffect, type ReactElement } from "react";
+import { useSearchParams } from "next/navigation";
 
 import Link from "next/link";
 import {
@@ -20,17 +21,10 @@ import {
   Download,
   Calendar,
   MoreVertical,
+  RefreshCw,
 } from "lucide-react";
-
-// TODO: Replace with API call to fetch job info
-const jobInfo = {
-  title: "Marketing Coordinator",
-  company: "TechFlow Solutions",
-  location: "Phoenix, AZ",
-  type: "Full-time",
-  posted: "2 weeks ago",
-  salary: "$45,000 - $55,000",
-};
+import { api, ApiError, ValidationError } from "../../lib/api";
+import type { Job, Application } from "../../lib/api";
 
 // TODO: Replace with API call to fetch applicants
 const sampleApplicants = [
@@ -298,7 +292,7 @@ const getStatusDropdownOptions = (
 };
 
 interface StatusDropdownProps {
-  applicant: (typeof sampleApplicants)[0];
+  applicant: TransformedApplicant;
   isOpen: boolean;
   onToggle: () => void;
   onUpdateStatus: (newStatus: string) => void;
@@ -361,20 +355,133 @@ function StatusDropdown({
   );
 }
 
+interface TransformedApplicant {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  appliedDate: string;
+  status: string;
+  experience: string;
+  education: string;
+  currentRole: string;
+  skills: string[];
+  resumeUrl: string;
+  coverLetterExcerpt: string;
+  matchScore: number;
+  volunteerWork: string[];
+  personalProjects: string[];
+}
+
+function formatDateAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffHours < 1) return "Just now";
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+  if (diffDays === 1) return "1 day ago";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 14) return "1 week ago";
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  return `${Math.floor(diffDays / 30)} months ago`;
+}
+
 export default function ApplicationsPage(): ReactElement {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("newest");
-  const [selectedApplicants, setSelectedApplicants] = useState<Set<number>>(
+  const [selectedApplicants, setSelectedApplicants] = useState<Set<string>>(
     new Set()
   );
-  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
-  const [openStatusDropdowns, setOpenStatusDropdowns] = useState<Set<number>>(
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [openStatusDropdowns, setOpenStatusDropdowns] = useState<Set<string>>(
     new Set()
   );
 
-  // TODO: Replace with API call
-  const applicants = sampleApplicants;
+  // Get job ID from URL params
+  const searchParams = useSearchParams();
+  const jobId = searchParams.get("jobId");
+
+  // API state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [job, setJob] = useState<Job | null>(null);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [applicants, setApplicants] = useState<TransformedApplicant[]>([]);
+
+  // Fetch job and applications
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+
+      // Check if job ID is provided
+      if (!jobId) {
+        setError("No job ID provided. Please navigate to this page from a job posting.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch job details
+        const jobData = await api.jobs.getById(jobId);
+        setJob(jobData);
+
+        // Fetch applications for this job
+        const jobApplications = await api.applications.getAll({
+          job_id: jobId,
+          limit: 100,
+        });
+        setApplications(jobApplications);
+
+        // Transform applications to applicants format
+        // TODO: Fetch job seeker profiles to get name, email, phone, experience, etc.
+        const transformedApplicants: TransformedApplicant[] = await Promise.all(
+          jobApplications.map(async (app, index) => {
+            // TODO: Fetch job seeker profile using app.job_seeker_id
+            // For now, using placeholder data
+            return {
+              id: app.id,
+              name: `Candidate ${app.job_seeker_id.slice(0, 8)}`, // TODO: Get from profile
+              email: `candidate${index}@email.com`, // TODO: Get from profile
+              phone: "(555) 000-0000", // TODO: Get from profile
+              location: jobData.location, // TODO: Get from profile
+              appliedDate: formatDateAgo(new Date(app.applied_date)),
+              status: app.status === "pending" ? "unreviewed" : app.status,
+              experience: "Unknown", // TODO: Get from profile
+              education: "Unknown", // TODO: Get from profile
+              currentRole: "Unknown", // TODO: Get from profile
+              skills: [], // TODO: Get from profile
+              resumeUrl: "", // TODO: Get from application or profile
+              coverLetterExcerpt: app.notes || "No cover letter provided.",
+              matchScore: 0, // TODO: Calculate match score
+              volunteerWork: [], // TODO: Get from profile
+              personalProjects: [], // TODO: Get from profile
+            };
+          })
+        );
+        setApplicants(transformedApplicants);
+      } catch (err) {
+        console.error("Failed to fetch applications data:", err);
+        if (err instanceof ApiError) {
+          if (err.status === 404) {
+            setError(`Job not found. The job ID "${jobId}" does not exist.`);
+          } else {
+            setError(`Failed to load applications: ${err.message}`);
+          }
+        } else {
+          setError("An unexpected error occurred. Please try again.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [jobId]);
 
   const statusOptions = [
     { value: "all", label: "All Applications", count: applicants.length },
@@ -420,8 +527,8 @@ export default function ApplicationsPage(): ReactElement {
     return statusMatch && searchMatch;
   });
 
-  const handleSelectApplicant = (applicantId: number): void => {
-    setSelectedApplicants((prev: Set<number>) => {
+  const handleSelectApplicant = (applicantId: string): void => {
+    setSelectedApplicants((prev: Set<string>) => {
       const newSelected = new Set(prev);
       if (newSelected.has(applicantId)) {
         newSelected.delete(applicantId);
@@ -432,8 +539,8 @@ export default function ApplicationsPage(): ReactElement {
     });
   };
 
-  const toggleCardExpansion = (applicantId: number): void => {
-    setExpandedCards((prev: Set<number>) => {
+  const toggleCardExpansion = (applicantId: string): void => {
+    setExpandedCards((prev: Set<string>) => {
       const newExpanded = new Set(prev);
       if (newExpanded.has(applicantId)) {
         newExpanded.delete(applicantId);
@@ -444,8 +551,8 @@ export default function ApplicationsPage(): ReactElement {
     });
   };
 
-  const toggleStatusDropdown = (applicantId: number): void => {
-    setOpenStatusDropdowns((prev: Set<number>) => {
+  const toggleStatusDropdown = (applicantId: string): void => {
+    setOpenStatusDropdowns((prev: Set<string>) => {
       const newOpen = new Set(prev);
       if (newOpen.has(applicantId)) {
         newOpen.delete(applicantId);
@@ -456,17 +563,33 @@ export default function ApplicationsPage(): ReactElement {
     });
   };
 
-  const updateApplicantStatus = (
-    applicantId: number,
+  const updateApplicantStatus = async (
+    applicantId: string,
     newStatus: string
-  ): void => {
-    // TODO: Implement API call to update status
-    console.log(`Updating applicant ${applicantId} status to ${newStatus}`);
-    setOpenStatusDropdowns((prev: Set<number>) => {
-      const newOpen = new Set(prev);
-      newOpen.delete(applicantId);
-      return newOpen;
-    });
+  ): Promise<void> => {
+    try {
+      await api.applications.update(applicantId, { status: newStatus });
+      
+      // Update local state
+      setApplicants((prev) =>
+        prev.map((app) =>
+          app.id === applicantId ? { ...app, status: newStatus } : app
+        )
+      );
+      
+      setOpenStatusDropdowns((prev: Set<string>) => {
+        const newOpen = new Set(prev);
+        newOpen.delete(applicantId);
+        return newOpen;
+      });
+    } catch (err) {
+      console.error("Failed to update application status:", err);
+      if (err instanceof ApiError) {
+        alert(`Failed to update status: ${err.message}`);
+      } else {
+        alert("An unexpected error occurred. Please try again.");
+      }
+    }
   };
 
   const defaultSkillsLimit = 4;
@@ -474,6 +597,63 @@ export default function ApplicationsPage(): ReactElement {
   const defaultProjectsLimit = 2;
   const expandedVolunteerLimit = 5;
   const expandedProjectsLimit = 5;
+
+  function formatSalary(min: number | null | undefined, max: number | null | undefined): string {
+    if (!min && !max) return "Salary not specified";
+    if (!min) return `Up to $${max?.toLocaleString()}`;
+    if (!max) return `$${min.toLocaleString()}+`;
+    return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
+  }
+
+  function formatDateAgoJob(date: Date): string {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "1 day ago";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 14) return "1 week ago";
+    if (diffDays < 21) return "2 weeks ago";
+    if (diffDays < 30) return "3 weeks ago";
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths === 1) return "1 month ago";
+    return `${diffMonths} months ago`;
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-green-100 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="w-12 h-12 mx-auto text-green-600 animate-spin mb-4" />
+          <p className="text-green-800">Loading applications...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-green-100 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <Briefcase className="w-12 h-12 mx-auto text-red-500 mb-4" />
+          <p className="text-red-800 font-semibold mb-2">Error loading applications</p>
+          <p className="text-red-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!job) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-green-100 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <Briefcase className="w-12 h-12 mx-auto text-green-300 mb-4" />
+          <p className="text-green-600">Job not found</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-green-100">
@@ -504,28 +684,28 @@ export default function ApplicationsPage(): ReactElement {
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between space-y-4 lg:space-y-0">
             <div className="flex-1 min-w-0">
               <h1 className="text-2xl sm:text-3xl font-bold text-green-900 mb-2 break-words">
-                {jobInfo.title}
+                {job.title}
               </h1>
               <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-4 text-green-700 mb-4">
                 <span className="flex items-center min-w-0">
                   <Building2 className="w-4 h-4 mr-2 flex-shrink-0" />
-                  <span className="truncate">{jobInfo.company}</span>
+                  <span className="truncate">{job.company}</span>
                 </span>
                 <span className="flex items-center min-w-0">
                   <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
-                  <span className="truncate">{jobInfo.location}</span>
+                  <span className="truncate">{job.remote_ok ? "Remote" : job.location}</span>
                 </span>
                 <span className="flex items-center">
                   <Clock className="w-4 h-4 mr-2 flex-shrink-0" />
-                  {jobInfo.type}
+                  {job.job_type}
                 </span>
                 <span className="flex items-center">
                   <Briefcase className="w-4 h-4 mr-2 flex-shrink-0" />
-                  {jobInfo.salary}
+                  {formatSalary(job.salary_min, job.salary_max)}
                 </span>
               </div>
               <p className="text-green-600 text-sm">
-                Posted {jobInfo.posted} • {applicants.length} applications
+                Posted {formatDateAgoJob(new Date(job.created_at))} • {applicants.length} applications
                 received
               </p>
             </div>
