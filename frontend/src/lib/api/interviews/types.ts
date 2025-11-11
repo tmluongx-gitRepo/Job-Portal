@@ -33,4 +33,3 @@ export type InterviewStatus =
   | "completed"
   | "cancelled"
   | "no_show";
-

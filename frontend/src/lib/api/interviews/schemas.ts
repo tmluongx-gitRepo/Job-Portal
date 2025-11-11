@@ -89,4 +89,3 @@ export const InterviewListResponseSchema = z.object({
   interviews: z.array(InterviewResponseSchema),
   total: z.number().int(),
 });
-
