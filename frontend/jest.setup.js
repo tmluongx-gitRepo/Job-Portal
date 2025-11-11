@@ -3,8 +3,8 @@
  * Runs before each test
  */
 
-// Add custom matchers from jest-dom
-import "@testing-library/jest-dom";
+// Add custom matchers from jest-dom (CommonJS require for Jest)
+require("@testing-library/jest-dom");
 
 // Mock Next.js router
 jest.mock("next/navigation", () => ({
