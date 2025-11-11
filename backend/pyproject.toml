@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 python_version = "3.12"
 
 # Package resolution
-explicit_package_bases = true
+explicit_package_bases = false
 
 # Strict mode
 strict = true
@@ -55,6 +55,7 @@ module = [
     "motor.*",
     "chromadb.*",
     "redis.*",
+    "dropbox.*",
 ]
 ignore_missing_imports = true
 
