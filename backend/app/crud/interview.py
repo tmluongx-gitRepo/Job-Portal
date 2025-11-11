@@ -90,9 +90,7 @@ async def create_interview(
     try:
         await collection.insert_one(interview_data)
     except DuplicateKeyError:
-        raise ValueError(
-            f"Interview already exists for application {application_id}"
-        ) from None
+        raise ValueError(f"Interview already exists for application {application_id}") from None
 
     return cast(InterviewDocument, interview_data)
 

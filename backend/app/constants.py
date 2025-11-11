@@ -24,4 +24,3 @@ class InterviewStatus(str, Enum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
     NO_SHOW = "no_show"
-

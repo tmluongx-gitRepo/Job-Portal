@@ -172,7 +172,9 @@ async def schedule_interview(
             timezone=interview_data.timezone,
             location=interview_data.location,
             interviewer_name=interview_data.interviewer_name,
-            interviewer_email=str(interview_data.interviewer_email) if interview_data.interviewer_email else None,
+            interviewer_email=str(interview_data.interviewer_email)
+            if interview_data.interviewer_email
+            else None,
             interviewer_phone=interview_data.interviewer_phone,
             notes=interview_data.notes,
             internal_notes=interview_data.internal_notes,
