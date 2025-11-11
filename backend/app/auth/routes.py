@@ -2,6 +2,7 @@
 Authentication API routes for Supabase integration.
 """
 
+import asyncio
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -60,8 +61,9 @@ async def register(user_data: UserSignUp) -> TokenResponse | dict[str, Any]:
         )
 
     try:
-        # Sign up user with Supabase
-        response = supabase.auth.sign_up(
+        # Sign up user with Supabase (offload to thread to avoid blocking event loop)
+        response = await asyncio.to_thread(
+            supabase.auth.sign_up,
             {
                 "email": user_data.email,
                 "password": user_data.password,
@@ -71,7 +73,7 @@ async def register(user_data: UserSignUp) -> TokenResponse | dict[str, Any]:
                         "full_name": user_data.full_name,
                     }
                 },
-            }
+            },
         )
 
         if not response.user:
@@ -144,12 +146,13 @@ async def login(credentials: UserSignIn) -> TokenResponse:
         )
 
     try:
-        # Sign in with Supabase
-        response = supabase.auth.sign_in_with_password(
+        # Sign in with Supabase (offload to thread to avoid blocking event loop)
+        response = await asyncio.to_thread(
+            supabase.auth.sign_in_with_password,
             {
                 "email": credentials.email,
                 "password": credentials.password,
-            }
+            },
         )
 
         if not response.user or not response.session:
@@ -211,8 +214,8 @@ async def logout(_current_user: dict = Depends(get_current_user)) -> MessageResp
         )
 
     try:
-        # Sign out from Supabase
-        supabase.auth.sign_out()
+        # Sign out from Supabase (offload to thread to avoid blocking event loop)
+        await asyncio.to_thread(supabase.auth.sign_out)
 
         return MessageResponse(message="Successfully logged out")
 
@@ -257,8 +260,8 @@ async def refresh_token(refresh_token: str) -> TokenResponse:
         )
 
     try:
-        # Refresh session with Supabase
-        response = supabase.auth.refresh_session(refresh_token)
+        # Refresh session with Supabase (offload to thread to avoid blocking event loop)
+        response = await asyncio.to_thread(supabase.auth.refresh_session, refresh_token)
 
         if not response.user or not response.session:
             _raise_invalid_refresh_token()
@@ -318,8 +321,8 @@ async def request_password_reset(data: PasswordReset) -> MessageResponse:
         )
 
     try:
-        # Request password reset from Supabase
-        supabase.auth.reset_password_email(data.email)
+        # Request password reset from Supabase (offload to thread to avoid blocking event loop)
+        await asyncio.to_thread(supabase.auth.reset_password_email, data.email)
 
         # Always return success for security (don't reveal if email exists)
         return MessageResponse(message="If the email exists, a password reset link has been sent")
@@ -355,8 +358,8 @@ async def update_password(
         )
 
     try:
-        # Update password in Supabase
-        supabase.auth.update_user({"password": data.password})
+        # Update password in Supabase (offload to thread to avoid blocking event loop)
+        await asyncio.to_thread(supabase.auth.update_user, {"password": data.password})
 
         return MessageResponse(message="Password updated successfully")
 
