@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactElement } from "react";
+import { useState, useEffect, type ReactElement } from "react";
 
 import Link from "next/link";
 import {
@@ -18,59 +18,10 @@ import {
   RefreshCw,
   Sparkles,
 } from "lucide-react";
+import { api, ApiError, ValidationError } from "../../lib/api";
+import type { Application, JobSeekerProfile } from "../../lib/api";
 
-// TODO: Replace with API call to fetch user applications
-const sampleApplications = [
-  {
-    id: 1,
-    company: "TechFlow Solutions",
-    role: "Marketing Coordinator",
-    status: "Interview Scheduled",
-    appliedDate: "2 days ago",
-    nextStep: "Video interview tomorrow at 2 PM",
-  },
-  {
-    id: 2,
-    company: "DataCore Industries",
-    role: "Business Analyst",
-    status: "Under Review",
-    appliedDate: "1 week ago",
-    nextStep: "Waiting for initial response",
-  },
-  {
-    id: 3,
-    company: "Summit Financial",
-    role: "Customer Success Associate",
-    status: "Application Submitted",
-    appliedDate: "3 days ago",
-    nextStep: "Application in queue for review",
-  },
-];
-
-// TODO: Replace with API call to fetch job recommendations
-const sampleRecommendations = [
-  {
-    id: 1,
-    company: "InnovateNow Corp",
-    role: "Project Manager",
-    match: "94%",
-    reason: "Perfect match for your project coordination experience",
-  },
-  {
-    id: 2,
-    company: "Metro Healthcare Group",
-    role: "Administrative Assistant",
-    match: "89%",
-    reason: "Aligns with your organizational and communication skills",
-  },
-  {
-    id: 3,
-    company: "BlueTech Systems",
-    role: "Sales Representative",
-    match: "85%",
-    reason: "Great fit for your customer service background",
-  },
-];
+// Sample data removed - now fetched from API
 
 const healthyReminders = [
   "Remember: Every 'no' brings you closer to your perfect 'yes'.",
@@ -82,38 +33,193 @@ const healthyReminders = [
 ];
 
 export default function DashboardPage(): ReactElement {
-  // TODO: Replace with actual user data from auth context
+  // ⚠️ TODO: Replace with actual user data from auth context when authentication is implemented
   const userName = "Alex";
+  const userId = "507f1f77bcf86cd799439011"; // PLACEHOLDER - Valid ObjectId format for testing
 
   const [currentReminder, setCurrentReminder] = useState(healthyReminders[0]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // API data
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [profile, setProfile] = useState<JobSeekerProfile | null>(null);
+  const [jobSeekerProfileId, setJobSeekerProfileId] = useState<string | null>(null);
 
   const generateReminder = (): void => {
     const randomIndex = Math.floor(Math.random() * healthyReminders.length);
     setCurrentReminder(healthyReminders[randomIndex]);
   };
 
-  // TODO: Replace with API call to fetch stats
-  const stats = {
-    applicationsThisWeek: 3,
-    interviewsScheduled: 1,
-    profileViews: 12,
-    newMatches: 5,
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // First, fetch profile to get job seeker profile ID
+        let profileId: string | null = null;
+        try {
+          const userProfile = await api.jobSeekerProfiles.getByUserId(userId);
+          setProfile(userProfile);
+          profileId = userProfile.id;
+          setJobSeekerProfileId(profileId);
+        } catch (err) {
+          // Profile might not exist - that's okay, but we can't fetch applications/recommendations
+          console.info("[Dashboard] Profile not found - cannot fetch applications/recommendations");
+        }
+
+        if (profileId) {
+          // Fetch applications for this job seeker
+          const apps = await api.applications.getAll({
+            job_seeker_id: profileId,
+            limit: 10,
+          });
+          setApplications(apps);
+
+          // Fetch recommendations
+          const recs = await api.recommendations.getForJobSeeker(profileId, {
+            limit: 5,
+            include_viewed: false,
+            include_dismissed: false,
+            include_applied: false,
+          });
+          setRecommendations(recs);
+        } else {
+          // No profile means no applications or recommendations yet
+          setApplications([]);
+          setRecommendations([]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch dashboard data:", err);
+        if (err instanceof ApiError) {
+          setError(`Failed to load dashboard: ${err.message}`);
+        } else {
+          setError("An unexpected error occurred. Please try again.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [userId]);
+
+  // Calculate stats from fetched data
+  const calculateStats = () => {
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const applicationsThisWeek = applications.filter((app) => {
+      const appliedDate = new Date(app.applied_date);
+      return appliedDate >= oneWeekAgo;
+    }).length;
+
+    const interviewsScheduled = applications.filter((app) => {
+      return (
+        app.status === "Interview Scheduled" ||
+        app.interview_scheduled_date !== null
+      );
+    }).length;
+
+    const profileViews = profile?.profile_views || 0;
+
+    const newMatches = recommendations.filter(
+      (rec) => !rec.viewed && !rec.dismissed && !rec.applied
+    ).length;
+
+    return {
+      applicationsThisWeek,
+      interviewsScheduled,
+      profileViews,
+      newMatches,
+    };
   };
+
+  const stats = calculateStats();
+
+  // Transform applications for display
+  // Note: Applications include job_id but not job details
+  // For now, we'll show the job_id - in the future we could fetch job details
+  const transformedApplications = applications.slice(0, 3).map((app) => {
+    // Format applied date as "X days ago"
+    const formatAppliedDate = (date: Date): string => {
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) return "today";
+      if (diffDays === 1) return "1 day ago";
+      if (diffDays < 7) return `${diffDays} days ago`;
+      if (diffDays < 14) return "1 week ago";
+      if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+      if (diffDays < 60) return "1 month ago";
+      return `${Math.floor(diffDays / 30)} months ago`;
+    };
+
+    // Determine next step based on status
+    let nextStep = app.next_step || "Application in queue for review";
+    if (app.status === "Interview Scheduled" && app.interview_scheduled_date) {
+      const interviewDate = new Date(app.interview_scheduled_date);
+      nextStep = `Interview scheduled for ${interviewDate.toLocaleDateString()}`;
+    } else if (app.status === "Under Review") {
+      nextStep = "Waiting for initial response";
+    }
+
+    return {
+      id: app.id,
+      company: `Job ${app.job_id.substring(0, 8)}...`, // TODO: Fetch job details to get company name
+      role: "View job details", // TODO: Fetch job details to get job title
+      status: app.status,
+      appliedDate: formatAppliedDate(app.applied_date),
+      nextStep,
+      jobId: app.job_id, // Store job ID for potential linking
+    };
+  });
+
+  // Transform recommendations for display
+  const transformedRecommendations = recommendations.slice(0, 3).map((rec) => ({
+    id: rec.id,
+    company: rec.job_company || "Company",
+    role: rec.job_title || "Job",
+    match: `${rec.match_percentage || 0}%`,
+    reason: rec.reasoning || "Great match for your skills and experience",
+  }));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-green-100">
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Loading State */}
+        {loading && (
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-12 text-center mb-8">
+            <RefreshCw className="w-8 h-8 text-green-600 animate-spin mx-auto mb-4" />
+            <p className="text-green-700">Loading dashboard...</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8">
+            <p className="text-red-800 font-semibold mb-2">Error</p>
+            <p className="text-red-700 text-sm">{error}</p>
+          </div>
+        )}
+
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-green-900 mb-2 flex items-center">
-            Good morning, {userName}!
-            <Leaf className="w-8 h-8 ml-3 text-green-600" />
-          </h1>
-          <p className="text-green-700">
-            Ready to continue nurturing your career growth?
-          </p>
-        </div>
+        {!loading && (
+          <>
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-green-900 mb-2 flex items-center">
+                Good morning, {userName}!
+                <Leaf className="w-8 h-8 ml-3 text-green-600" />
+              </h1>
+              <p className="text-green-700">
+                Ready to continue nurturing your career growth?
+              </p>
+            </div>
 
         {/* Daily Reminder */}
         <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6 mb-8">
@@ -269,7 +375,8 @@ export default function DashboardPage(): ReactElement {
             </div>
 
             <div className="space-y-4">
-              {sampleApplications.map((app) => (
+              {transformedApplications.length > 0 ? (
+                transformedApplications.map((app) => (
                 <div
                   key={app.id}
                   className="bg-white/60 rounded-lg p-4 border border-green-100"
@@ -309,7 +416,14 @@ export default function DashboardPage(): ReactElement {
                   </p>
                   <p className="text-sm text-green-700">{app.nextStep}</p>
                 </div>
-              ))}
+                ))
+              ) : (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                  <p className="text-green-700 text-sm">
+                    No applications yet. Start applying to jobs to track your progress!
+                  </p>
+                </div>
+              )}
             </div>
 
             <Link
@@ -339,7 +453,8 @@ export default function DashboardPage(): ReactElement {
             </div>
 
             <div className="space-y-4">
-              {sampleRecommendations.map((rec) => (
+              {transformedRecommendations.length > 0 ? (
+                transformedRecommendations.map((rec) => (
                 <div
                   key={rec.id}
                   className="bg-white/60 rounded-lg p-4 border border-green-100"
@@ -372,10 +487,19 @@ export default function DashboardPage(): ReactElement {
                     View Details →
                   </Link>
                 </div>
-              ))}
+                ))
+              ) : (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                  <p className="text-green-700 text-sm">
+                    No recommendations yet. Complete your profile to get personalized job matches!
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );
