@@ -253,16 +253,20 @@ export default function JobPostingPage(): ReactElement {
     // Combine requirements and niceToHave into a single requirements string
     const allRequirements = [
       ...data.requirements.filter((r) => r.trim()),
-      ...data.niceToHave.filter((r) => r.trim()).map((r) => `Nice to have: ${r}`),
+      ...data.niceToHave
+        .filter((r) => r.trim())
+        .map((r) => `Nice to have: ${r}`),
     ].join("\n");
 
     // Parse salary values
-    const salaryMin = data.salaryDisclosed && data.salaryMin
-      ? parseInt(data.salaryMin.replace(/[^0-9]/g, ""), 10)
-      : null;
-    const salaryMax = data.salaryDisclosed && data.salaryMax
-      ? parseInt(data.salaryMax.replace(/[^0-9]/g, ""), 10)
-      : null;
+    const salaryMin =
+      data.salaryDisclosed && data.salaryMin
+        ? parseInt(data.salaryMin.replace(/[^0-9]/g, ""), 10)
+        : null;
+    const salaryMax =
+      data.salaryDisclosed && data.salaryMax
+        ? parseInt(data.salaryMax.replace(/[^0-9]/g, ""), 10)
+        : null;
 
     // Parse application deadline
     const applicationDeadline = data.applicationDeadline
@@ -270,7 +274,8 @@ export default function JobPostingPage(): ReactElement {
       : null;
 
     // Determine remote_ok from workArrangement
-    const remote_ok = data.workArrangement === "Remote" || data.workArrangement === "Hybrid";
+    const remote_ok =
+      data.workArrangement === "Remote" || data.workArrangement === "Hybrid";
 
     // Get company name from selected company or typed value
     const companyName =
@@ -308,15 +313,15 @@ export default function JobPostingPage(): ReactElement {
 
     // Validate each field individually
     const errors: Record<string, string> = {};
-    
+
     if (!jobData.title?.trim()) {
       errors.title = "Job title is required";
     }
-    
+
     if (!jobData.description?.trim()) {
       errors.description = "Job description is required";
     }
-    
+
     if (!jobData.location?.trim()) {
       errors.location = "Location is required";
     }
@@ -325,7 +330,7 @@ export default function JobPostingPage(): ReactElement {
     const companyName =
       employerInfo.companies.find((c) => c.id === selectedCompany)?.name ||
       selectedCompany;
-    
+
     if (!companyName?.trim() || companyName === "Your Company") {
       errors.company = "Please select or enter a company name";
     }
@@ -344,24 +349,28 @@ export default function JobPostingPage(): ReactElement {
       let employerProfileId: string;
       try {
         // Try to get existing employer profile
-        const existingProfile: EmployerProfile = (await api.employerProfiles.getByUserId(userId)) as EmployerProfile;
+        const existingProfile: EmployerProfile =
+          (await api.employerProfiles.getByUserId(userId)) as EmployerProfile;
         employerProfileId = existingProfile.id;
       } catch (err) {
         // Profile doesn't exist, create one
         if (err instanceof ApiError && err.status === 404) {
           // Get company name from form (same logic as transformToApiFormat)
           const companyName =
-            employerInfo.companies.find((c) => c.id === selectedCompany)?.name ||
-            selectedCompany;
-          
+            employerInfo.companies.find((c) => c.id === selectedCompany)
+              ?.name || selectedCompany;
+
           if (!companyName || companyName.trim() === "") {
-            throw new Error("Company name is required to create employer profile");
+            throw new Error(
+              "Company name is required to create employer profile"
+            );
           }
-          
-          const newProfile: EmployerProfile = (await api.employerProfiles.create({
-            user_id: userId,
-            company_name: companyName,
-          })) as EmployerProfile;
+
+          const newProfile: EmployerProfile =
+            (await api.employerProfiles.create({
+              user_id: userId,
+              company_name: companyName,
+            })) as EmployerProfile;
           employerProfileId = newProfile.id;
         } else {
           throw err;
@@ -514,7 +523,9 @@ export default function JobPostingPage(): ReactElement {
                     ))}
                   </select>
                   {fieldErrors.company && (
-                    <p className="mt-1 text-sm text-red-600">{fieldErrors.company}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {fieldErrors.company}
+                    </p>
                   )}
                 </div>
 
@@ -577,7 +588,9 @@ export default function JobPostingPage(): ReactElement {
                       placeholder="e.g. Senior Marketing Coordinator"
                     />
                     {fieldErrors.title && (
-                      <p className="mt-1 text-sm text-red-600">{fieldErrors.title}</p>
+                      <p className="mt-1 text-sm text-red-600">
+                        {fieldErrors.title}
+                      </p>
                     )}
                   </div>
 
@@ -678,7 +691,9 @@ export default function JobPostingPage(): ReactElement {
                     placeholder="e.g. Phoenix, AZ or Remote"
                   />
                   {fieldErrors.location && (
-                    <p className="mt-1 text-sm text-red-600">{fieldErrors.location}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {fieldErrors.location}
+                    </p>
                   )}
                 </div>
               </div>
@@ -714,7 +729,9 @@ export default function JobPostingPage(): ReactElement {
                   placeholder="Describe the role, the team, and what makes this opportunity special. Focus on growth, impact, and culture fit rather than just tasks..."
                 />
                 {fieldErrors.description && (
-                  <p className="mt-1 text-sm text-red-600">{fieldErrors.description}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {fieldErrors.description}
+                  </p>
                 )}
               </div>
 
@@ -977,7 +994,7 @@ export default function JobPostingPage(): ReactElement {
               <h3 className="text-lg font-semibold text-green-800 mb-4">
                 Actions
               </h3>
-              
+
               {/* Error Message */}
               {submitError && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">

@@ -88,7 +88,7 @@ function formatDateAgo(date: Date): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "1 day ago";
   if (diffDays < 7) return `${diffDays} days ago`;
@@ -100,7 +100,10 @@ function formatDateAgo(date: Date): string {
   return `${diffMonths} months ago`;
 }
 
-function formatSalary(min: number | null | undefined, max: number | null | undefined): string {
+function formatSalary(
+  min: number | null | undefined,
+  max: number | null | undefined
+): string {
   if (!min && !max) return "Salary not specified";
   if (!min) return `Up to $${max?.toLocaleString()}`;
   if (!max) return `$${min.toLocaleString()}+`;
@@ -110,18 +113,23 @@ function formatSalary(min: number | null | undefined, max: number | null | undef
 export default function EmployerDashboard(): ReactElement {
   const [selectedCompany, setSelectedCompany] = useState("all");
   const [currentReminder, setCurrentReminder] = useState(healthyReminders[0]);
-  
+
   // API state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [employerProfile, setEmployerProfile] = useState<EmployerProfile | null>(null);
+  const [employerProfile, setEmployerProfile] =
+    useState<EmployerProfile | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [allApplications, setAllApplications] = useState<Application[]>([]);
-  
+
   // Transformed data
   const [jobPostings, setJobPostings] = useState<TransformedJobPosting[]>([]);
-  const [recentApplications, setRecentApplications] = useState<TransformedApplication[]>([]);
-  const [upcomingInterviews, setUpcomingInterviews] = useState<TransformedInterview[]>([]);
+  const [recentApplications, setRecentApplications] = useState<
+    TransformedApplication[]
+  >([]);
+  const [upcomingInterviews, setUpcomingInterviews] = useState<
+    TransformedInterview[]
+  >([]);
 
   const generateReminder = (): void => {
     const randomIndex = Math.floor(Math.random() * healthyReminders.length);
@@ -143,7 +151,9 @@ export default function EmployerDashboard(): ReactElement {
           setEmployerProfile(profile);
           employerProfileId = profile.id;
         } catch (err) {
-          console.info("[Employer Dashboard] Profile not found - cannot fetch jobs/applications");
+          console.info(
+            "[Employer Dashboard] Profile not found - cannot fetch jobs/applications"
+          );
         }
 
         if (employerProfileId) {
@@ -164,58 +174,73 @@ export default function EmployerDashboard(): ReactElement {
           setAllApplications(flatApplications);
 
           // Transform jobs
-          const transformedJobs: TransformedJobPosting[] = employerJobs.map((job: Job) => {
-            const jobApplications = flatApplications.filter((app: Application) => app.job_id === job.id);
-            const newApplications = jobApplications.filter((app: Application) => {
-              const appliedDate = new Date(app.applied_date);
-              const sevenDaysAgo = new Date();
-              sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-              return appliedDate >= sevenDaysAgo;
-            });
-            const interviews = jobApplications.filter(
-              (app: Application) => app.status === "interview_scheduled" || app.status === "interviewed"
-            ).length;
-            const hired = jobApplications.filter((app: Application) => app.status === "hired").length;
+          const transformedJobs: TransformedJobPosting[] = employerJobs.map(
+            (job: Job) => {
+              const jobApplications = flatApplications.filter(
+                (app: Application) => app.job_id === job.id
+              );
+              const newApplications = jobApplications.filter(
+                (app: Application) => {
+                  const appliedDate = new Date(app.applied_date);
+                  const sevenDaysAgo = new Date();
+                  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                  return appliedDate >= sevenDaysAgo;
+                }
+              );
+              const interviews = jobApplications.filter(
+                (app: Application) =>
+                  app.status === "interview_scheduled" ||
+                  app.status === "interviewed"
+              ).length;
+              const hired = jobApplications.filter(
+                (app: Application) => app.status === "hired"
+              ).length;
 
-            return {
-              id: job.id,
-              title: job.title,
-              company: job.company,
-              status: job.is_active ? "Active" : "Paused",
-              posted: formatDateAgo(new Date(job.created_at)),
-              applications: jobApplications.length,
-              newApplications: newApplications.length,
-              interviews,
-              hired,
-              location: job.remote_ok ? "Remote" : job.location,
-              salary: formatSalary(job.salary_min, job.salary_max),
-            };
-          });
+              return {
+                id: job.id,
+                title: job.title,
+                company: job.company,
+                status: job.is_active ? "Active" : "Paused",
+                posted: formatDateAgo(new Date(job.created_at)),
+                applications: jobApplications.length,
+                newApplications: newApplications.length,
+                interviews,
+                hired,
+                location: job.remote_ok ? "Remote" : job.location,
+                salary: formatSalary(job.salary_min, job.salary_max),
+              };
+            }
+          );
           setJobPostings(transformedJobs);
 
           // Transform recent applications (last 10, sorted by date)
           const sortedApplications = flatApplications
-            .sort((a: Application, b: Application) => new Date(b.applied_date).getTime() - new Date(a.applied_date).getTime())
+            .sort(
+              (a: Application, b: Application) =>
+                new Date(b.applied_date).getTime() -
+                new Date(a.applied_date).getTime()
+            )
             .slice(0, 10);
-          
-          const transformedApplications: TransformedApplication[] = await Promise.all(
-            sortedApplications.map(async (app: Application) => {
-              const job = employerJobs.find((j: Job) => j.id === app.job_id);
-              // TODO: Fetch job seeker profile to get name, experience, location
-              // For now, using placeholder data
-              return {
-                id: app.id,
-                candidateName: `Candidate ${app.job_seeker_id.slice(0, 8)}`,
-                jobTitle: job?.title || "Unknown Job",
-                company: job?.company || "Unknown Company",
-                appliedDate: formatDateAgo(new Date(app.applied_date)),
-                status: app.status === "pending" ? "Unreviewed" : "Reviewed",
-                matchScore: 0, // TODO: Calculate match score
-                experience: "Unknown", // TODO: Get from job seeker profile
-                location: job?.location || "Unknown",
-              };
-            })
-          );
+
+          const transformedApplications: TransformedApplication[] =
+            await Promise.all(
+              sortedApplications.map(async (app: Application) => {
+                const job = employerJobs.find((j: Job) => j.id === app.job_id);
+                // TODO: Fetch job seeker profile to get name, experience, location
+                // For now, using placeholder data
+                return {
+                  id: app.id,
+                  candidateName: `Candidate ${app.job_seeker_id.slice(0, 8)}`,
+                  jobTitle: job?.title || "Unknown Job",
+                  company: job?.company || "Unknown Company",
+                  appliedDate: formatDateAgo(new Date(app.applied_date)),
+                  status: app.status === "pending" ? "Unreviewed" : "Reviewed",
+                  matchScore: 0, // TODO: Calculate match score
+                  experience: "Unknown", // TODO: Get from job seeker profile
+                  location: job?.location || "Unknown",
+                };
+              })
+            );
           setRecentApplications(transformedApplications);
 
           // Transform upcoming interviews
@@ -225,49 +250,57 @@ export default function EmployerDashboard(): ReactElement {
               app.interview_scheduled_date &&
               new Date(app.interview_scheduled_date) >= new Date()
           );
-          const transformedInterviews: TransformedInterview[] = await Promise.all(
-            interviewApplications.map(async (app: Application) => {
-              const job = employerJobs.find((j: Job) => j.id === app.job_id);
-              const interviewDate = app.interview_scheduled_date
-                ? new Date(app.interview_scheduled_date)
-                : new Date();
-              const isToday = interviewDate.toDateString() === new Date().toDateString();
-              const isTomorrow =
-                interviewDate.toDateString() ===
-                new Date(Date.now() + 86400000).toDateString();
-              
-              let dateStr = "";
-              if (isToday) {
-                dateStr = `Today at ${interviewDate.toLocaleTimeString("en-US", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}`;
-              } else if (isTomorrow) {
-                dateStr = `Tomorrow at ${interviewDate.toLocaleTimeString("en-US", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}`;
-              } else {
-                dateStr = interviewDate.toLocaleDateString("en-US", {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                });
-              }
+          const transformedInterviews: TransformedInterview[] =
+            await Promise.all(
+              interviewApplications.map(async (app: Application) => {
+                const job = employerJobs.find((j: Job) => j.id === app.job_id);
+                const interviewDate = app.interview_scheduled_date
+                  ? new Date(app.interview_scheduled_date)
+                  : new Date();
+                const isToday =
+                  interviewDate.toDateString() === new Date().toDateString();
+                const isTomorrow =
+                  interviewDate.toDateString() ===
+                  new Date(Date.now() + 86400000).toDateString();
 
-              return {
-                id: app.id,
-                candidateName: `Candidate ${app.job_seeker_id.slice(0, 8)}`, // TODO: Get from profile
-                jobTitle: job?.title || "Unknown Job",
-                company: job?.company || "Unknown Company",
-                interviewDate: dateStr,
-                interviewType: "Interview", // TODO: Get from application data
-                interviewer: profile?.name || "Unknown", // TODO: Get from employer profile
-              };
-            })
-          );
+                let dateStr = "";
+                if (isToday) {
+                  dateStr = `Today at ${interviewDate.toLocaleTimeString(
+                    "en-US",
+                    {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    }
+                  )}`;
+                } else if (isTomorrow) {
+                  dateStr = `Tomorrow at ${interviewDate.toLocaleTimeString(
+                    "en-US",
+                    {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    }
+                  )}`;
+                } else {
+                  dateStr = interviewDate.toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  });
+                }
+
+                return {
+                  id: app.id,
+                  candidateName: `Candidate ${app.job_seeker_id.slice(0, 8)}`, // TODO: Get from profile
+                  jobTitle: job?.title || "Unknown Job",
+                  company: job?.company || "Unknown Company",
+                  interviewDate: dateStr,
+                  interviewType: "Interview", // TODO: Get from application data
+                  interviewer: profile?.name || "Unknown", // TODO: Get from employer profile
+                };
+              })
+            );
           setUpcomingInterviews(transformedInterviews);
         } else {
           // No profile means no data
@@ -307,7 +340,9 @@ export default function EmployerDashboard(): ReactElement {
   const filteredInterviews =
     selectedCompany === "all"
       ? upcomingInterviews
-      : upcomingInterviews.filter((interview) => interview.company === selectedCompany);
+      : upcomingInterviews.filter(
+          (interview) => interview.company === selectedCompany
+        );
 
   // Calculate summary metrics based on filtered data
   const totalActiveJobs = filteredJobPostings.filter(
@@ -342,7 +377,9 @@ export default function EmployerDashboard(): ReactElement {
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-green-100 flex items-center justify-center">
         <div className="text-center max-w-md">
           <Building2 className="w-12 h-12 mx-auto text-red-500 mb-4" />
-          <p className="text-red-800 font-semibold mb-2">Error loading dashboard</p>
+          <p className="text-red-800 font-semibold mb-2">
+            Error loading dashboard
+          </p>
           <p className="text-red-600">{error}</p>
         </div>
       </div>
@@ -580,7 +617,7 @@ export default function EmployerDashboard(): ReactElement {
                     <p className="text-xs text-green-600">
                       Posted {job.posted}
                     </p>
-                    {process.env.NODE_ENV === 'development' && (
+                    {process.env.NODE_ENV === "development" && (
                       <button
                         onClick={() => {
                           navigator.clipboard.writeText(job.id);
@@ -593,7 +630,7 @@ export default function EmployerDashboard(): ReactElement {
                       </button>
                     )}
                   </div>
-                  
+
                   <Link
                     href={`/applications?jobId=${job.id}`}
                     className="mt-3 w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-2 px-4 rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center text-sm"
