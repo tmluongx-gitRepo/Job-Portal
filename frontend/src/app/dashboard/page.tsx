@@ -19,7 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { api, ApiError, ValidationError } from "../../lib/api";
-import type { Application, JobSeekerProfile } from "../../lib/api";
+import type { Application, JobSeekerProfile, Recommendation } from "../../lib/api";
 
 // Sample data removed - now fetched from API
 
@@ -62,7 +62,7 @@ export default function DashboardPage(): ReactElement {
         // First, fetch profile to get job seeker profile ID
         let profileId: string | null = null;
         try {
-          const userProfile = await api.jobSeekerProfiles.getByUserId(userId);
+          const userProfile = (await api.jobSeekerProfiles.getByUserId(userId)) as JobSeekerProfile;
           setProfile(userProfile);
           profileId = userProfile.id;
           setJobSeekerProfileId(profileId);
@@ -73,19 +73,19 @@ export default function DashboardPage(): ReactElement {
 
         if (profileId) {
           // Fetch applications for this job seeker
-          const apps = await api.applications.getAll({
+          const apps = (await api.applications.getAll({
             job_seeker_id: profileId,
             limit: 10,
-          });
+          })) as Application[];
           setApplications(apps);
 
           // Fetch recommendations
-          const recs = await api.recommendations.getForJobSeeker(profileId, {
+          const recs = (await api.recommendations.getForJobSeeker(profileId, {
             limit: 5,
             include_viewed: false,
             include_dismissed: false,
             include_applied: false,
-          });
+          })) as Recommendation[];
           setRecommendations(recs);
         } else {
           // No profile means no applications or recommendations yet

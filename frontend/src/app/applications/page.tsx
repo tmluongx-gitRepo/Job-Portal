@@ -427,20 +427,20 @@ export default function ApplicationsPage(): ReactElement {
 
       try {
         // Fetch job details
-        const jobData = await api.jobs.getById(jobId);
+        const jobData = (await api.jobs.getById(jobId)) as Job;
         setJob(jobData);
 
         // Fetch applications for this job
-        const jobApplications = await api.applications.getAll({
+        const jobApplications = (await api.applications.getAll({
           job_id: jobId,
           limit: 100,
-        });
+        })) as Application[];
         setApplications(jobApplications);
 
         // Transform applications to applicants format
         // TODO: Fetch job seeker profiles to get name, email, phone, experience, etc.
         const transformedApplicants: TransformedApplicant[] = await Promise.all(
-          jobApplications.map(async (app, index) => {
+          jobApplications.map(async (app: Application, index: number) => {
             // TODO: Fetch job seeker profile using app.job_seeker_id
             // For now, using placeholder data
             return {
