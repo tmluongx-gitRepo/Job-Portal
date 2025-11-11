@@ -28,7 +28,7 @@ check_untyped_defs = true
 disallow_untyped_calls = false  # Too strict for FastAPI/Motor
 disallow_any_generics = false  # Too strict for Motor
 warn_redundant_casts = true
-warn_unused_ignores = true
+warn_unused_ignores = false  # Allow defensive type: ignore comments
 no_implicit_reexport = true
 strict_equality = true
 
