@@ -196,11 +196,17 @@ class TestCrossResourceAuthorization:
 
         headers = {"Authorization": f"Bearer {employer_token}"}
 
+        # Get user_id for the employer
+        me_response = await client.get("/api/users/me", headers=headers)
+        assert me_response.status_code == HTTP_OK
+        user_id = me_response.json()["id"]
+
         # Create own profile first
         profile_response = await client.post(
             "/api/employer-profiles",
             headers=headers,
             json={
+                "user_id": user_id,
                 "company_name": "My Company",
                 "industry": "Tech",
                 "company_size": "10-50",
@@ -209,8 +215,8 @@ class TestCrossResourceAuthorization:
             },
         )
 
-        if profile_response.status_code != HTTP_CREATED:
-            pytest.skip("Could not create employer profile")
+        if profile_response.status_code not in [HTTP_CREATED, HTTP_BAD_REQUEST]:
+            pytest.skip(f"Could not create employer profile: {profile_response.status_code}")
 
         # Now post job - should link to OWN profile, not other employer's
         job_response = await client.post(

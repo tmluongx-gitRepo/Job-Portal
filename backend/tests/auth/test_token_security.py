@@ -67,16 +67,6 @@ class TestTokenSecurity:
         assert response.status_code in [401, 403]
 
     @pytest.mark.asyncio
-    async def test_token_with_wrong_signature(self, job_seeker_token: str) -> None:
-        """Tokens signed with wrong key should be rejected."""
-        if not job_seeker_token:
-            pytest.skip("Email confirmation required for testing")
-
-        # Skip this test for Supabase - Supabase validates JWTs on their end
-        # Our backend trusts Supabase's validation
-        pytest.skip("Supabase handles JWT signature validation")
-
-    @pytest.mark.asyncio
     async def test_empty_authorization_header_rejected(self, client: AsyncClient) -> None:
         """Empty Authorization header should be rejected."""
         headers = {"Authorization": ""}
@@ -86,16 +76,6 @@ class TestTokenSecurity:
         # No Authorization header at all
         response = await client.get("/api/users/me")
         assert response.status_code in [401, 403]
-
-    @pytest.mark.asyncio
-    async def test_token_reuse_after_logout(self, job_seeker_token: str) -> None:
-        """Tokens should not work after logout."""
-        if not job_seeker_token:
-            pytest.skip("Email confirmation required for testing")
-
-        # Skip this test for Supabase - JWTs are stateless and cannot be invalidated server-side
-        # Logout only clears the client-side token
-        pytest.skip("Supabase JWTs are stateless - logout is client-side only")
 
     @pytest.mark.asyncio
     async def test_double_bearer_prefix_rejected(
