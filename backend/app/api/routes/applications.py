@@ -189,16 +189,32 @@ async def list_applications(
             )
 
         # Get applications for their jobs
-        applications = await application_crud.get_applications(
-            skip=skip,
-            limit=limit,
-            job_seeker_id=job_seeker_id,
-            job_id=job_id if job_id else None,
-            status=application_status,
-        )
-
-        # Filter to only applications for their jobs
-        applications = [app for app in applications if str(app.get("job_id")) in employer_job_ids]
+        if job_id:
+            # If filtering by specific job, use it directly (already verified ownership above)
+            applications = await application_crud.get_applications(
+                skip=skip,
+                limit=limit,
+                job_seeker_id=job_seeker_id,
+                job_id=job_id,
+                status=application_status,
+            )
+        else:
+            # Fetch all applications and filter by employer's jobs
+            # Note: This fetches more than limit to account for filtering
+            # A better solution would be to add multi-job_id support to CRUD
+            all_applications = await application_crud.get_applications(
+                skip=0,
+                limit=1000,  # Fetch more to ensure we have enough after filtering
+                job_seeker_id=job_seeker_id,
+                job_id=None,
+                status=application_status,
+            )
+            # Filter to only applications for their jobs
+            filtered = [
+                app for app in all_applications if str(app.get("job_id")) in employer_job_ids
+            ]
+            # Apply pagination after filtering
+            applications = filtered[skip : skip + limit]
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid account type")
 

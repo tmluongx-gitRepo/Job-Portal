@@ -163,7 +163,7 @@ async def get_recommendations_for_job_seeker(
                 "job_id": rec["job_id"],
                 "match_percentage": rec["match_percentage"],
                 "reasoning": rec["reasoning"],
-                "factors": rec["factors"],
+                "factors": rec.get("factors", []),  # Safe access for older documents
                 "ai_generated": rec.get("ai_generated", True),
                 "viewed": rec.get("viewed", False),
                 "dismissed": rec.get("dismissed", False),
@@ -210,7 +210,7 @@ async def get_matching_candidates_for_job(
                 "job_seeker_id": rec["job_seeker_id"],
                 "match_percentage": rec["match_percentage"],
                 "reasoning": rec["reasoning"],
-                "factors": rec["factors"],
+                "factors": rec.get("factors", []),  # Safe access for older documents
                 "seeker_name": seeker_details.get("name"),
                 "seeker_skills": seeker_details.get("skills", []),
                 "seeker_experience_years": seeker_details.get("experience_years"),

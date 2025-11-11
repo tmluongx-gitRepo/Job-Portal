@@ -218,7 +218,8 @@ async def update_job(
     # Check if user is the owner or admin
     from app.auth.auth_utils import is_admin
 
-    if existing_job.get("posted_by") != current_user["id"] and not is_admin(current_user):
+    # Normalize posted_by to string for comparison (it's stored as ObjectId in MongoDB)
+    if str(existing_job.get("posted_by")) != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="You can only update jobs you posted"
         )
@@ -253,7 +254,8 @@ async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)
     # Check if user is the owner or admin
     from app.auth.auth_utils import is_admin
 
-    if existing_job.get("posted_by") != current_user["id"] and not is_admin(current_user):
+    # Normalize posted_by to string for comparison (it's stored as ObjectId in MongoDB)
+    if str(existing_job.get("posted_by")) != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete jobs you posted"
         )
