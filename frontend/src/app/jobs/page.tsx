@@ -151,7 +151,7 @@ export default function JobsPage(): ReactElement {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-green-900 mb-2">
             Find Your Perfect Match
-        </h1>
+          </h1>
           <p className="text-green-700">
             Discover opportunities that align with your values and goals
           </p>

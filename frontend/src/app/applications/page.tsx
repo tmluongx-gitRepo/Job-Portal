@@ -379,7 +379,7 @@ function formatDateAgo(date: Date): string {
   const diffMs = now.getTime() - date.getTime();
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
+
   if (diffHours < 1) return "Just now";
   if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
   if (diffDays === 1) return "1 day ago";
@@ -420,7 +420,9 @@ export default function ApplicationsPage(): ReactElement {
 
       // Check if job ID is provided
       if (!jobId) {
-        setError("No job ID provided. Please navigate to this page from a job posting.");
+        setError(
+          "No job ID provided. Please navigate to this page from a job posting."
+        );
         setLoading(false);
         return;
       }
@@ -569,14 +571,14 @@ export default function ApplicationsPage(): ReactElement {
   ): Promise<void> => {
     try {
       await api.applications.update(applicantId, { status: newStatus });
-      
+
       // Update local state
       setApplicants((prev) =>
         prev.map((app) =>
           app.id === applicantId ? { ...app, status: newStatus } : app
         )
       );
-      
+
       setOpenStatusDropdowns((prev: Set<string>) => {
         const newOpen = new Set(prev);
         newOpen.delete(applicantId);
@@ -598,7 +600,10 @@ export default function ApplicationsPage(): ReactElement {
   const expandedVolunteerLimit = 5;
   const expandedProjectsLimit = 5;
 
-  function formatSalary(min: number | null | undefined, max: number | null | undefined): string {
+  function formatSalary(
+    min: number | null | undefined,
+    max: number | null | undefined
+  ): string {
     if (!min && !max) return "Salary not specified";
     if (!min) return `Up to $${max?.toLocaleString()}`;
     if (!max) return `$${min.toLocaleString()}+`;
@@ -609,7 +614,7 @@ export default function ApplicationsPage(): ReactElement {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "1 day ago";
     if (diffDays < 7) return `${diffDays} days ago`;
@@ -637,7 +642,9 @@ export default function ApplicationsPage(): ReactElement {
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-green-100 flex items-center justify-center">
         <div className="text-center max-w-md">
           <Briefcase className="w-12 h-12 mx-auto text-red-500 mb-4" />
-          <p className="text-red-800 font-semibold mb-2">Error loading applications</p>
+          <p className="text-red-800 font-semibold mb-2">
+            Error loading applications
+          </p>
           <p className="text-red-600">{error}</p>
         </div>
       </div>
@@ -693,7 +700,9 @@ export default function ApplicationsPage(): ReactElement {
                 </span>
                 <span className="flex items-center min-w-0">
                   <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
-                  <span className="truncate">{job.remote_ok ? "Remote" : job.location}</span>
+                  <span className="truncate">
+                    {job.remote_ok ? "Remote" : job.location}
+                  </span>
                 </span>
                 <span className="flex items-center">
                   <Clock className="w-4 h-4 mr-2 flex-shrink-0" />
@@ -705,8 +714,8 @@ export default function ApplicationsPage(): ReactElement {
                 </span>
               </div>
               <p className="text-green-600 text-sm">
-                Posted {formatDateAgoJob(new Date(job.created_at))} • {applicants.length} applications
-                received
+                Posted {formatDateAgoJob(new Date(job.created_at))} •{" "}
+                {applicants.length} applications received
               </p>
             </div>
 
