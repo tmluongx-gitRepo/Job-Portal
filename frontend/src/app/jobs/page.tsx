@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type ReactElement } from "react";
+import { useState, useEffect, type FormEvent, type ReactElement } from "react";
 
 import {
   Search,
@@ -42,21 +42,23 @@ export default function JobsPage(): ReactElement {
   const jobs = isSearchMode ? searchResults : initialJobs;
   const loading = isSearchMode ? searchLoading : initialLoading;
   const error = isSearchMode ? searchError : initialError;
+  const totalJobs = jobs.length;
 
-  const handleSaveJob = (jobId: string): void => {
+  const handleSaveJob = (jobId: string | number): void => {
+    const jobIdStr = String(jobId);
     setSavedJobs((prev: Set<string>) => {
       const newSaved = new Set(prev);
-      if (newSaved.has(jobId)) {
-        newSaved.delete(jobId);
+      if (newSaved.has(jobIdStr)) {
+        newSaved.delete(jobIdStr);
         setSaveMessages((prev: Record<string, string>) => ({
           ...prev,
-          [jobId]: "Job removed from saved",
+          [jobIdStr]: "Job removed from saved",
         }));
       } else {
-        newSaved.add(jobId);
+        newSaved.add(jobIdStr);
         setSaveMessages((prev: Record<string, string>) => ({
           ...prev,
-          [jobId]: "Job saved!",
+          [jobIdStr]: "Job saved!",
         }));
       }
 
@@ -64,7 +66,7 @@ export default function JobsPage(): ReactElement {
       setTimeout(() => {
         setSaveMessages((prev: Record<string, string>) => {
           const newMessages = { ...prev };
-          delete newMessages[jobId];
+          delete newMessages[jobIdStr];
           return newMessages;
         });
       }, 2000);
@@ -73,24 +75,29 @@ export default function JobsPage(): ReactElement {
     });
   };
 
-  const toggleJobExpansion = (jobId: string): void => {
+  const toggleJobExpansion = (jobId: string | number): void => {
+    const jobIdStr = String(jobId);
     setExpandedJobs((prev: Set<string>) => {
       const newExpanded = new Set(prev);
-      if (newExpanded.has(jobId)) {
-        newExpanded.delete(jobId);
+      if (newExpanded.has(jobIdStr)) {
+        newExpanded.delete(jobIdStr);
       } else {
-        newExpanded.add(jobId);
+        newExpanded.add(jobIdStr);
       }
       return newExpanded;
     });
   };
 
   // Pagination logic
-  const totalJobs = jobs.length;
   const totalPages = Math.ceil(totalJobs / jobsPerPage);
   const startIndex = (currentPage - 1) * jobsPerPage;
   const endIndex = startIndex + jobsPerPage;
   const currentJobs = jobs.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, location]);
 
   const goToPage = (page: number): void => {
     setCurrentPage(page);
@@ -144,7 +151,7 @@ export default function JobsPage(): ReactElement {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-green-900 mb-2">
             Find Your Perfect Match
-          </h1>
+        </h1>
           <p className="text-green-700">
             Discover opportunities that align with your values and goals
           </p>
@@ -263,31 +270,41 @@ export default function JobsPage(): ReactElement {
         </div>
 
         {/* Results Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <p className="text-green-700">
-              <span className="font-semibold">{totalJobs} opportunities</span>{" "}
-              found
-            </p>
-            <p className="text-sm text-green-600">
-              Rejections don&apos;t automatically mean you&apos;re a bad
-              candidate. You have value.
-            </p>
-            {totalJobs > 0 && (
-              <p className="text-sm text-green-600 mt-1">
-                Showing {startIndex + 1}-{Math.min(endIndex, totalJobs)} of{" "}
-                {totalJobs} results
+        {!loading && (
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-green-700">
+                <span className="font-semibold">{totalJobs} opportunities</span>{" "}
+                found
               </p>
-            )}
-          </div>
+              <p className="text-sm text-green-600">
+                Rejections don&apos;t automatically mean you&apos;re a bad
+                candidate. You have value.
+              </p>
+              {totalJobs > 0 && (
+                <p className="text-sm text-green-600 mt-1">
+                  Showing {startIndex + 1}-{Math.min(endIndex, totalJobs)} of{" "}
+                  {totalJobs} results
+                </p>
+              )}
+            </div>
 
-          <select className="px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 bg-white/80 shadow-lg border-b-2 border-b-green-300">
-            <option>Sort by Relevance</option>
-            <option>Sort by Date Posted</option>
-            <option>Salary (High - Low)</option>
-            <option>Salary (Low - High)</option>
-          </select>
-        </div>
+            <select className="px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 bg-white/80 shadow-lg border-b-2 border-b-green-300">
+              <option>Sort by Relevance</option>
+              <option>Sort by Date Posted</option>
+              <option>Salary (High - Low)</option>
+              <option>Salary (Low - High)</option>
+            </select>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-12 text-center">
+            <p className="text-green-700 text-lg mb-2">Loading jobs...</p>
+            <p className="text-green-600 text-sm">Please wait</p>
+          </div>
+        )}
 
         {/* Error Message */}
         {error && (
@@ -325,11 +342,11 @@ export default function JobsPage(): ReactElement {
                 <JobListing
                   key={job.id}
                   job={job}
-                  isSaved={savedJobs.has(job.id)}
-                  isExpanded={expandedJobs.has(job.id)}
-                  saveMessage={saveMessages[job.id]}
-                  onSave={() => handleSaveJob(job.id)}
-                  onToggleExpand={() => toggleJobExpansion(job.id)}
+                  isSaved={savedJobs.has(String(job.id))}
+                  isExpanded={expandedJobs.has(String(job.id))}
+                  saveMessage={saveMessages[String(job.id)]}
+                  onSave={() => handleSaveJob(String(job.id))}
+                  onToggleExpand={() => toggleJobExpansion(String(job.id))}
                 />
               ))
             ) : (
@@ -350,7 +367,7 @@ export default function JobsPage(): ReactElement {
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {!loading && !error && totalPages > 1 && (
           <div className="flex items-center justify-between mt-8 bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
             <div className="flex items-center space-x-4">
               <p className="text-sm text-green-700">
