@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 interface Job {
-  id: number;
+  id: string | number; // Support both for backwards compatibility
   title: string;
   company: string;
   location: string;
