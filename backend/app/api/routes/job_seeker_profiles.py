@@ -88,7 +88,8 @@ async def _serialize_profiles(
     user_ids = [str(doc["user_id"]) for doc in docs_list]
     resumes_collection = get_resumes_collection()
     resumes_cursor = resumes_collection.find({"job_seeker_id": {"$in": user_ids}})
-    resumes_list = await resumes_cursor.to_list(length=None)
+    # Motor requires an integer length; use max of user count or 1000 as reasonable limit
+    resumes_list = await resumes_cursor.to_list(length=max(len(user_ids), 1000))
 
     # Create a map of user_id -> resume for O(1) lookup
     resume_map = {resume["job_seeker_id"]: resume for resume in resumes_list}

@@ -32,8 +32,15 @@ async def create_saved_job(
     saved_jobs = get_saved_jobs_collection()
     jobs = get_jobs_collection()
 
+    # Validate job_id format
+    try:
+        job_object_id = ObjectId(job_id)
+    except Exception as e:
+        # Catch InvalidId or any other ObjectId conversion errors
+        raise ValueError(f"Invalid job ID format: {job_id}") from e
+
     # Check if job exists
-    job = await jobs.find_one({"_id": ObjectId(job_id)})
+    job = await jobs.find_one({"_id": job_object_id})
     if not job:
         raise ValueError(f"Job with id {job_id} not found")
 

@@ -129,7 +129,7 @@ async def list_applications(
     limit: int = Query(100, ge=1, le=500, description="Maximum number of applications to return"),
     job_seeker_id: str | None = Query(None, description="Filter by job seeker ID"),
     job_id: str | None = Query(None, description="Filter by job ID"),
-    application_status: str | None = Query(None, description="Filter by status"),
+    application_status: str | None = Query(None, alias="status", description="Filter by status"),
 ) -> list[ApplicationResponse]:
     """
     List applications.
@@ -209,7 +209,7 @@ async def list_applications(
 async def count_applications(
     job_seeker_id: str | None = Query(None, description="Filter by job seeker ID"),
     job_id: str | None = Query(None, description="Filter by job ID"),
-    application_status: str | None = Query(None, description="Filter by status"),
+    application_status: str | None = Query(None, alias="status", description="Filter by status"),
 ) -> dict[str, int]:
     """
     Get the total count of applications.

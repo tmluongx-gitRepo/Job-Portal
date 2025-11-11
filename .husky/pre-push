@@ -1,3 +1,5 @@
+#!/usr/bin/env sh
+
 # Job Portal Pre-Push Hook
 # Runs comprehensive validation before pushing to remote
 
