@@ -602,4 +602,9 @@ git branch                          # See current branch
 
 ---
 
+## 🧪 Testing Note
+This line was added to test the n8n workflow integration with PR automation.
+
+---
+
 Good luck and happy coding! 🚀
