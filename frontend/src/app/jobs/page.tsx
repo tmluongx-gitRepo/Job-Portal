@@ -113,13 +113,20 @@ export default function JobsPage(): ReactElement {
     e.preventDefault();
     setCurrentPage(1); // Reset to first page
 
-    // ✅ Use search hook
-    await searchJobs({
-      query: searchTerm || undefined,
-      location: location || undefined,
-    });
-
+    // Set search mode BEFORE the API call so loading state shows immediately
     setIsSearchMode(true);
+
+    try {
+      // ✅ Use search hook
+      await searchJobs({
+        query: searchTerm || undefined,
+        location: location || undefined,
+      });
+    } catch (error) {
+      // Error is already handled by the hook, but we stay in search mode
+      // to show the error state properly
+      console.error("Search failed:", error);
+    }
   };
 
   const handleResetSearch = (): void => {
