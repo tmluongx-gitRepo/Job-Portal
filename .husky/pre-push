@@ -5,7 +5,7 @@
 # Runs comprehensive validation before pushing to remote
 
 # Add common tool paths to PATH
-export PATH="$HOME/.cargo/bin:$HOME/.bun/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.bun/bin:$PATH"
 
 set -e
 
