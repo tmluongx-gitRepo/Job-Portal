@@ -41,6 +41,7 @@ RUN set -eux; \
     chmod +x /root/.bun/bin/bun; \
     rm -rf "bun-linux-${bun_arch}.zip" "bun-linux-${bun_arch}"; \
     ln -s /root/.bun/bin/bun /usr/local/bin/bun; \
+    ln -s /root/.bun/bin/bun /usr/local/bin/bunx; \
     /root/.bun/bin/bun --version; \
     apt-get remove -y wget unzip; \
     apt-get autoremove -y; \
