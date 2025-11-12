@@ -186,7 +186,8 @@ class TestApplicationAcceptanceWorkflow:
 
         unique_email = f"jobseeker2_{uuid.uuid4().hex[:8]}@test.com"
 
-        # Retry registration if rate limited
+        # Retry registration if rate limited (Supabase has strict email signup rate limits)
+        # Supabase seems to have a ~2-3 minute rate limit window for email signups
         max_retries = 3
         for attempt in range(max_retries):
             js2_response = await client.post(
@@ -199,14 +200,27 @@ class TestApplicationAcceptanceWorkflow:
             )
             if js2_response.status_code == HTTP_CREATED:
                 break
-            if js2_response.status_code == 400 and "rate limit" in js2_response.json().get("detail", "").lower() and attempt < max_retries - 1:  # noqa: PLR2004
-                # Wait 3 seconds before retry
-                await asyncio.sleep(3)
+
+            # Check if it's a rate limit error
+            response_detail = js2_response.json().get("detail", "").lower() if js2_response.status_code == 400 else ""  # noqa: PLR2004
+            is_rate_limited = "rate limit" in response_detail
+
+            if is_rate_limited and attempt < max_retries - 1:
+                # Progressive backoff: 60, 90 seconds
+                # This is aggressive but Supabase's rate limit is very strict
+                wait_time = 60 + (attempt * 30)
+                print(f"⏳ Rate limited, waiting {wait_time}s before retry {attempt + 2}/{max_retries}")
+                await asyncio.sleep(wait_time)
                 continue
-            # If it's not a rate limit error, fail immediately
-            # If it's still rate limited after retries, skip the test
-            if js2_response.status_code == 400 and "rate limit" in js2_response.json().get("detail", "").lower():  # noqa: PLR2004
-                pytest.skip("Supabase rate limit exceeded - test requires second user registration")
+
+            # If it's still rate limited after all retries, skip the test
+            if is_rate_limited:
+                pytest.skip(
+                    "Supabase email rate limit exceeded (needs ~3 min between signups). "
+                    "Run this test individually with more time between test runs, or skip it in CI."
+                )
+
+            # If it's a different error, fail immediately
             assert js2_response.status_code == HTTP_CREATED, f"Registration failed: {js2_response.json()}"
 
         assert js2_response.status_code == HTTP_CREATED
