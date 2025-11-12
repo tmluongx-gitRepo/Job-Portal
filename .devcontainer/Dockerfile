@@ -17,9 +17,14 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
     gh \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Bun
-RUN curl -fsSL https://bun.sh/install | bash
+# Install Bun with verification
+RUN curl -fsSL https://bun.sh/install | bash && \
+    ls -la /root/.bun/bin/ && \
+    /root/.bun/bin/bun --version && \
+    ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
+    bun --version
 ENV PATH="/root/.bun/bin:${PATH}"
+ENV BUN_INSTALL="/root/.bun"
 
 # Install Python package manager (uv for fast installs)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
