@@ -2,7 +2,9 @@ from datetime import UTC, datetime
 from typing import cast
 
 from bson import ObjectId
+from bson.errors import InvalidId
 
+from app.constants import ApplicationStatus
 from app.database import get_applications_collection
 from app.type_definitions import ApplicationDocument
 
@@ -25,7 +27,7 @@ async def create_application(
     now = datetime.now(UTC)
 
     # Create status history entry
-    initial_status = "Application Submitted"
+    initial_status = ApplicationStatus.SUBMITTED.value
     status_history_entry = {
         "status": initial_status,
         "changed_at": now,
@@ -236,12 +238,16 @@ async def cancel_all_interviews_for_application(application_id: str) -> int:
     """
     Cancel all scheduled/rescheduled interviews for an application.
 
+    This is typically called when an application is rejected or accepted,
+    to automatically cancel any pending interviews.
+
     Args:
         application_id: Application ID
 
     Returns:
         Number of interviews cancelled
     """
+    from app.constants import InterviewStatus
     from app.crud import interview as interview_crud
     from app.database import get_interviews_collection
 
@@ -249,7 +255,10 @@ async def cancel_all_interviews_for_application(application_id: str) -> int:
 
     # Find all scheduled or rescheduled interviews for this application
     interviews = await interviews_collection.find(
-        {"application_id": application_id, "status": {"$in": ["scheduled", "rescheduled"]}}
+        {
+            "application_id": application_id,
+            "status": {"$in": [InterviewStatus.SCHEDULED.value, InterviewStatus.RESCHEDULED.value]},
+        }
     ).to_list(length=100)
 
     cancelled_count = 0
@@ -259,7 +268,8 @@ async def cancel_all_interviews_for_application(application_id: str) -> int:
             cancelled_by="system",
             reason="Application status changed",
         )
-        if result:
+        # cancel_interview returns the updated document or None
+        if result is not None:
             cancelled_count += 1
 
     return cancelled_count
@@ -280,7 +290,7 @@ async def reject_other_applications_for_job(job_id: str, except_application_id: 
 
     try:
         except_object_id = ObjectId(except_application_id)
-    except Exception:
+    except InvalidId:
         return 0
 
     # Update all other applications for this job that aren't already in a final state
@@ -288,18 +298,20 @@ async def reject_other_applications_for_job(job_id: str, except_application_id: 
         {
             "job_id": job_id,
             "_id": {"$ne": except_object_id},
-            "status": {"$nin": ["Rejected", "Accepted"]},  # Don't update already final statuses
+            "status": {
+                "$nin": [ApplicationStatus.REJECTED.value, ApplicationStatus.ACCEPTED.value]
+            },
         },
         {
             "$set": {
-                "status": "Rejected",
+                "status": ApplicationStatus.REJECTED.value,
                 "rejection_reason": "Position filled",
                 "updated_at": datetime.now(UTC),
                 "next_step": "Position has been filled",
             },
             "$push": {
                 "status_history": {
-                    "status": "Rejected",
+                    "status": ApplicationStatus.REJECTED.value,
                     "changed_at": datetime.now(UTC),
                     "notes": "Position filled - automatically rejected",
                     "changed_by": "system",

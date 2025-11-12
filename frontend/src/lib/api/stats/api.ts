@@ -7,6 +7,11 @@ import {
   EmployerJobStatsResponseSchema,
   JobSeekerApplicationStatsResponseSchema,
 } from "./schemas";
+import type {
+  JobAnalyticsResponse,
+  EmployerJobStatsResponse,
+  JobSeekerApplicationStatsResponse,
+} from "./types";
 
 export const statsApi = {
   /**
@@ -14,7 +19,7 @@ export const statsApi = {
    * @param jobId - The job ID
    * @returns Job analytics including applications and interview metrics
    */
-  async getJobAnalytics(jobId: string) {
+  async getJobAnalytics(jobId: string): Promise<JobAnalyticsResponse> {
     return apiRequest(`/api/jobs/${jobId}/analytics`, {
       method: "GET",
       responseSchema: JobAnalyticsResponseSchema,
@@ -26,7 +31,7 @@ export const statsApi = {
    * @param userId - The employer user ID
    * @returns Employer job stats including total jobs and applications
    */
-  async getEmployerJobStats(userId: string) {
+  async getEmployerJobStats(userId: string): Promise<EmployerJobStatsResponse> {
     return apiRequest(`/api/employer-profiles/user/${userId}/job-stats`, {
       method: "GET",
       responseSchema: EmployerJobStatsResponseSchema,
@@ -38,7 +43,9 @@ export const statsApi = {
    * @param userId - The job seeker user ID
    * @returns Job seeker application stats including pipeline progress
    */
-  async getJobSeekerApplicationStats(userId: string) {
+  async getJobSeekerApplicationStats(
+    userId: string
+  ): Promise<JobSeekerApplicationStatsResponse> {
     return apiRequest(
       `/api/job-seeker-profiles/user/${userId}/application-stats`,
       {

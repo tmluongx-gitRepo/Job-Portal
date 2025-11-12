@@ -213,6 +213,10 @@ async def get_employer_job_stats(
     **Requires:** Authentication
     **Authorization:** Only the employer user or admin
 
+    **Note:** Current implementation loads all jobs/applications into memory.
+    For production use with large datasets, consider implementing pagination or
+    MongoDB aggregation pipelines.
+
     Returns aggregated statistics including:
     - Total jobs posted (active vs inactive)
     - Total applications received across all jobs
