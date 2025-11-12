@@ -338,17 +338,22 @@ export default function JobsPage(): ReactElement {
           /* Job Listings */
           <div className="space-y-6">
             {currentJobs.length > 0 ? (
-              currentJobs.map((job) => (
-                <JobListing
-                  key={job.id}
-                  job={job}
-                  isSaved={savedJobs.has(String(job.id))}
-                  isExpanded={expandedJobs.has(String(job.id))}
-                  saveMessage={saveMessages[String(job.id)]}
-                  onSave={() => handleSaveJob(String(job.id))}
-                  onToggleExpand={() => toggleJobExpansion(String(job.id))}
-                />
-              ))
+              currentJobs
+                .filter((job) => job.id != null && job.id !== undefined)
+                .map((job) => {
+                  const jobId = String(job.id);
+                  return (
+                    <JobListing
+                      key={jobId}
+                      job={job}
+                      isSaved={savedJobs.has(jobId)}
+                      isExpanded={expandedJobs.has(jobId)}
+                      saveMessage={saveMessages[jobId]}
+                      onSave={() => handleSaveJob(jobId)}
+                      onToggleExpand={() => toggleJobExpansion(jobId)}
+                    />
+                  );
+                })
             ) : (
               <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-12 text-center">
                 <p className="text-green-700 text-lg mb-2">No jobs found</p>

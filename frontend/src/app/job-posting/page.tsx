@@ -258,15 +258,17 @@ export default function JobPostingPage(): ReactElement {
         .map((r) => `Nice to have: ${r}`),
     ].join("\n");
 
-    // Parse salary values
-    const salaryMin =
-      data.salaryDisclosed && data.salaryMin
-        ? parseInt(data.salaryMin.replace(/[^0-9]/g, ""), 10)
-        : null;
-    const salaryMax =
-      data.salaryDisclosed && data.salaryMax
-        ? parseInt(data.salaryMax.replace(/[^0-9]/g, ""), 10)
-        : null;
+    // Parse salary values with validation
+    const parseSalary = (value: string | undefined): number | null => {
+      if (!value || !data.salaryDisclosed) return null;
+      const cleaned = value.replace(/[^0-9]/g, "");
+      if (!cleaned) return null;
+      const parsed = parseInt(cleaned, 10);
+      return isNaN(parsed) ? null : parsed;
+    };
+
+    const salaryMin = parseSalary(data.salaryMin);
+    const salaryMax = parseSalary(data.salaryMax);
 
     // Parse application deadline
     const applicationDeadline = data.applicationDeadline
