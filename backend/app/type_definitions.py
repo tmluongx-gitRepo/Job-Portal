@@ -100,6 +100,7 @@ class JobDocument(TypedDict):
     industry: NotRequired[str]
     company_size: NotRequired[str]
     is_active: bool
+    filled: NotRequired[bool]  # Track if position is filled
     view_count: int
     application_count: int
     created_at: datetime
