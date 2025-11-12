@@ -2,6 +2,8 @@
 Test application status transition workflows and side effects.
 """
 
+from typing import Any
+
 import pytest
 from httpx import AsyncClient
 
@@ -148,6 +150,7 @@ class TestApplicationAcceptanceWorkflow:
         client: AsyncClient,
         employer_with_profile: tuple[str, str, str],
         job_seeker_with_profile: tuple[str, str, str],
+        create_temp_user: Any,
     ) -> None:
         """When one application accepted, others are auto-rejected."""
         emp_token, _, _ = employer_with_profile
@@ -180,51 +183,15 @@ class TestApplicationAcceptanceWorkflow:
         assert app1_response.status_code == HTTP_CREATED
         app1_id = app1_response.json()["id"]
 
-        # 3. Create second job seeker and apply
-        import asyncio
+        # 3. Create second job seeker using admin API (bypasses rate limits)
         import uuid
 
-        unique_email = f"jobseeker2_{uuid.uuid4().hex[:8]}@test.com"
+        unique_email = f"temp.jobseeker2_{uuid.uuid4().hex[:8]}@test.com"
+        js2_token, js2_user_id = await create_temp_user("job_seeker", unique_email)
 
-        # Retry registration if rate limited (Supabase has strict email signup rate limits)
-        # Supabase seems to have a ~2-3 minute rate limit window for email signups
-        max_retries = 3
-        for attempt in range(max_retries):
-            js2_response = await client.post(
-                "/api/auth/register",
-                json={
-                    "email": unique_email,
-                    "password": "Test123!@#",
-                    "account_type": "job_seeker",
-                },
-            )
-            if js2_response.status_code == HTTP_CREATED:
-                break
+        if not js2_token or not js2_user_id:
+            pytest.skip("Failed to create second job seeker")
 
-            # Check if it's a rate limit error
-            response_detail = js2_response.json().get("detail", "").lower() if js2_response.status_code == 400 else ""  # noqa: PLR2004
-            is_rate_limited = "rate limit" in response_detail
-
-            if is_rate_limited and attempt < max_retries - 1:
-                # Progressive backoff: 60, 90 seconds
-                # This is aggressive but Supabase's rate limit is very strict
-                wait_time = 60 + (attempt * 30)
-                print(f"⏳ Rate limited, waiting {wait_time}s before retry {attempt + 2}/{max_retries}")
-                await asyncio.sleep(wait_time)
-                continue
-
-            # If it's still rate limited after all retries, skip the test
-            if is_rate_limited:
-                pytest.skip(
-                    "Supabase email rate limit exceeded (needs ~3 min between signups). "
-                    "Run this test individually with more time between test runs, or skip it in CI."
-                )
-
-            # If it's a different error, fail immediately
-            assert js2_response.status_code == HTTP_CREATED, f"Registration failed: {js2_response.json()}"
-
-        assert js2_response.status_code == HTTP_CREATED
-        js2_token = js2_response.json()["access_token"]
         js2_headers = {"Authorization": f"Bearer {js2_token}"}
 
         # Create profile for second job seeker
