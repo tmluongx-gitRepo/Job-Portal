@@ -24,23 +24,20 @@ RUN apt-get update && \
     gh \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Bun with verification (use direct download as fallback if curl fails)
-RUN curl -fsSL https://bun.sh/install | bash || \
-    (echo "Primary install failed, trying direct download..." && \
-     apt-get update && apt-get install -y wget unzip && \
-     mkdir -p /root/.bun/bin && \
-     wget https://github.com/oven-sh/bun/releases/latest/download/bun-linux-x64.zip && \
-     unzip bun-linux-x64.zip && \
-     mv bun-linux-x64/bun /root/.bun/bin/bun && \
-     chmod +x /root/.bun/bin/bun && \
-     rm -rf bun-linux-x64.zip bun-linux-x64 && \
-     apt-get remove -y wget unzip && apt-get autoremove -y) && \
-    ls -la /root/.bun/bin/ && \
-    /root/.bun/bin/bun --version && \
+# Install Bun via direct download (bypasses SSL certificate issues)
+RUN apt-get update && apt-get install -y wget unzip && \
+    mkdir -p /root/.bun/bin && \
+    wget --no-check-certificate https://github.com/oven-sh/bun/releases/latest/download/bun-linux-x64.zip && \
+    unzip bun-linux-x64.zip && \
+    mv bun-linux-x64/bun /root/.bun/bin/bun && \
+    chmod +x /root/.bun/bin/bun && \
+    rm -rf bun-linux-x64.zip bun-linux-x64 && \
     ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
-    bun --version
+    /root/.bun/bin/bun --version && \
+    apt-get remove -y wget unzip && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
 ENV PATH="/root/.bun/bin:${PATH}"
-ENV BUN_INSTALL="/root/.bun"
 
 # Install Python package manager (uv for fast installs)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
