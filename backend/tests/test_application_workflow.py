@@ -181,16 +181,32 @@ class TestApplicationAcceptanceWorkflow:
         app1_id = app1_response.json()["id"]
 
         # 3. Create second job seeker and apply
-        import time
-        unique_email = f"jobseeker2_workflow_{int(time.time())}@test.com"
-        js2_response = await client.post(
-            "/api/auth/register",
-            json={
-                "email": unique_email,
-                "password": "Test123!@#",
-                "role": "job_seeker",
-            },
-        )
+        import asyncio
+        import uuid
+
+        unique_email = f"jobseeker2_{uuid.uuid4().hex[:8]}@test.com"
+
+        # Retry registration if rate limited
+        max_retries = 5
+        for attempt in range(max_retries):
+            js2_response = await client.post(
+                "/api/auth/register",
+                json={
+                    "email": unique_email,
+                    "password": "Test123!@#",
+                    "account_type": "job_seeker",
+                },
+            )
+            if js2_response.status_code == HTTP_CREATED:
+                break
+            if js2_response.status_code == 400 and "rate limit" in js2_response.json().get("detail", "").lower() and attempt < max_retries - 1:  # noqa: PLR2004
+                # Exponential backoff: 5, 10, 20, 40 seconds
+                wait_time = 5 * (2 ** attempt)
+                await asyncio.sleep(wait_time)
+                continue
+            # If it's not a rate limit error, fail immediately
+            assert js2_response.status_code == HTTP_CREATED, f"Registration failed: {js2_response.json()}"
+
         assert js2_response.status_code == HTTP_CREATED
         js2_token = js2_response.json()["access_token"]
         js2_headers = {"Authorization": f"Bearer {js2_token}"}

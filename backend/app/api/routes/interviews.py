@@ -526,8 +526,10 @@ async def complete_interview(
         )
 
     # Update application status
+    from app.constants import ApplicationStatus
+
     update_data: dict[str, object] = {
-        "status": "interviewed",
+        "status": ApplicationStatus.INTERVIEWED.value,
         "next_step": completion_data.next_step or "Awaiting decision",
     }
     await application_crud.update_application(interview["application_id"], update_data)
