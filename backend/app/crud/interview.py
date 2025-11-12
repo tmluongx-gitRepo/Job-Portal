@@ -8,6 +8,7 @@ from typing import Any, cast
 from bson import ObjectId
 from pymongo import ReturnDocument
 
+from app.constants import InterviewStatus
 from app.database import get_interviews_collection
 from app.type_definitions import InterviewDocument
 
@@ -182,13 +183,13 @@ async def get_interviews(
         # If status is also provided, intersect with upcoming statuses
         if status:
             # Only show if status matches AND is in upcoming statuses
-            if status in ["scheduled", "rescheduled"]:
+            if status in [InterviewStatus.SCHEDULED, InterviewStatus.RESCHEDULED]:
                 query["status"] = status
             else:
                 # Status filter incompatible with upcoming_only
                 return []
         else:
-            query["status"] = {"$in": ["scheduled", "rescheduled"]}
+            query["status"] = {"$in": [InterviewStatus.SCHEDULED, InterviewStatus.RESCHEDULED]}
     elif status:
         query["status"] = status
 
@@ -226,8 +227,11 @@ async def update_interview(
             # Allow rescheduling if status is 'scheduled' or 'rescheduled'
             # This supports chained rescheduling (rescheduled -> rescheduled again)
             # Do not allow rescheduling cancelled or completed interviews
-            if current_status in ["scheduled", "rescheduled"]:
-                update_data["status"] = "rescheduled"
+            if current_status in [
+                InterviewStatus.SCHEDULED,
+                InterviewStatus.RESCHEDULED,
+            ]:
+                update_data["status"] = InterviewStatus.RESCHEDULED
                 # Track the original scheduled date (not the previous rescheduled_from)
                 if "rescheduled_from" not in current_interview:
                     update_data["rescheduled_from"] = current_interview["scheduled_date"]
