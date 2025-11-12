@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type ReactElement } from "react";
+import { useState, useEffect, Suspense, type ReactElement } from "react";
 import { useSearchParams } from "next/navigation";
 
 import Link from "next/link";
@@ -389,7 +389,7 @@ function formatDateAgo(date: Date): string {
   return `${Math.floor(diffDays / 30)} months ago`;
 }
 
-export default function ApplicationsPage(): ReactElement {
+function ApplicationsPageContent(): ReactElement {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("newest");
@@ -1158,5 +1158,22 @@ export default function ApplicationsPage(): ReactElement {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ApplicationsPage(): ReactElement {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-green-100 flex items-center justify-center">
+          <div className="text-center">
+            <RefreshCw className="w-12 h-12 mx-auto text-green-600 animate-spin mb-4" />
+            <p className="text-green-800">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <ApplicationsPageContent />
+    </Suspense>
   );
 }
