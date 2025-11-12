@@ -230,3 +230,82 @@ async def check_duplicate_application(job_seeker_id: str, job_id: str) -> bool:
     existing = await collection.find_one({"job_seeker_id": job_seeker_id, "job_id": job_id})
 
     return existing is not None
+
+
+async def cancel_all_interviews_for_application(application_id: str) -> int:
+    """
+    Cancel all scheduled/rescheduled interviews for an application.
+
+    Args:
+        application_id: Application ID
+
+    Returns:
+        Number of interviews cancelled
+    """
+    from app.crud import interview as interview_crud
+    from app.database import get_interviews_collection
+
+    interviews_collection = get_interviews_collection()
+
+    # Find all scheduled or rescheduled interviews for this application
+    interviews = await interviews_collection.find(
+        {"application_id": application_id, "status": {"$in": ["scheduled", "rescheduled"]}}
+    ).to_list(length=100)
+
+    cancelled_count = 0
+    for interview in interviews:
+        result = await interview_crud.cancel_interview(
+            str(interview["_id"]),
+            cancelled_by="system",
+            reason="Application status changed",
+        )
+        if result:
+            cancelled_count += 1
+
+    return cancelled_count
+
+
+async def reject_other_applications_for_job(job_id: str, except_application_id: str) -> int:
+    """
+    Auto-reject all other applications when one is accepted.
+
+    Args:
+        job_id: Job ID
+        except_application_id: Application ID to exclude (the accepted one)
+
+    Returns:
+        Number of applications auto-rejected
+    """
+    collection = get_applications_collection()
+
+    try:
+        except_object_id = ObjectId(except_application_id)
+    except Exception:
+        return 0
+
+    # Update all other applications for this job that aren't already in a final state
+    result = await collection.update_many(
+        {
+            "job_id": job_id,
+            "_id": {"$ne": except_object_id},
+            "status": {"$nin": ["Rejected", "Accepted"]},  # Don't update already final statuses
+        },
+        {
+            "$set": {
+                "status": "Rejected",
+                "rejection_reason": "Position filled",
+                "updated_at": datetime.now(UTC),
+                "next_step": "Position has been filled",
+            },
+            "$push": {
+                "status_history": {
+                    "status": "Rejected",
+                    "changed_at": datetime.now(UTC),
+                    "notes": "Position filled - automatically rejected",
+                    "changed_by": "system",
+                }
+            },
+        },
+    )
+
+    return result.modified_count

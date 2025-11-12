@@ -24,3 +24,16 @@ class InterviewStatus(str, Enum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
     NO_SHOW = "no_show"
+
+
+class ApplicationStatus(str, Enum):
+    """Application status enum."""
+
+    SUBMITTED = "Application Submitted"
+    UNDER_REVIEW = "Under Review"
+    INTERVIEW_SCHEDULED = "Interview Scheduled"
+    INTERVIEWED = "interviewed"
+    INTERVIEW_CANCELLED = "interview_cancelled"
+    REJECTED = "Rejected"
+    OFFER_EXTENDED = "Offer Extended"
+    ACCEPTED = "Accepted"
