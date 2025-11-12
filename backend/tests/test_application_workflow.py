@@ -57,6 +57,8 @@ class TestApplicationAcceptanceWorkflow:
                 "application_id": app_id,
                 "scheduled_date": "2025-12-01T10:00:00Z",
                 "interview_type": "video",
+                "duration_minutes": 60,
+                "timezone": "UTC",
                 "interviewer_email": "interviewer@test.com",
             },
         )
@@ -179,10 +181,12 @@ class TestApplicationAcceptanceWorkflow:
         app1_id = app1_response.json()["id"]
 
         # 3. Create second job seeker and apply
+        import time
+        unique_email = f"jobseeker2_workflow_{int(time.time())}@test.com"
         js2_response = await client.post(
             "/api/auth/register",
             json={
-                "email": "jobseeker2_workflow@test.com",
+                "email": unique_email,
                 "password": "Test123!@#",
                 "role": "job_seeker",
             },
@@ -284,6 +288,8 @@ class TestApplicationRejectionWorkflow:
                 "application_id": app_id,
                 "scheduled_date": "2025-12-01T14:00:00Z",
                 "interview_type": "phone",
+                "duration_minutes": 30,
+                "timezone": "UTC",
                 "interviewer_email": "interviewer@test.com",
             },
         )
