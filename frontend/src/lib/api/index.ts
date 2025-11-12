@@ -19,6 +19,7 @@ export { interviewApi } from "./interviews";
 export { jobSeekerProfileApi } from "./job-seeker-profiles";
 export { employerProfileApi } from "./employer-profiles";
 export { recommendationApi } from "./recommendations";
+export { statsApi } from "./stats";
 
 // Export all TypeScript types
 export type * from "./users/types";
@@ -28,6 +29,7 @@ export type * from "./interviews/types";
 export type * from "./job-seeker-profiles/types";
 export type * from "./employer-profiles/types";
 export type * from "./recommendations/types";
+export type * from "./stats/types";
 
 // Export all Zod schemas (for advanced usage)
 export * as UserSchemas from "./users/schemas";
@@ -37,6 +39,7 @@ export * as InterviewSchemas from "./interviews/schemas";
 export * as JobSeekerProfileSchemas from "./job-seeker-profiles/schemas";
 export * as EmployerProfileSchemas from "./employer-profiles/schemas";
 export * as RecommendationSchemas from "./recommendations/schemas";
+export * as StatsSchemas from "./stats/schemas";
 
 // Unified API object for convenience
 import { userApi } from "./users";
@@ -46,6 +49,7 @@ import { interviewApi } from "./interviews";
 import { jobSeekerProfileApi } from "./job-seeker-profiles";
 import { employerProfileApi } from "./employer-profiles";
 import { recommendationApi } from "./recommendations";
+import { statsApi } from "./stats";
 
 export const api = {
   users: userApi,
@@ -55,4 +59,5 @@ export const api = {
   jobSeekerProfiles: jobSeekerProfileApi,
   employerProfiles: employerProfileApi,
   recommendations: recommendationApi,
+  stats: statsApi,
 };
