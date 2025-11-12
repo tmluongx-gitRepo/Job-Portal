@@ -1,10 +1,13 @@
 """
 Analytics and statistics response schemas.
+
+These schemas provide aggregated data for job postings, employer dashboards,
+and job seeker application tracking.
 """
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class TopJobStats(BaseModel):
@@ -37,8 +40,6 @@ class JobAnalyticsResponse(BaseModel):
         None, description="Date of the most recent application"
     )
 
-    model_config = ConfigDict(from_attributes=True)
-
 
 class EmployerJobStatsResponse(BaseModel):
     """Job management statistics for an employer."""
@@ -50,8 +51,6 @@ class EmployerJobStatsResponse(BaseModel):
     total_applications_received: int = Field(..., description="Total applications across all jobs")
     applications_this_week: int = Field(..., description="Applications received in the last 7 days")
     top_jobs: list[TopJobStats] = Field(..., description="Top 5 jobs by application count")
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class JobSeekerApplicationStatsResponse(BaseModel):
@@ -73,5 +72,3 @@ class JobSeekerApplicationStatsResponse(BaseModel):
     last_application_date: datetime | None = Field(
         None, description="Date of the most recent application"
     )
-
-    model_config = ConfigDict(from_attributes=True)

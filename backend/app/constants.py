@@ -27,13 +27,27 @@ class InterviewStatus(str, Enum):
 
 
 class ApplicationStatus(str, Enum):
-    """Application status enum."""
+    """
+    Application status enum.
+
+    Workflow:
+        SUBMITTED → UNDER_REVIEW → INTERVIEW_SCHEDULED → INTERVIEWED
+        → OFFER_EXTENDED → ACCEPTED (final)
+
+    Alternative paths:
+        - Any status → REJECTED (final)
+        - INTERVIEW_SCHEDULED → INTERVIEW_CANCELLED → back to UNDER_REVIEW
+
+    Final states (no further transitions allowed):
+        - ACCEPTED: Candidate hired, job filled
+        - REJECTED: Application declined at any stage
+    """
 
     SUBMITTED = "Application Submitted"
     UNDER_REVIEW = "Under Review"
     INTERVIEW_SCHEDULED = "Interview Scheduled"
-    INTERVIEWED = "interviewed"
-    INTERVIEW_CANCELLED = "interview_cancelled"
+    INTERVIEWED = "Interviewed"
+    INTERVIEW_CANCELLED = "Interview Cancelled"
     REJECTED = "Rejected"
     OFFER_EXTENDED = "Offer Extended"
     ACCEPTED = "Accepted"

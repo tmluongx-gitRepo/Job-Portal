@@ -330,6 +330,10 @@ async def get_job_seeker_application_stats(  # noqa: PLR0912
     - Recent application activity (last 7 days)
     - Interview metrics (scheduled, completed, average rating if visible)
     - Last application date
+
+    **Note:** Current implementation loads all applications/interviews into memory.
+    For production use with large datasets, consider implementing pagination or
+    MongoDB aggregation pipelines.
     """
     from datetime import UTC, datetime, timedelta
 
@@ -408,7 +412,8 @@ async def get_job_seeker_application_stats(  # noqa: PLR0912
                 interviews_completed += 1
                 # Job seekers can see their own ratings if they exist
                 rating = interview.get("rating")
-                if rating is not None:
+                # Validate rating is numeric before adding
+                if rating is not None and isinstance(rating, int | float):
                     ratings.append(float(rating))
 
     # Calculate average interview rating

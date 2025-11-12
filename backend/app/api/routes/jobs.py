@@ -284,6 +284,10 @@ async def get_job_analytics(  # noqa: PLR0912
     - Interview metrics (scheduled, completed, average rating)
     - Recent activity (last 7 days)
     - Last application date
+
+    **Note:** Current implementation loads all applications/interviews into memory.
+    For production use with large datasets, consider implementing pagination or
+    MongoDB aggregation pipelines.
     """
     from datetime import UTC, datetime, timedelta
 
@@ -358,7 +362,8 @@ async def get_job_analytics(  # noqa: PLR0912
             elif interview_status == "completed":
                 interviews_completed += 1
                 rating = interview.get("rating")
-                if rating is not None:
+                # Validate rating is numeric before adding
+                if rating is not None and isinstance(rating, int | float):
                     ratings.append(float(rating))
 
     # Calculate average interview rating
