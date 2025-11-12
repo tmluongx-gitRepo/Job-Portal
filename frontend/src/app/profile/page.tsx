@@ -22,7 +22,7 @@ import {
   RefreshCw,
   AlertCircle,
 } from "lucide-react";
-import { api, ApiError, ValidationError } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
 import type { JobSeekerProfile } from "../../lib/api";
 
 // TODO: Replace with API call to fetch user profile data
@@ -180,17 +180,171 @@ export default function ProfilePage(): ReactElement {
     void fetchProfile();
   }, [userId]);
 
-  const completedCount = completionItems.filter(
+  // Dynamic completion tracking
+  const completionItemsDynamic = [
+    {
+      label: "Personal Information",
+      completed: !!(
+        profileData.firstName &&
+        profileData.lastName &&
+        profileData.email
+      ),
+      description: "Contact details and location",
+    },
+    {
+      label: "Professional Summary",
+      completed: !!profileData.summary,
+      description: "Brief overview of your experience",
+    },
+    {
+      label: "Work Experience",
+      completed: profileData.experience.length > 0,
+      description: "Employment history and achievements",
+    },
+    {
+      label: "Projects & Initiatives",
+      completed: profileData.projects.length > 0,
+      description: "Personal projects and volunteer work",
+    },
+    {
+      label: "Education",
+      completed: profileData.education.length > 0,
+      description: "Academic background",
+    },
+    {
+      label: "Skills & Expertise",
+      completed: profileData.skills.length > 0,
+      description: "Technical and soft skills",
+    },
+    {
+      label: "Resume Upload",
+      completed: false, // TODO: Track resume upload
+      description: "Current resume document",
+    },
+    {
+      label: "Profile Photo",
+      completed: false, // TODO: Track photo upload
+      description: "Professional headshot",
+    },
+  ];
+
+  const completedCount = completionItemsDynamic.filter(
     (item) => item.completed
   ).length;
   const completionPercentage = apiProfile?.profile_completion_percentage
     ? apiProfile.profile_completion_percentage
-    : Math.round((completedCount / completionItems.length) * 100);
+    : Math.round((completedCount / completionItemsDynamic.length) * 100);
 
   const handleInputChange = (field: string, value: string): void => {
     setProfileData((prev) => ({
       ...prev,
       [field]: value,
+    }));
+  };
+
+  const addExperience = (): void => {
+    setProfileData((prev) => ({
+      ...prev,
+      experience: [
+        ...prev.experience,
+        { company: "", role: "", duration: "", description: "" },
+      ],
+    }));
+  };
+
+  const updateExperience = (
+    index: number,
+    field: string,
+    value: string
+  ): void => {
+    setProfileData((prev) => ({
+      ...prev,
+      experience: prev.experience.map((exp, i) =>
+        i === index ? { ...exp, [field]: value } : exp
+      ),
+    }));
+  };
+
+  const removeExperience = (index: number): void => {
+    setProfileData((prev) => ({
+      ...prev,
+      experience: prev.experience.filter((_, i) => i !== index),
+    }));
+  };
+
+  const addEducation = (): void => {
+    setProfileData((prev) => ({
+      ...prev,
+      education: [
+        ...prev.education,
+        { school: "", degree: "", year: "" },
+      ],
+    }));
+  };
+
+  const updateEducation = (
+    index: number,
+    field: string,
+    value: string
+  ): void => {
+    setProfileData((prev) => ({
+      ...prev,
+      education: prev.education.map((edu, i) =>
+        i === index ? { ...edu, [field]: value } : edu
+      ),
+    }));
+  };
+
+  const removeEducation = (index: number): void => {
+    setProfileData((prev) => ({
+      ...prev,
+      education: prev.education.filter((_, i) => i !== index),
+    }));
+  };
+
+  const addProject = (): void => {
+    setProfileData((prev) => ({
+      ...prev,
+      projects: [
+        ...prev.projects,
+        { title: "", duration: "", description: "", technologies: "" },
+      ],
+    }));
+  };
+
+  const updateProject = (
+    index: number,
+    field: string,
+    value: string
+  ): void => {
+    setProfileData((prev) => ({
+      ...prev,
+      projects: prev.projects.map((project, i) =>
+        i === index ? { ...project, [field]: value } : project
+      ),
+    }));
+  };
+
+  const removeProject = (index: number): void => {
+    setProfileData((prev) => ({
+      ...prev,
+      projects: prev.projects.filter((_, i) => i !== index),
+    }));
+  };
+
+  const addSkill = (skill: string): void => {
+    if (skill.trim() && !profileData.skills.includes(skill.trim())) {
+      setProfileData((prev) => ({
+        ...prev,
+        skills: [...prev.skills, skill.trim()],
+      }));
+    }
+  };
+
+  const removeSkill = (skillToRemove: string): void => {
+    setProfileData((prev) => ({
+      ...prev,
+      skills: prev.skills.filter((skill) => skill !== skillToRemove),
     }));
   };
 
@@ -355,7 +509,7 @@ export default function ProfilePage(): ReactElement {
                 </div>
 
                 <div className="space-y-3">
-                  {completionItems.map((item, index) => (
+                  {completionItemsDynamic.map((item, index) => (
                     <div key={index} className="flex items-start space-x-3">
                       <div
                         className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5 ${
@@ -547,6 +701,26 @@ export default function ProfilePage(): ReactElement {
                       </p>
                     )}
                   </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-green-800 mb-2">
+                      Professional Title
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={profileData.title}
+                        onChange={(e) =>
+                          handleInputChange("title", e.target.value)
+                        }
+                        className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                        placeholder="e.g. Marketing Professional"
+                      />
+                    ) : (
+                      <p className="px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-green-900">
+                        {profileData.title || "Not specified"}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -584,128 +758,374 @@ export default function ProfilePage(): ReactElement {
                 </div>
               </div>
 
-              {/* Projects & Initiatives */}
-              <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
-                <h3 className="text-xl font-bold text-green-900 mb-4 flex items-center">
-                  <Zap className="w-6 h-6 mr-2" />
-                  Projects & Initiatives
-                </h3>
-
-                {profileData.projects.map((project, index) => (
-                  <div
-                    key={index}
-                    className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h4 className="font-semibold text-green-900">
-                          {project.title}
-                        </h4>
-                        {project.technologies && (
-                          <p className="text-green-600 text-sm">
-                            Technologies: {project.technologies}
-                          </p>
-                        )}
-                      </div>
-                      <span className="text-sm text-green-600">
-                        {project.duration}
-                      </span>
-                    </div>
-                    <p className="text-green-800 text-sm">
-                      {project.description}
-                    </p>
-                  </div>
-                ))}
-
-                <button className="w-full bg-yellow-100 text-green-700 border border-green-300 py-3 rounded-lg font-medium hover:bg-yellow-200 transition-all flex items-center justify-center">
-                  <Zap className="w-4 h-4 mr-2" />
-                  Add Project
-                </button>
-
-                <p className="text-xs text-green-600 mt-3">
-                  <span className="font-medium">Showcase your impact:</span>{" "}
-                  Include volunteer work, personal projects, community
-                  initiatives, or creative endeavors that demonstrate your
-                  skills and values.
-                </p>
-              </div>
 
               {/* Experience */}
               <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
-                <h3 className="text-xl font-bold text-green-900 mb-4 flex items-center">
-                  <Briefcase className="w-6 h-6 mr-2" />
-                  Work Experience
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-green-900 flex items-center">
+                    <Briefcase className="w-6 h-6 mr-2" />
+                    Work Experience
+                  </h3>
+                  {isEditing && (
+                    <button
+                      onClick={addExperience}
+                      className="text-green-600 hover:text-green-800 text-sm font-medium"
+                    >
+                      + Add Experience
+                    </button>
+                  )}
+                </div>
 
-                {profileData.experience.map((exp, index) => (
-                  <div
-                    key={index}
-                    className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h4 className="font-semibold text-green-900">
-                          {exp.role}
-                        </h4>
-                        <p className="text-green-700">{exp.company}</p>
-                      </div>
-                      <span className="text-sm text-green-600">
-                        {exp.duration}
-                      </span>
+                <div className="space-y-6">
+                  {profileData.experience.map((exp, index) => (
+                    <div
+                      key={index}
+                      className="border-l-4 border-green-200 pl-6 pb-6"
+                    >
+                      {isEditing ? (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input
+                              type="text"
+                              value={exp.role}
+                              onChange={(e) =>
+                                updateExperience(index, "role", e.target.value)
+                              }
+                              placeholder="Job Title"
+                              className="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                            />
+                            <input
+                              type="text"
+                              value={exp.company}
+                              onChange={(e) =>
+                                updateExperience(
+                                  index,
+                                  "company",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Company Name"
+                              className="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                            />
+                          </div>
+                          <input
+                            type="text"
+                            value={exp.duration}
+                            onChange={(e) =>
+                              updateExperience(
+                                index,
+                                "duration",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Duration (e.g., 2022 - Present)"
+                            className="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                          />
+                          <textarea
+                            value={exp.description}
+                            onChange={(e) =>
+                              updateExperience(
+                                index,
+                                "description",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Describe your key responsibilities and achievements..."
+                            rows={3}
+                            className="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 resize-none"
+                          />
+                          <button
+                            onClick={() => removeExperience(index)}
+                            className="text-red-500 text-sm hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h4 className="text-lg font-semibold text-green-800">
+                                {exp.role || "Untitled Position"}
+                              </h4>
+                              <p className="text-green-700">
+                                {exp.company || "Company not specified"}
+                              </p>
+                            </div>
+                            {exp.duration && (
+                              <span className="text-sm text-green-600 bg-green-100 px-3 py-1 rounded-full">
+                                {exp.duration}
+                              </span>
+                            )}
+                          </div>
+                          {exp.description && (
+                            <p className="text-green-700 text-sm leading-relaxed">
+                              {exp.description}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <p className="text-green-800 text-sm">{exp.description}</p>
-                  </div>
-                ))}
-
-                <button className="w-full bg-yellow-100 text-green-700 border border-green-300 py-3 rounded-lg font-medium hover:bg-yellow-200 transition-all flex items-center justify-center">
-                  <Briefcase className="w-4 h-4 mr-2" />
-                  Add Experience
-                </button>
+                  ))}
+                  {profileData.experience.length === 0 && !isEditing && (
+                    <p className="text-gray-500 text-center py-4">
+                      No work experience added yet
+                    </p>
+                  )}
+                </div>
               </div>
 
-              {/* Education & Skills */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
-                  <h3 className="text-lg font-bold text-green-900 mb-4 flex items-center">
-                    <GraduationCap className="w-5 h-5 mr-2" />
+              {/* Education */}
+              <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-green-900 flex items-center">
+                    <GraduationCap className="w-6 h-6 mr-2" />
                     Education
                   </h3>
+                  {isEditing && (
+                    <button
+                      onClick={addEducation}
+                      className="text-green-600 hover:text-green-800 text-sm font-medium"
+                    >
+                      + Add Education
+                    </button>
+                  )}
+                </div>
 
+                <div className="space-y-6">
                   {profileData.education.map((edu, index) => (
                     <div
                       key={index}
-                      className="bg-green-50 border border-green-200 rounded-lg p-4 mb-3"
+                      className="border-l-4 border-green-200 pl-6 pb-6"
                     >
-                      <h4 className="font-semibold text-green-900">
-                        {edu.degree}
-                      </h4>
-                      <p className="text-green-700 text-sm">{edu.school}</p>
-                      <p className="text-green-600 text-sm">{edu.year}</p>
+                      {isEditing ? (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input
+                              type="text"
+                              value={edu.school}
+                              onChange={(e) =>
+                                updateEducation(index, "school", e.target.value)
+                              }
+                              placeholder="School/University Name"
+                              className="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                            />
+                            <input
+                              type="text"
+                              value={edu.degree}
+                              onChange={(e) =>
+                                updateEducation(index, "degree", e.target.value)
+                              }
+                              placeholder="Degree & Major"
+                              className="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                            />
+                          </div>
+                          <input
+                            type="text"
+                            value={edu.year}
+                            onChange={(e) =>
+                              updateEducation(index, "year", e.target.value)
+                            }
+                            placeholder="Years (e.g., 2018-2022)"
+                            className="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                          />
+                          <button
+                            onClick={() => removeEducation(index)}
+                            className="text-red-500 text-sm hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h4 className="text-lg font-semibold text-green-800">
+                                {edu.degree || "Degree not specified"}
+                              </h4>
+                              <p className="text-green-700 text-sm">
+                                {edu.school || "School not specified"}
+                              </p>
+                            </div>
+                            {edu.year && (
+                              <span className="text-sm text-green-600 bg-green-100 px-3 py-1 rounded-full">
+                                {edu.year}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  ))}
+                  {profileData.education.length === 0 && !isEditing && (
+                    <p className="text-gray-500 text-center py-4">
+                      No education information added yet
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Projects */}
+              <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-green-900 flex items-center">
+                    <Zap className="w-6 h-6 mr-2" />
+                    Projects
+                  </h3>
+                  {isEditing && (
+                    <button
+                      onClick={addProject}
+                      className="text-green-600 hover:text-green-800 text-sm font-medium"
+                    >
+                      + Add Project
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-6">
+                  {profileData.projects.map((project, index) => (
+                    <div
+                      key={index}
+                      className="border-l-4 border-green-200 pl-6 pb-6"
+                    >
+                      {isEditing ? (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input
+                              type="text"
+                              value={project.title}
+                              onChange={(e) =>
+                                updateProject(index, "title", e.target.value)
+                              }
+                              placeholder="Project Title"
+                              className="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                            />
+                            <input
+                              type="text"
+                              value={project.duration}
+                              onChange={(e) =>
+                                updateProject(index, "duration", e.target.value)
+                              }
+                              placeholder="Timeline (e.g., 2023)"
+                              className="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                            />
+                          </div>
+                          <textarea
+                            value={project.description}
+                            onChange={(e) =>
+                              updateProject(
+                                index,
+                                "description",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Describe the project and your achievements..."
+                            rows={3}
+                            className="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 resize-none"
+                          />
+                          <button
+                            onClick={() => removeProject(index)}
+                            className="text-red-500 text-sm hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h4 className="text-lg font-semibold text-green-800">
+                                {project.title || "Untitled Project"}
+                              </h4>
+                              {project.technologies && (
+                                <p className="text-green-600 text-sm">
+                                  Technologies: {project.technologies}
+                                </p>
+                              )}
+                            </div>
+                            {project.duration && (
+                              <span className="text-sm text-green-600 bg-green-100 px-3 py-1 rounded-full">
+                                {project.duration}
+                              </span>
+                            )}
+                          </div>
+                          {project.description && (
+                            <p className="text-green-700 text-sm leading-relaxed">
+                              {project.description}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {profileData.projects.length === 0 && !isEditing && (
+                    <p className="text-gray-500 text-center py-4">
+                      No projects added yet
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Skills */}
+              <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
+                <h3 className="text-xl font-bold text-green-900 mb-4 flex items-center">
+                  <Award className="w-6 h-6 mr-2" />
+                  Key Skills
+                </h3>
+
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {profileData.skills.map((skill, index) => (
+                    <span
+                      key={index}
+                      className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm border border-green-200 flex items-center"
+                    >
+                      {skill}
+                      {isEditing && (
+                        <button
+                          onClick={() => removeSkill(skill)}
+                          className="ml-2 text-green-600 hover:text-green-800"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </span>
                   ))}
                 </div>
 
-                <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
-                  <h3 className="text-lg font-bold text-green-900 mb-4 flex items-center">
-                    <Award className="w-5 h-5 mr-2" />
-                    Skills
-                  </h3>
-
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {profileData.skills.map((skill, index) => (
-                      <span
-                        key={index}
-                        className="bg-yellow-50 text-green-800 px-3 py-1 rounded-full text-sm border border-green-200"
-                      >
-                        {skill}
-                      </span>
-                    ))}
+                {isEditing && (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      id="skillInput"
+                      placeholder="Add a skill"
+                      className="flex-1 px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                      onKeyDown={(e) => {
+                        if (
+                          e.key === "Enter" &&
+                          (e.target as HTMLInputElement).value.trim()
+                        ) {
+                          e.preventDefault();
+                          addSkill((e.target as HTMLInputElement).value);
+                          (e.target as HTMLInputElement).value = "";
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        const input = document.getElementById(
+                          "skillInput"
+                        ) as HTMLInputElement;
+                        if (input && input.value.trim()) {
+                          addSkill(input.value);
+                          input.value = "";
+                        }
+                      }}
+                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all text-sm"
+                    >
+                      Add Skills
+                    </button>
                   </div>
-
-                  <button className="w-full bg-yellow-100 text-green-700 border border-green-300 py-2 rounded-lg font-medium hover:bg-yellow-200 transition-all text-sm">
-                    Add Skills
-                  </button>
-                </div>
+                )}
               </div>
             </div>
           </div>

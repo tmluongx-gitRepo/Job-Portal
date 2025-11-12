@@ -74,14 +74,55 @@ export async function apiRequest<TResponse>(
     console.log(`[API Client] Full URL: ${fullUrl}`);
   }
 
-  const response = await fetch(fullUrl, {
-    ...fetchOptions,
-    headers: {
-      "Content-Type": "application/json",
-      ...fetchOptions.headers,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let response: Response;
+  try {
+    response = await fetch(fullUrl, {
+      ...fetchOptions,
+      headers: {
+        "Content-Type": "application/json",
+        ...fetchOptions.headers,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (fetchError) {
+    // Handle network errors (CORS, connection refused, etc.)
+    const errorMessage =
+      fetchError instanceof Error
+        ? fetchError.message
+        : "Network error occurred";
+
+    // Log detailed error in development
+    if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+      console.error(`[API Network Error] ${errorMessage}`, {
+        url: fullUrl,
+        error: fetchError,
+        apiUrl: API_URL,
+        endpoint: apiEndpoint,
+      });
+    }
+
+    // Provide helpful error message
+    if (errorMessage.includes("Failed to fetch") || errorMessage.includes("NetworkError")) {
+      throw new ApiError(
+        `Unable to connect to API server at ${API_URL}. Please ensure the backend is running.`,
+        0,
+        {
+          originalError: errorMessage,
+          url: fullUrl,
+          suggestion: "Check that the backend server is running and accessible.",
+        }
+      );
+    }
+
+    throw new ApiError(
+      `Network error: ${errorMessage}`,
+      0,
+      {
+        originalError: fetchError,
+        url: fullUrl,
+      }
+    );
+  }
 
   // Handle HTTP errors
   if (!response.ok) {
