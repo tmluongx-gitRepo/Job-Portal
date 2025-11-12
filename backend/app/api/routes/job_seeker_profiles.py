@@ -14,6 +14,7 @@ from app.schemas.job_seeker import (
     JobSeekerProfileResponse,
     JobSeekerProfileUpdate,
 )
+from app.schemas.stats import JobSeekerApplicationStatsResponse
 from app.type_definitions import JobSeekerProfileDocument
 
 router = APIRouter()
@@ -311,3 +312,115 @@ async def delete_profile(profile_id: str, current_user: dict = Depends(get_curre
 
     if not deleted:
         raise HTTPException(status_code=404, detail="Profile not found")
+
+
+@router.get("/user/{user_id}/application-stats", response_model=JobSeekerApplicationStatsResponse)
+async def get_job_seeker_application_stats(  # noqa: PLR0912
+    user_id: str, current_user: dict = Depends(get_current_user)
+) -> JobSeekerApplicationStatsResponse:
+    """
+    Get application statistics for a job seeker.
+
+    **Requires:** Authentication
+    **Authorization:** Only the job seeker user or admin
+
+    Returns aggregated statistics including:
+    - Total applications submitted
+    - Applications by status breakdown
+    - Recent application activity (last 7 days)
+    - Interview metrics (scheduled, completed, average rating if visible)
+    - Last application date
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from app.auth.auth_utils import is_admin
+    from app.database import get_applications_collection, get_interviews_collection
+
+    # Check authorization
+    if user_id != current_user["id"] and not is_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only view your own application statistics",
+        )
+
+    # Get job seeker profile
+    profile = await profile_crud.get_profile_by_user_id(user_id)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job seeker profile not found for this user",
+        )
+
+    job_seeker_id = str(profile["_id"])
+
+    applications_collection = get_applications_collection()
+    interviews_collection = get_interviews_collection()
+
+    # Get all applications for this job seeker
+    applications_cursor = applications_collection.find({"job_seeker_id": job_seeker_id})
+    applications = await applications_cursor.to_list(length=10000)
+
+    total_applications = len(applications)
+
+    # Calculate applications by status
+    applications_by_status: dict[str, int] = {}
+    for app in applications:
+        status_val = app.get("status", "Unknown")
+        applications_by_status[status_val] = applications_by_status.get(status_val, 0) + 1
+
+    # Calculate recent applications (last 7 days)
+    seven_days_ago = datetime.now(UTC) - timedelta(days=7)
+    applications_this_week = 0
+    for app in applications:
+        applied_date = app.get("applied_date")
+        if applied_date:
+            # Ensure timezone-aware comparison
+            if applied_date.tzinfo is None:
+                applied_date = applied_date.replace(tzinfo=UTC)
+            if applied_date >= seven_days_ago:
+                applications_this_week += 1
+
+    # Get last application date
+    last_application_date = None
+    if applications:
+        last_application_date = max(
+            (app.get("applied_date") for app in applications if app.get("applied_date")),
+            default=None,
+        )
+
+    # Get application IDs for interview lookup
+    application_ids = [str(app["_id"]) for app in applications]
+
+    # Get interviews for these applications
+    interviews_scheduled = 0
+    interviews_completed = 0
+    ratings: list[float] = []
+
+    if application_ids:
+        interviews_cursor = interviews_collection.find({"application_id": {"$in": application_ids}})
+        interviews = await interviews_cursor.to_list(length=10000)
+
+        for interview in interviews:
+            interview_status = interview.get("status", "")
+            if interview_status in ["scheduled", "rescheduled"]:
+                interviews_scheduled += 1
+            elif interview_status == "completed":
+                interviews_completed += 1
+                # Job seekers can see their own ratings if they exist
+                rating = interview.get("rating")
+                if rating is not None:
+                    ratings.append(float(rating))
+
+    # Calculate average interview rating
+    avg_interview_rating = sum(ratings) / len(ratings) if ratings else None
+
+    return JobSeekerApplicationStatsResponse(
+        job_seeker_id=job_seeker_id,
+        total_applications=total_applications,
+        applications_by_status=applications_by_status,
+        applications_this_week=applications_this_week,
+        interviews_scheduled=interviews_scheduled,
+        interviews_completed=interviews_completed,
+        avg_interview_rating=avg_interview_rating,
+        last_application_date=last_application_date,
+    )

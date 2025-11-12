@@ -42,6 +42,12 @@ from app.schemas.saved_job import (
     SavedJobResponse,
     SavedJobUpdate,
 )
+from app.schemas.stats import (
+    EmployerJobStatsResponse,
+    JobAnalyticsResponse,
+    JobSeekerApplicationStatsResponse,
+    TopJobStats,
+)
 from app.schemas.user import UserBase, UserCreate, UserResponse, UserUpdate
 
 __all__ = [
@@ -49,6 +55,7 @@ __all__ = [
     "ApplicationCreate",
     "ApplicationResponse",
     "ApplicationUpdate",
+    "EmployerJobStatsResponse",
     "EmployerProfileBase",
     "EmployerProfileCreate",
     "EmployerProfileResponse",
@@ -59,9 +66,11 @@ __all__ = [
     "InterviewListResponse",
     "InterviewResponse",
     "InterviewUpdate",
+    "JobAnalyticsResponse",
     "JobBase",
     "JobCreate",
     "JobResponse",
+    "JobSeekerApplicationStatsResponse",
     "JobSeekerPreferencesSchema",
     "JobSeekerProfileBase",
     "JobSeekerProfileCreate",
@@ -81,6 +90,7 @@ __all__ = [
     "SavedJobResponse",
     "SavedJobUpdate",
     "StatusHistoryEntrySchema",
+    "TopJobStats",
     "UserBase",
     "UserCreate",
     "UserResponse",
