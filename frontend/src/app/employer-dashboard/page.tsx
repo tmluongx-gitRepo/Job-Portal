@@ -16,7 +16,7 @@ import {
   Eye,
   Star,
 } from "lucide-react";
-import { api, ApiError, ValidationError } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
 import type { Job, Application, EmployerProfile } from "../../lib/api";
 
 // ⚠️ TODO: Replace with actual user data from auth context when authentication is implemented
@@ -120,7 +120,7 @@ export default function EmployerDashboard(): ReactElement {
   const [employerProfile, setEmployerProfile] =
     useState<EmployerProfile | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [allApplications, setAllApplications] = useState<Application[]>([]);
+  const [_allApplications, setAllApplications] = useState<Application[]>([]);
 
   // Transformed data
   const [jobPostings, setJobPostings] = useState<TransformedJobPosting[]>([]);
@@ -138,7 +138,7 @@ export default function EmployerDashboard(): ReactElement {
 
   // Fetch dashboard data
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (): Promise<void> => {
       setLoading(true);
       setError(null);
 
@@ -150,7 +150,7 @@ export default function EmployerDashboard(): ReactElement {
           profile = await api.employerProfiles.getByUserId(userId);
           setEmployerProfile(profile);
           employerProfileId = profile.id;
-        } catch (err) {
+        } catch (_err) {
           console.info(
             "[Employer Dashboard] Profile not found - cannot fetch jobs/applications"
           );
@@ -320,8 +320,8 @@ export default function EmployerDashboard(): ReactElement {
       }
     };
 
-    fetchDashboardData();
-  }, [userId]);
+    void fetchDashboardData();
+  }, []);
 
   // Get unique companies from jobs
   const companies = Array.from(new Set(jobs.map((job) => job.company)));
@@ -620,7 +620,7 @@ export default function EmployerDashboard(): ReactElement {
                     {process.env.NODE_ENV === "development" && (
                       <button
                         onClick={() => {
-                          navigator.clipboard.writeText(job.id);
+                          void navigator.clipboard.writeText(job.id);
                           alert(`Job ID copied: ${job.id}`);
                         }}
                         className="text-xs text-green-500 font-mono hover:text-green-700 hover:underline cursor-pointer"

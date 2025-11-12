@@ -23,11 +23,11 @@ import {
   MoreVertical,
   RefreshCw,
 } from "lucide-react";
-import { api, ApiError, ValidationError } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
 import type { Job, Application } from "../../lib/api";
 
 // TODO: Replace with API call to fetch applicants
-const sampleApplicants = [
+const _sampleApplicants = [
   {
     id: 1,
     name: "Sarah Chen",
@@ -409,12 +409,12 @@ function ApplicationsPageContent(): ReactElement {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
-  const [applications, setApplications] = useState<Application[]>([]);
+  const [_applications, setApplications] = useState<Application[]>([]);
   const [applicants, setApplicants] = useState<TransformedApplicant[]>([]);
 
   // Fetch job and applications
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchData = async (): Promise<void> => {
       setLoading(true);
       setError(null);
 
@@ -482,7 +482,7 @@ function ApplicationsPageContent(): ReactElement {
       }
     };
 
-    fetchData();
+    void fetchData();
   }, [jobId]);
 
   const statusOptions = [
@@ -827,9 +827,9 @@ function ApplicationsPageContent(): ReactElement {
                             applicant={applicant}
                             isOpen={isDropdownOpen}
                             onToggle={() => toggleStatusDropdown(applicant.id)}
-                            onUpdateStatus={(newStatus) =>
-                              updateApplicantStatus(applicant.id, newStatus)
-                            }
+                            onUpdateStatus={(newStatus) => {
+                              void updateApplicantStatus(applicant.id, newStatus);
+                            }}
                           />
                           <button className="p-1 hover:bg-green-100 rounded transition-colors">
                             <MoreVertical className="w-4 h-4 text-green-600" />
@@ -885,9 +885,9 @@ function ApplicationsPageContent(): ReactElement {
                           applicant={applicant}
                           isOpen={isDropdownOpen}
                           onToggle={() => toggleStatusDropdown(applicant.id)}
-                          onUpdateStatus={(newStatus) =>
-                            updateApplicantStatus(applicant.id, newStatus)
-                          }
+                          onUpdateStatus={(newStatus) => {
+                            void updateApplicantStatus(applicant.id, newStatus);
+                          }}
                         />
 
                         <button className="p-2 hover:bg-green-100 rounded-lg transition-colors">
