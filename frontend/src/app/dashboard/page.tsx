@@ -18,7 +18,7 @@ import {
   RefreshCw,
   Sparkles,
 } from "lucide-react";
-import { api, ApiError, ValidationError } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
 import type {
   Application,
   JobSeekerProfile,
@@ -47,9 +47,9 @@ export default function DashboardPage(): ReactElement {
 
   // API data
   const [applications, setApplications] = useState<Application[]>([]);
-  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [profile, setProfile] = useState<JobSeekerProfile | null>(null);
-  const [jobSeekerProfileId, setJobSeekerProfileId] = useState<string | null>(
+  const [_jobSeekerProfileId, setJobSeekerProfileId] = useState<string | null>(
     null
   );
 
@@ -60,7 +60,7 @@ export default function DashboardPage(): ReactElement {
 
   // Fetch dashboard data
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (): Promise<void> => {
       setLoading(true);
       setError(null);
 
@@ -74,7 +74,7 @@ export default function DashboardPage(): ReactElement {
           setProfile(userProfile);
           profileId = userProfile.id;
           setJobSeekerProfileId(profileId);
-        } catch (err) {
+        } catch (_err) {
           // Profile might not exist - that's okay, but we can't fetch applications/recommendations
           console.info(
             "[Dashboard] Profile not found - cannot fetch applications/recommendations"
@@ -114,11 +114,16 @@ export default function DashboardPage(): ReactElement {
       }
     };
 
-    fetchDashboardData();
+    void fetchDashboardData();
   }, [userId]);
 
   // Calculate stats from fetched data
-  const calculateStats = () => {
+  const calculateStats = (): {
+    applicationsThisWeek: number;
+    interviewsScheduled: number;
+    profileViews: number;
+    newMatches: number;
+  } => {
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 

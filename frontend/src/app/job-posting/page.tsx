@@ -1025,7 +1025,9 @@ export default function JobPostingPage(): ReactElement {
                 </button>
 
                 <button
-                  onClick={handleSaveDraft}
+                  onClick={() => {
+                    void handleSaveDraft();
+                  }}
                   disabled={isSubmitting}
                   className="w-full bg-amber-50 text-amber-700 border border-amber-300 py-3 px-4 rounded-lg font-medium hover:bg-amber-100 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -1043,7 +1045,9 @@ export default function JobPostingPage(): ReactElement {
                 </button>
 
                 <button
-                  onClick={handlePublishJob}
+                  onClick={() => {
+                    void handlePublishJob();
+                  }}
                   disabled={isSubmitting}
                   className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-4 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
