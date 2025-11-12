@@ -828,7 +828,10 @@ function ApplicationsPageContent(): ReactElement {
                             isOpen={isDropdownOpen}
                             onToggle={() => toggleStatusDropdown(applicant.id)}
                             onUpdateStatus={(newStatus) => {
-                              void updateApplicantStatus(applicant.id, newStatus);
+                              void updateApplicantStatus(
+                                applicant.id,
+                                newStatus
+                              );
                             }}
                           />
                           <button className="p-1 hover:bg-green-100 rounded transition-colors">
