@@ -1,12 +1,15 @@
 # Unified development environment with Node/Bun + Python
 FROM node:20-bookworm
 
-# Install system dependencies and update SSL certificates
+# Update SSL certificates first (separate step to ensure completion)
 RUN apt-get update && apt-get install -y \
     ca-certificates \
-    curl \
     && update-ca-certificates \
-    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install system dependencies
+RUN apt-get update && \
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
     && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
     && apt-get update && apt-get install -y \
@@ -14,14 +17,24 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-venv \
     git \
+    curl \
     vim \
     postgresql-client \
     redis-tools \
     gh \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Bun with verification
-RUN curl -fsSL https://bun.sh/install | bash && \
+# Install Bun with verification (use direct download as fallback if curl fails)
+RUN curl -fsSL https://bun.sh/install | bash || \
+    (echo "Primary install failed, trying direct download..." && \
+     apt-get update && apt-get install -y wget unzip && \
+     mkdir -p /root/.bun/bin && \
+     wget https://github.com/oven-sh/bun/releases/latest/download/bun-linux-x64.zip && \
+     unzip bun-linux-x64.zip && \
+     mv bun-linux-x64/bun /root/.bun/bin/bun && \
+     chmod +x /root/.bun/bin/bun && \
+     rm -rf bun-linux-x64.zip bun-linux-x64 && \
+     apt-get remove -y wget unzip && apt-get autoremove -y) && \
     ls -la /root/.bun/bin/ && \
     /root/.bun/bin/bun --version && \
     ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
