@@ -183,3 +183,32 @@ class ResumeDocument(TypedDict):
     content_type: str
     created_at: datetime
     updated_at: datetime
+
+
+class InterviewDocument(TypedDict):
+    """MongoDB Interview document structure."""
+
+    _id: ObjectId
+    application_id: str
+    job_id: str
+    job_seeker_id: str
+    employer_id: str
+    interview_type: str  # phone, video, in-person, technical, behavioral, panel
+    scheduled_date: datetime
+    duration_minutes: int
+    timezone: str
+    location: NotRequired[str]  # Physical address or meeting link
+    interviewer_name: NotRequired[str]
+    interviewer_email: NotRequired[str]
+    interviewer_phone: NotRequired[str]
+    status: str  # scheduled, rescheduled, completed, cancelled, no_show
+    notes: NotRequired[str]  # Employer notes for job seeker
+    internal_notes: NotRequired[str]  # Internal employer notes
+    feedback: NotRequired[str]  # Post-interview feedback
+    rating: NotRequired[int]  # 1-5 rating
+    reminder_sent: bool
+    cancelled_by: NotRequired[str]  # user_id who cancelled
+    cancelled_reason: NotRequired[str]
+    rescheduled_from: NotRequired[datetime]  # Original date if rescheduled
+    created_at: datetime
+    updated_at: datetime

@@ -8,6 +8,7 @@ from app.api.routes import (
     applications,
     employer_profiles,
     health,
+    interviews,
     job_seeker_profiles,
     jobs,
     recommendations,
@@ -117,6 +118,7 @@ app.include_router(
 )
 app.include_router(jobs.router, prefix="/api/jobs", tags=["Jobs"])
 app.include_router(applications.router, prefix="/api/applications", tags=["Applications"])
+app.include_router(interviews.router, prefix="/api/interviews", tags=["Interviews"])
 app.include_router(saved_jobs.router, prefix="/api/saved-jobs", tags=["Saved Jobs"])
 app.include_router(resumes.router, prefix="/api/resumes", tags=["Resumes"])
 app.include_router(recommendations.router, prefix="/api/recommendations", tags=["Recommendations"])

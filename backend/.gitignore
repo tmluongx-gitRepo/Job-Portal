@@ -73,3 +73,5 @@ Thumbs.db
 # Alembic (keep alembic.ini in version control, but ignore migration cache)
 alembic/__pycache__/
 *.pyc
+# E2E test scripts (manual testing only)
+test_*_workflow.py

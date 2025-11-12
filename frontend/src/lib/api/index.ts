@@ -15,6 +15,7 @@ export { ApiError, ValidationError, API_URL } from "./client";
 export { userApi } from "./users";
 export { jobApi } from "./jobs";
 export { applicationApi } from "./applications";
+export { interviewApi } from "./interviews";
 export { jobSeekerProfileApi } from "./job-seeker-profiles";
 export { employerProfileApi } from "./employer-profiles";
 export { recommendationApi } from "./recommendations";
@@ -23,6 +24,7 @@ export { recommendationApi } from "./recommendations";
 export type * from "./users/types";
 export type * from "./jobs/types";
 export type * from "./applications/types";
+export type * from "./interviews/types";
 export type * from "./job-seeker-profiles/types";
 export type * from "./employer-profiles/types";
 export type * from "./recommendations/types";
@@ -31,6 +33,7 @@ export type * from "./recommendations/types";
 export * as UserSchemas from "./users/schemas";
 export * as JobSchemas from "./jobs/schemas";
 export * as ApplicationSchemas from "./applications/schemas";
+export * as InterviewSchemas from "./interviews/schemas";
 export * as JobSeekerProfileSchemas from "./job-seeker-profiles/schemas";
 export * as EmployerProfileSchemas from "./employer-profiles/schemas";
 export * as RecommendationSchemas from "./recommendations/schemas";
@@ -39,6 +42,7 @@ export * as RecommendationSchemas from "./recommendations/schemas";
 import { userApi } from "./users";
 import { jobApi } from "./jobs";
 import { applicationApi } from "./applications";
+import { interviewApi } from "./interviews";
 import { jobSeekerProfileApi } from "./job-seeker-profiles";
 import { employerProfileApi } from "./employer-profiles";
 import { recommendationApi } from "./recommendations";
@@ -47,6 +51,7 @@ export const api = {
   users: userApi,
   jobs: jobApi,
   applications: applicationApi,
+  interviews: interviewApi,
   jobSeekerProfiles: jobSeekerProfileApi,
   employerProfiles: employerProfileApi,
   recommendations: recommendationApi,
