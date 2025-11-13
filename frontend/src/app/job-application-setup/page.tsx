@@ -165,7 +165,7 @@ export default function JobApplicationSetupPage(): ReactElement {
         setTimeout(() => {
           router.push(`/job-posting?jobId=${jobId}&settingsSaved=true`);
         }, 1000);
-      } catch (storageError) {
+      } catch (_storageError) {
         throw new Error("Failed to save settings to browser storage");
       }
     } catch (err) {
@@ -715,6 +715,22 @@ export default function JobApplicationSetupPage(): ReactElement {
             </div>
           </div>
         )}
+
+        {/* Development/Demo Warning */}
+        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-yellow-800">
+              <p className="font-medium mb-1">Development Mode</p>
+              <p>
+                Application settings are stored in your browser&apos;s localStorage.
+                They are not shared across devices or users and will be lost if
+                browser data is cleared. Backend persistence will be implemented
+                before production.
+              </p>
+            </div>
+          </div>
+        </div>
 
         {loading && (
           <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-12 text-center mb-8">

@@ -101,26 +101,40 @@ export async function apiRequest<TResponse>(
       });
     }
 
-    // Provide helpful error message
+    // Provide user-friendly error message (generic in production, detailed in development)
+    const isDevelopment = typeof window !== "undefined" && process.env.NODE_ENV === "development";
+    
     if (errorMessage.includes("Failed to fetch") || errorMessage.includes("NetworkError")) {
+      const userMessage = isDevelopment
+        ? `Unable to connect to API server at ${API_URL}. Please ensure the backend is running.`
+        : "Unable to connect to the server. Please check your internet connection and try again.";
+      
       throw new ApiError(
-        `Unable to connect to API server at ${API_URL}. Please ensure the backend is running.`,
+        userMessage,
         0,
-        {
-          originalError: errorMessage,
-          url: fullUrl,
-          suggestion: "Check that the backend server is running and accessible.",
-        }
+        isDevelopment
+          ? {
+              originalError: errorMessage,
+              url: fullUrl,
+              suggestion: "Check that the backend server is running and accessible.",
+            }
+          : undefined
       );
     }
 
+    const userMessage = isDevelopment
+      ? `Network error: ${errorMessage}`
+      : "A network error occurred. Please try again.";
+    
     throw new ApiError(
-      `Network error: ${errorMessage}`,
+      userMessage,
       0,
-      {
-        originalError: fetchError,
-        url: fullUrl,
-      }
+      isDevelopment
+        ? {
+            originalError: fetchError,
+            url: fullUrl,
+          }
+        : undefined
     );
   }
 
