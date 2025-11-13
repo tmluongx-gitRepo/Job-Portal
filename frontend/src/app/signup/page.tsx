@@ -8,9 +8,12 @@ import {
 } from "react";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { User, Mail, Lock, Eye, EyeOff, Heart, Users } from "lucide-react";
+import { api, ApiError, ValidationError } from "@/lib/api";
 
 export default function SignupPage(): ReactElement {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -24,6 +27,9 @@ export default function SignupPage(): ReactElement {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value, type, checked } = e.target;
@@ -31,13 +37,128 @@ export default function SignupPage(): ReactElement {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+    // Clear field-specific error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
-  const handleSubmit = (e: FormEvent): void => {
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.firstName.trim()) {
+      errors.firstName = "First name is required";
+    }
+    if (!formData.lastName.trim()) {
+      errors.lastName = "Last name is required";
+    }
+    if (!formData.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = "Please enter a valid email";
+    }
+    if (!formData.password) {
+      errors.password = "Password is required";
+    } else if (formData.password.length < 8) {
+      errors.password = "Password must be at least 8 characters";
+    }
+    if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = "Passwords do not match";
+    }
+    if (!formData.agreeToTerms) {
+      errors.agreeToTerms = "You must agree to the terms";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
-    // TODO: Implement signup functionality
-    console.log("Form submitted:", formData);
-    alert("Welcome to Career Harmony! 🌱");
+    setErrorMessage(null);
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Create user in backend
+      // Convert "jobseeker" to "job_seeker" for backend
+      const accountType =
+        formData.accountType === "jobseeker"
+          ? "job_seeker"
+          : formData.accountType;
+
+      const user = await api.users.create({
+        email: formData.email,
+        account_type: accountType,
+      });
+
+      console.log("✅ User created:", user.id);
+
+      // Store user data in localStorage (temporary - should use proper auth)
+      localStorage.setItem("userId", user.id);
+      localStorage.setItem("userEmail", user.email);
+      localStorage.setItem("accountType", user.account_type);
+
+      // If employer, check if they have a profile
+      if (user.account_type === "employer") {
+        try {
+          // Try to get employer profile
+          const profile = await api.employerProfiles.getByUserId(user.id);
+          console.log("Employer profile exists:", profile);
+          // Redirect to dashboard if profile exists
+          router.push("/employer-dashboard");
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 404) {
+            // No profile exists, redirect to company registration modal
+            console.log("No employer profile, showing registration modal");
+            router.push("/company-registration");
+          } else {
+            throw error;
+          }
+        }
+      } else {
+        // Job seeker - redirect to dashboard
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
+
+      if (error instanceof ValidationError) {
+        // Handle validation errors from API
+        const errors: Record<string, string> = {};
+        error.issues.forEach((issue) => {
+          const field = issue.path.join(".");
+          errors[field] = issue.message;
+        });
+        setFieldErrors(errors);
+        setErrorMessage("Please fix the validation errors");
+      } else if (error instanceof ApiError) {
+        if (error.status === 400 && error.message.includes("already exists")) {
+          setErrorMessage(
+            "An account with this email already exists. Please login instead."
+          );
+          setFieldErrors({ email: "Email already registered" });
+        } else {
+          setErrorMessage(
+            `Failed to create account: ${error.message || "Please try again"}`
+          );
+        }
+      } else {
+        setErrorMessage(
+          "An unexpected error occurred. Please try again later."
+        );
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -63,6 +184,12 @@ export default function SignupPage(): ReactElement {
 
           {/* Sign-up Form */}
           <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-green-200 p-8">
+            {errorMessage && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-800 text-sm">{errorMessage}</p>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Account Type Selection */}
               <div>
@@ -130,10 +257,19 @@ export default function SignupPage(): ReactElement {
                     type="text"
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all ${
+                      fieldErrors.firstName
+                        ? "border-red-500"
+                        : "border-green-300"
+                    }`}
                     placeholder="Your first name"
                     required
                   />
+                  {fieldErrors.firstName && (
+                    <p className="text-red-600 text-xs mt-1">
+                      {fieldErrors.firstName}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-green-800 mb-2">
@@ -144,10 +280,19 @@ export default function SignupPage(): ReactElement {
                     type="text"
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all ${
+                      fieldErrors.lastName
+                        ? "border-red-500"
+                        : "border-green-300"
+                    }`}
                     placeholder="Your last name"
                     required
                   />
+                  {fieldErrors.lastName && (
+                    <p className="text-red-600 text-xs mt-1">
+                      {fieldErrors.lastName}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -165,11 +310,19 @@ export default function SignupPage(): ReactElement {
                     type="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all"
+                    autoComplete="off"
+                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all ${
+                      fieldErrors.email ? "border-red-500" : "border-green-300"
+                    }`}
                     placeholder="your@email.com"
                     required
                   />
                 </div>
+                {fieldErrors.email && (
+                  <p className="text-red-600 text-xs mt-1">
+                    {fieldErrors.email}
+                  </p>
+                )}
               </div>
 
               {/* Password */}
@@ -186,7 +339,12 @@ export default function SignupPage(): ReactElement {
                     type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-12 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all"
+                    autoComplete="new-password"
+                    className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all ${
+                      fieldErrors.password
+                        ? "border-red-500"
+                        : "border-green-300"
+                    }`}
                     placeholder="Create a secure password"
                     required
                   />
@@ -202,6 +360,11 @@ export default function SignupPage(): ReactElement {
                     )}
                   </button>
                 </div>
+                {fieldErrors.password && (
+                  <p className="text-red-600 text-xs mt-1">
+                    {fieldErrors.password}
+                  </p>
+                )}
               </div>
 
               {/* Confirm Password */}
@@ -218,7 +381,12 @@ export default function SignupPage(): ReactElement {
                     type={showConfirmPassword ? "text" : "password"}
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-12 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all"
+                    autoComplete="new-password"
+                    className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all ${
+                      fieldErrors.confirmPassword
+                        ? "border-red-500"
+                        : "border-green-300"
+                    }`}
                     placeholder="Confirm your password"
                     required
                   />
@@ -234,36 +402,48 @@ export default function SignupPage(): ReactElement {
                     )}
                   </button>
                 </div>
+                {fieldErrors.confirmPassword && (
+                  <p className="text-red-600 text-xs mt-1">
+                    {fieldErrors.confirmPassword}
+                  </p>
+                )}
               </div>
 
               {/* Checkboxes */}
               <div className="space-y-3">
-                <label className="flex items-start space-x-3">
-                  <input
-                    type="checkbox"
-                    name="agreeToTerms"
-                    checked={formData.agreeToTerms}
-                    onChange={handleInputChange}
-                    className="mt-1 w-4 h-4 text-green-600 border-green-300 rounded focus:ring-green-400"
-                    required
-                  />
-                  <span className="text-sm text-green-700">
-                    I agree to the{" "}
-                    <Link
-                      href="/terms"
-                      className="text-green-800 underline hover:text-green-900"
-                    >
-                      Terms of Service
-                    </Link>{" "}
-                    and{" "}
-                    <Link
-                      href="/privacy"
-                      className="text-green-800 underline hover:text-green-900"
-                    >
-                      Privacy Policy
-                    </Link>
-                  </span>
-                </label>
+                <div>
+                  <label className="flex items-start space-x-3">
+                    <input
+                      type="checkbox"
+                      name="agreeToTerms"
+                      checked={formData.agreeToTerms}
+                      onChange={handleInputChange}
+                      className="mt-1 w-4 h-4 text-green-600 border-green-300 rounded focus:ring-green-400"
+                      required
+                    />
+                    <span className="text-sm text-green-700">
+                      I agree to the{" "}
+                      <Link
+                        href="/terms"
+                        className="text-green-800 underline hover:text-green-900"
+                      >
+                        Terms of Service
+                      </Link>{" "}
+                      and{" "}
+                      <Link
+                        href="/privacy"
+                        className="text-green-800 underline hover:text-green-900"
+                      >
+                        Privacy Policy
+                      </Link>
+                    </span>
+                  </label>
+                  {fieldErrors.agreeToTerms && (
+                    <p className="text-red-600 text-xs mt-1 ml-7">
+                      {fieldErrors.agreeToTerms}
+                    </p>
+                  )}
+                </div>
 
                 <label className="flex items-start space-x-3">
                   <input
@@ -283,10 +463,24 @@ export default function SignupPage(): ReactElement {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-4 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 transition-all flex items-center justify-center"
+                disabled={isSubmitting}
+                className={`w-full py-3 px-4 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 transition-all flex items-center justify-center ${
+                  isSubmitting
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800"
+                }`}
               >
-                <Heart className="w-5 h-5 mr-2" />
-                Join Career Harmony
+                {isSubmitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Creating Account...
+                  </>
+                ) : (
+                  <>
+                    <Heart className="w-5 h-5 mr-2" />
+                    Join Career Harmony
+                  </>
+                )}
               </button>
             </form>
 
