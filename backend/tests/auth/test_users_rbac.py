@@ -387,10 +387,10 @@ class TestUsersRBAC:
 
         admin_headers = {"Authorization": f"Bearer {admin_token}"}
 
-        # Step 1: Create a test user
+        # Step 1: Create a test user using admin API (bypasses rate limits)
         token, user_id = await create_temp_user("job_seeker", "temp.admin.mgmt@test.com")
         if not token or not user_id:
-            pytest.skip("Failed to create temp user")
+            pytest.skip("Failed to create temp user via admin API")
 
         # Step 2: Admin lists all users
         list_response = await client.get("/api/users", headers=admin_headers)
