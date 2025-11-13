@@ -31,19 +31,19 @@ import type {
 
 /**
  * Get the current authenticated user ID
- * 
+ *
  * ⚠️ CRITICAL SECURITY WARNING: This is a placeholder function that MUST be replaced
  * with actual authentication before production deployment.
- * 
+ *
  * TODO: Replace with actual auth context when authentication is implemented
- * Example: const { user, isAuthenticated } = useAuth(); 
+ * Example: const { user, isAuthenticated } = useAuth();
  *          if (!isAuthenticated || !user?.id) throw new Error("Not authenticated");
  *          return user.id;
- * 
+ *
  * Current behavior: Blocks all application submissions by returning null.
  * This prevents security issues from hardcoded user IDs but means the feature
  * is non-functional until real authentication is implemented.
- * 
+ *
  * DO NOT bypass this check or hardcode user IDs in production!
  */
 function getCurrentUserId(): string | null {
@@ -54,7 +54,7 @@ function getCurrentUserId(): string | null {
   //   return null;
   // }
   // return user.id;
-  
+
   // TEMPORARY: Return null to block submissions until auth is implemented
   // This prevents security issues from hardcoded user IDs
   if (process.env.NODE_ENV === "development") {
@@ -63,7 +63,7 @@ function getCurrentUserId(): string | null {
     );
   }
   return null;
-  
+
   // For development/testing only - remove before production:
   // return "507f1f77bcf86cd799439011";
 }
@@ -182,7 +182,7 @@ export default function JobApplicationPage(): ReactElement | null {
   // Only run after applicationSettings is loaded (not null)
   useEffect(() => {
     if (!applicationSettings) return; // Wait for settings to load
-    
+
     if (applicationSettings.applicationMethod === "External") {
       if (applicationSettings.externalUrl) {
         // Redirect to external URL (client-side only)
@@ -196,11 +196,8 @@ export default function JobApplicationPage(): ReactElement | null {
   // Only run after applicationSettings is loaded (not null)
   useEffect(() => {
     if (!applicationSettings) return; // Wait for settings to load
-    
-    if (
-      currentPage === 4 &&
-      !applicationSettings.equalOpportunityEnabled
-    ) {
+
+    if (currentPage === 4 && !applicationSettings.equalOpportunityEnabled) {
       setCurrentPage(5);
     }
   }, [currentPage, applicationSettings]);
@@ -371,13 +368,15 @@ export default function JobApplicationPage(): ReactElement | null {
   };
 
   // Reusable file validation function
-  const validateResumeFile = (file: File): { isValid: boolean; error?: string } => {
+  const validateResumeFile = (
+    file: File
+  ): { isValid: boolean; error?: string } => {
     const allowedTypes = [
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
       "application/msword", // .doc
     ];
-    
+
     if (!allowedTypes.includes(file.type)) {
       return {
         isValid: false,
@@ -389,7 +388,8 @@ export default function JobApplicationPage(): ReactElement | null {
     if (file.size > maxSize) {
       return {
         isValid: false,
-        error: "File too large. Maximum size is 5MB. Please compress your resume and try again.",
+        error:
+          "File too large. Maximum size is 5MB. Please compress your resume and try again.",
       };
     }
 

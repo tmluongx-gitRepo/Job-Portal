@@ -532,8 +532,8 @@ export default function ProfilePage(): ReactElement {
                     </span>
                   </div>
                   <p className="text-sm text-green-700">
-                    Adding a resume will help employers get to know
-                    the amazing professional you are.
+                    Adding a resume will help employers get to know the amazing
+                    professional you are.
                   </p>
                 </div>
               </div>
