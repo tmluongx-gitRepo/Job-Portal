@@ -55,7 +55,9 @@ export default function JobApplicationSetupPage(): ReactElement {
   useEffect(() => {
     const fetchJob = async (): Promise<void> => {
       if (!jobId) {
-        setError("No job ID provided. Please navigate to this page from a job posting.");
+        setError(
+          "No job ID provided. Please navigate to this page from a job posting."
+        );
         setLoading(false);
         return;
       }
@@ -142,25 +144,28 @@ export default function JobApplicationSetupPage(): ReactElement {
     try {
       // TODO: When backend supports application settings, update the job with these settings
       // For now, we'll store them in localStorage as a temporary solution
-      // 
+      //
       // ⚠️ LIMITATION: Settings are stored in browser localStorage, which means:
       // - Settings are only available in the current browser/session
       // - Settings are not shared across devices or users
       // - Settings will be lost if browser data is cleared
-      // 
+      //
       // In the future, this should be: await api.jobs.update(jobId, { application_settings: ... })
-      
+
       const settingsToSave = {
         jobId,
         ...applicationSettings,
       };
-      
+
       try {
-        localStorage.setItem(`job_application_settings_${jobId}`, JSON.stringify(settingsToSave));
-        
+        localStorage.setItem(
+          `job_application_settings_${jobId}`,
+          JSON.stringify(settingsToSave)
+        );
+
         // Show success feedback before redirect
         setSuccess(true);
-        
+
         // Small delay to show success message, then redirect
         setTimeout(() => {
           router.push(`/job-posting?jobId=${jobId}&settingsSaved=true`);
@@ -644,7 +649,9 @@ export default function JobApplicationSetupPage(): ReactElement {
                     }
                   }}
                   className={`flex items-center px-4 py-2 bg-green-50 text-green-700 border border-green-300 rounded-lg font-medium hover:bg-green-100 transition-all text-sm ${
-                    !jobId ? "pointer-events-none opacity-50 cursor-not-allowed" : ""
+                    !jobId
+                      ? "pointer-events-none opacity-50 cursor-not-allowed"
+                      : ""
                   }`}
                 >
                   <Eye className="w-4 h-4 mr-2" />
@@ -723,10 +730,10 @@ export default function JobApplicationSetupPage(): ReactElement {
             <div className="text-sm text-yellow-800">
               <p className="font-medium mb-1">Development Mode</p>
               <p>
-                Application settings are stored in your browser&apos;s localStorage.
-                They are not shared across devices or users and will be lost if
-                browser data is cleared. Backend persistence will be implemented
-                before production.
+                Application settings are stored in your browser&apos;s
+                localStorage. They are not shared across devices or users and
+                will be lost if browser data is cleared. Backend persistence
+                will be implemented before production.
               </p>
             </div>
           </div>

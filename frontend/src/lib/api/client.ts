@@ -92,7 +92,10 @@ export async function apiRequest<TResponse>(
         : "Network error occurred";
 
     // Log detailed error in development
-    if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+    if (
+      typeof window !== "undefined" &&
+      process.env.NODE_ENV === "development"
+    ) {
       console.error(`[API Network Error] ${errorMessage}`, {
         url: fullUrl,
         error: fetchError,
@@ -102,13 +105,17 @@ export async function apiRequest<TResponse>(
     }
 
     // Provide user-friendly error message (generic in production, detailed in development)
-    const isDevelopment = typeof window !== "undefined" && process.env.NODE_ENV === "development";
-    
-    if (errorMessage.includes("Failed to fetch") || errorMessage.includes("NetworkError")) {
+    const isDevelopment =
+      typeof window !== "undefined" && process.env.NODE_ENV === "development";
+
+    if (
+      errorMessage.includes("Failed to fetch") ||
+      errorMessage.includes("NetworkError")
+    ) {
       const userMessage = isDevelopment
         ? `Unable to connect to API server at ${API_URL}. Please ensure the backend is running.`
         : "Unable to connect to the server. Please check your internet connection and try again.";
-      
+
       throw new ApiError(
         userMessage,
         0,
@@ -116,7 +123,8 @@ export async function apiRequest<TResponse>(
           ? {
               originalError: errorMessage,
               url: fullUrl,
-              suggestion: "Check that the backend server is running and accessible.",
+              suggestion:
+                "Check that the backend server is running and accessible.",
             }
           : undefined
       );
@@ -125,7 +133,7 @@ export async function apiRequest<TResponse>(
     const userMessage = isDevelopment
       ? `Network error: ${errorMessage}`
       : "A network error occurred. Please try again.";
-    
+
     throw new ApiError(
       userMessage,
       0,
@@ -210,7 +218,7 @@ export async function uploadFile<TResponse>(
   // Create FormData
   const formData = new FormData();
   formData.append("file", file);
-  
+
   // Add any additional form fields
   if (additionalData) {
     Object.entries(additionalData).forEach(([key, value]) => {
@@ -231,18 +239,20 @@ export async function uploadFile<TResponse>(
         ? fetchError.message
         : "Network error occurred";
 
-    if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+    if (
+      typeof window !== "undefined" &&
+      process.env.NODE_ENV === "development"
+    ) {
       console.error(`[API Upload Error] ${errorMessage}`, {
         url: fullUrl,
         error: fetchError,
       });
     }
 
-    throw new ApiError(
-      `Failed to upload file: ${errorMessage}`,
-      0,
-      { originalError: fetchError, url: fullUrl }
-    );
+    throw new ApiError(`Failed to upload file: ${errorMessage}`, 0, {
+      originalError: fetchError,
+      url: fullUrl,
+    });
   }
 
   // Handle HTTP errors
