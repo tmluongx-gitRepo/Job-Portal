@@ -4,7 +4,7 @@ from typing import cast
 from bson import ObjectId
 from bson.errors import InvalidId
 
-from app.constants import ApplicationStatus
+from app.constants import ApplicationStatus, InterviewStatus
 from app.database import get_applications_collection
 from app.type_definitions import ApplicationDocument
 
@@ -241,13 +241,17 @@ async def cancel_all_interviews_for_application(application_id: str) -> int:
     This is typically called when an application is rejected or accepted,
     to automatically cancel any pending interviews.
 
+    Note:
+        Race conditions: This does not prevent new interviews from being scheduled
+        after cancellation. Business logic should prevent interviews for applications
+        in REJECTED/ACCEPTED states.
+
     Args:
         application_id: Application ID
 
     Returns:
         Number of interviews cancelled
     """
-    from app.constants import InterviewStatus
     from app.crud import interview as interview_crud
     from app.database import get_interviews_collection
 
@@ -259,9 +263,10 @@ async def cancel_all_interviews_for_application(application_id: str) -> int:
             "application_id": application_id,
             "status": {"$in": [InterviewStatus.SCHEDULED.value, InterviewStatus.RESCHEDULED.value]},
         }
-    ).to_list(length=100)
+    ).to_list(length=100)  # Reasonable limit - most applications have 1-3 interviews
 
     cancelled_count = 0
+
     for interview in interviews:
         result = await interview_crud.cancel_interview(
             str(interview["_id"]),
@@ -279,45 +284,55 @@ async def reject_other_applications_for_job(job_id: str, except_application_id: 
     """
     Auto-reject all other applications when one is accepted.
 
+    Warning:
+        This method may load a large number of documents into memory if a job has
+        thousands of applications. For production systems with high application volumes,
+        consider implementing pagination or aggregation pipelines.
+
     Args:
         job_id: Job ID
         except_application_id: Application ID to exclude (the accepted one)
 
     Returns:
-        Number of applications auto-rejected
+        Number of applications auto-rejected (0 if except_application_id is invalid)
     """
     collection = get_applications_collection()
 
+    # Validate except_application_id early
     try:
         except_object_id = ObjectId(except_application_id)
     except InvalidId:
         return 0
 
-    # Update all other applications for this job that aren't already in a final state
-    result = await collection.update_many(
-        {
-            "job_id": job_id,
-            "_id": {"$ne": except_object_id},
-            "status": {
-                "$nin": [ApplicationStatus.REJECTED.value, ApplicationStatus.ACCEPTED.value]
+    try:
+        # Update all other applications for this job that aren't already in a final state
+        result = await collection.update_many(
+            {
+                "job_id": job_id,
+                "_id": {"$ne": except_object_id},
+                "status": {
+                    "$nin": [ApplicationStatus.REJECTED.value, ApplicationStatus.ACCEPTED.value]
+                },
             },
-        },
-        {
-            "$set": {
-                "status": ApplicationStatus.REJECTED.value,
-                "rejection_reason": "Position filled",
-                "updated_at": datetime.now(UTC),
-                "next_step": "Position has been filled",
-            },
-            "$push": {
-                "status_history": {
+            {
+                "$set": {
                     "status": ApplicationStatus.REJECTED.value,
-                    "changed_at": datetime.now(UTC),
-                    "notes": "Position filled - automatically rejected",
-                    "changed_by": "system",
-                }
+                    "rejection_reason": "Position filled",
+                    "updated_at": datetime.now(UTC),
+                    "next_step": "Position has been filled",
+                },
+                "$push": {
+                    "status_history": {
+                        "status": ApplicationStatus.REJECTED.value,
+                        "changed_at": datetime.now(UTC),
+                        "notes": "Position filled - automatically rejected",
+                        "changed_by": "system",
+                    }
+                },
             },
-        },
-    )
+        )
 
-    return result.modified_count
+    except Exception:
+        return 0
+    else:
+        return result.modified_count

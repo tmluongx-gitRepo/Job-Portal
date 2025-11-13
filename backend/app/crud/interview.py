@@ -68,7 +68,7 @@ async def create_interview(
         "scheduled_date": scheduled_date,
         "duration_minutes": duration_minutes,
         "timezone": timezone,
-        "status": "scheduled",
+        "status": InterviewStatus.SCHEDULED.value,
         "reminder_sent": False,
         "created_at": datetime.now(UTC),
         "updated_at": datetime.now(UTC),
@@ -275,7 +275,7 @@ async def cancel_interview(
         Updated interview document if found, None otherwise
     """
     update_data = {
-        "status": "cancelled",
+        "status": InterviewStatus.CANCELLED.value,
         "cancelled_by": cancelled_by,
         "cancelled_reason": reason,
         "updated_at": datetime.now(UTC),
@@ -299,7 +299,7 @@ async def complete_interview(
         Updated interview document if found, None otherwise
     """
     update_data: dict[str, Any] = {
-        "status": "completed",
+        "status": InterviewStatus.COMPLETED.value,
         "updated_at": datetime.now(UTC),
     }
 

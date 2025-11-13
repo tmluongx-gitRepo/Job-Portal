@@ -82,7 +82,7 @@ class TestApplicationAcceptanceWorkflow:
         # 6. Verify interview is cancelled
         interview_check = await client.get(f"/api/interviews/{interview_id}", headers=emp_headers)
         assert interview_check.status_code == HTTP_OK
-        assert interview_check.json()["status"] == "cancelled"
+        assert interview_check.json()["status"] == "Cancelled"
 
     @pytest.mark.asyncio
     async def test_accepting_application_marks_job_filled(
@@ -280,7 +280,7 @@ class TestApplicationRejectionWorkflow:
         # 5. Verify interview is cancelled
         interview_check = await client.get(f"/api/interviews/{interview_id}", headers=emp_headers)
         assert interview_check.status_code == HTTP_OK
-        assert interview_check.json()["status"] == "cancelled"
+        assert interview_check.json()["status"] == "Cancelled"
 
     @pytest.mark.asyncio
     async def test_rejection_with_reason(

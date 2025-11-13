@@ -288,7 +288,7 @@ async def get_application(
 
 
 @router.put("/{application_id}", response_model=ApplicationResponse)
-async def update_application(  # noqa: PLR0912
+async def update_application(
     application_id: str,
     application_update: ApplicationUpdate,
     current_user: dict = Depends(get_current_user),
@@ -348,7 +348,14 @@ async def update_application(  # noqa: PLR0912
     # Validate status transitions
     new_status = application_update.status
     if new_status:
-        current_status = existing_application.get("status")
+        current_status = existing_application.get("status", "")
+
+        # Validate: Cannot modify terminal states
+        if current_status and ApplicationStatus.is_terminal(current_status):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot modify application with terminal status '{current_status}'",
+            )
 
         # Validate: Can only accept if offer was extended
         if (
@@ -358,13 +365,6 @@ async def update_application(  # noqa: PLR0912
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot accept application without an offer being extended",
-            )
-
-        # Validate: Cannot change status if already accepted
-        if current_status == ApplicationStatus.ACCEPTED.value:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot modify an already accepted application",
             )
 
     # Update the application
@@ -382,52 +382,18 @@ async def update_application(  # noqa: PLR0912
     # Handle side effects based on new status
     if new_status == ApplicationStatus.ACCEPTED.value:
         job_id = str(existing_application.get("job_id"))
-        try:
-            # 1. Cancel all interviews for this application
-            cancelled_count = await application_crud.cancel_all_interviews_for_application(
-                application_id
-            )
+        # 1. Cancel all interviews for this application
+        await application_crud.cancel_all_interviews_for_application(application_id)
 
-            # 2. Mark job as filled (inactive)
-            job_update_result = await job_crud.update_job(
-                job_id, {"is_active": False, "filled": True}
-            )
-            if not job_update_result:
-                logger.error(
-                    f"Failed to mark job {job_id} as filled for application {application_id}"
-                )
+        # 2. Mark job as filled (inactive)
+        await job_crud.update_job(job_id, {"is_active": False, "filled": True})
 
-            # 3. Auto-reject all other applications for this job
-            rejected_count = await application_crud.reject_other_applications_for_job(
-                job_id, application_id
-            )
-
-            logger.info(
-                f"Application {application_id} accepted. "
-                f"Job {job_id} marked as filled. "
-                f"{cancelled_count} interviews cancelled. "
-                f"{rejected_count} other applications auto-rejected."
-            )
-        except Exception:
-            logger.exception(
-                f"Error processing side effects for accepted application {application_id}"
-            )
-            # Application status was already updated, log but don't fail the request
+        # 3. Auto-reject all other applications for this job
+        await application_crud.reject_other_applications_for_job(job_id, application_id)
 
     elif new_status == ApplicationStatus.REJECTED.value:
-        try:
-            # Cancel any scheduled interviews for this application
-            cancelled_count = await application_crud.cancel_all_interviews_for_application(
-                application_id
-            )
-            if cancelled_count > 0:
-                logger.info(
-                    f"Application {application_id} rejected. {cancelled_count} interviews cancelled."
-                )
-        except Exception:
-            logger.exception(
-                f"Error cancelling interviews for rejected application {application_id}"
-            )
+        # Cancel any scheduled interviews for this application
+        await application_crud.cancel_all_interviews_for_application(application_id)
 
     return _serialize_application(updated_application)
 
