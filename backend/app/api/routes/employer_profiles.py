@@ -15,6 +15,7 @@ from app.schemas.employer import (
 )
 from app.schemas.stats import EmployerJobStatsResponse, TopJobStats
 from app.type_definitions import EmployerProfileDocument
+from app.utils.datetime_utils import ensure_utc_datetime
 
 router = APIRouter()
 
@@ -266,10 +267,9 @@ async def get_employer_job_stats(
         for app in applications:
             applied_date = app.get("applied_date")
             if applied_date:
-                # Ensure timezone-aware comparison
-                if applied_date.tzinfo is None:
-                    applied_date = applied_date.replace(tzinfo=UTC)
-                if applied_date >= seven_days_ago:
+                # Use utility function for timezone-aware comparison
+                applied_date = ensure_utc_datetime(applied_date)
+                if applied_date and applied_date >= seven_days_ago:
                     applications_this_week += 1
 
         # Count applications per job

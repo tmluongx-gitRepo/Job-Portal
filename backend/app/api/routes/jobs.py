@@ -3,10 +3,12 @@ from collections.abc import Iterable
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.auth.dependencies import get_current_user, get_optional_user, require_employer
+from app.constants import InterviewStatus
 from app.crud import job as job_crud
 from app.schemas.job import JobCreate, JobResponse, JobUpdate
 from app.schemas.stats import JobAnalyticsResponse
 from app.type_definitions import JobDocument
+from app.utils.datetime_utils import ensure_utc_datetime
 
 router = APIRouter()
 
@@ -270,7 +272,7 @@ async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)
 
 
 @router.get("/{job_id}/analytics", response_model=JobAnalyticsResponse)
-async def get_job_analytics(  # noqa: PLR0912
+async def get_job_analytics(
     job_id: str, current_user: dict = Depends(get_current_user)
 ) -> JobAnalyticsResponse:
     """
@@ -329,10 +331,9 @@ async def get_job_analytics(  # noqa: PLR0912
     for app in applications:
         applied_date = app.get("applied_date")
         if applied_date:
-            # Ensure timezone-aware comparison
-            if applied_date.tzinfo is None:
-                applied_date = applied_date.replace(tzinfo=UTC)
-            if applied_date >= seven_days_ago:
+            # Ensure timezone-aware comparison using utility function
+            applied_date = ensure_utc_datetime(applied_date)
+            if applied_date and applied_date >= seven_days_ago:
                 recent_applications_count += 1
 
     # Get last application date
@@ -357,9 +358,9 @@ async def get_job_analytics(  # noqa: PLR0912
 
         for interview in interviews:
             interview_status = interview.get("status", "")
-            if interview_status in ["scheduled", "rescheduled"]:
+            if interview_status in [InterviewStatus.SCHEDULED.value, InterviewStatus.RESCHEDULED.value]:
                 interviews_scheduled += 1
-            elif interview_status == "completed":
+            elif interview_status == InterviewStatus.COMPLETED.value:
                 interviews_completed += 1
                 rating = interview.get("rating")
                 # Validate rating is numeric before adding

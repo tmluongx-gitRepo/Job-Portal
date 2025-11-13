@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.auth.dependencies import get_current_user, get_optional_user, require_job_seeker
+from app.constants import InterviewStatus
 from app.crud import job_seeker_profile as profile_crud
 from app.schemas.job_seeker import (
     JobSeekerPreferencesSchema,
@@ -16,6 +17,7 @@ from app.schemas.job_seeker import (
 )
 from app.schemas.stats import JobSeekerApplicationStatsResponse
 from app.type_definitions import JobSeekerProfileDocument
+from app.utils.datetime_utils import ensure_utc_datetime
 
 router = APIRouter()
 
@@ -315,7 +317,7 @@ async def delete_profile(profile_id: str, current_user: dict = Depends(get_curre
 
 
 @router.get("/user/{user_id}/application-stats", response_model=JobSeekerApplicationStatsResponse)
-async def get_job_seeker_application_stats(  # noqa: PLR0912
+async def get_job_seeker_application_stats(
     user_id: str, current_user: dict = Depends(get_current_user)
 ) -> JobSeekerApplicationStatsResponse:
     """
@@ -378,10 +380,9 @@ async def get_job_seeker_application_stats(  # noqa: PLR0912
     for app in applications:
         applied_date = app.get("applied_date")
         if applied_date:
-            # Ensure timezone-aware comparison
-            if applied_date.tzinfo is None:
-                applied_date = applied_date.replace(tzinfo=UTC)
-            if applied_date >= seven_days_ago:
+            # Use utility function for timezone-aware comparison
+            applied_date = ensure_utc_datetime(applied_date)
+            if applied_date and applied_date >= seven_days_ago:
                 applications_this_week += 1
 
     # Get last application date
@@ -406,9 +407,9 @@ async def get_job_seeker_application_stats(  # noqa: PLR0912
 
         for interview in interviews:
             interview_status = interview.get("status", "")
-            if interview_status in ["scheduled", "rescheduled"]:
+            if interview_status in [InterviewStatus.SCHEDULED.value, InterviewStatus.RESCHEDULED.value]:
                 interviews_scheduled += 1
-            elif interview_status == "completed":
+            elif interview_status == InterviewStatus.COMPLETED.value:
                 interviews_completed += 1
                 # Job seekers can see their own ratings if they exist
                 rating = interview.get("rating")

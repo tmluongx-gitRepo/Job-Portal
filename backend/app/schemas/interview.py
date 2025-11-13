@@ -94,7 +94,6 @@ class InterviewResponse(BaseModel):
         InterviewStatus.RESCHEDULED,
         InterviewStatus.COMPLETED,
         InterviewStatus.CANCELLED,
-        InterviewStatus.NO_SHOW,
     ]
     feedback: str | None = None
     rating: int | None = None
