@@ -396,7 +396,13 @@ export default function ProfilePage(): ReactElement {
         });
         setError(`Validation error: ${errorMessages.join(", ")}`);
       } else if (err instanceof ApiError) {
-        setError(`Failed to save profile: ${err.message}`);
+        if (err.status === 403) {
+          setError(
+            "Authentication required to save profile. Please log in to save your changes."
+          );
+        } else {
+          setError(`Failed to save profile: ${err.message}`);
+        }
       } else {
         setError("An unexpected error occurred. Please try again.");
       }
