@@ -175,3 +175,102 @@ export async function apiRequest<TResponse>(
 
   return validation.data;
 }
+
+/**
+ * Upload a file to the API
+ * Used for resume uploads and other file uploads
+ */
+export async function uploadFile<TResponse>(
+  endpoint: string,
+  file: File,
+  additionalData?: Record<string, string>,
+  options?: {
+    responseSchema?: z.ZodSchema<TResponse>;
+  }
+): Promise<TResponse | null> {
+  const apiEndpoint = endpoint.startsWith("/api")
+    ? endpoint
+    : `/api${endpoint}`;
+  const fullUrl = `${API_URL}${apiEndpoint}`;
+
+  // Create FormData
+  const formData = new FormData();
+  formData.append("file", file);
+  
+  // Add any additional form fields
+  if (additionalData) {
+    Object.entries(additionalData).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(fullUrl, {
+      method: "POST",
+      body: formData,
+      // Don't set Content-Type header - browser will set it with boundary
+    });
+  } catch (fetchError) {
+    const errorMessage =
+      fetchError instanceof Error
+        ? fetchError.message
+        : "Network error occurred";
+
+    if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+      console.error(`[API Upload Error] ${errorMessage}`, {
+        url: fullUrl,
+        error: fetchError,
+      });
+    }
+
+    throw new ApiError(
+      `Failed to upload file: ${errorMessage}`,
+      0,
+      { originalError: fetchError, url: fullUrl }
+    );
+  }
+
+  // Handle HTTP errors
+  if (!response.ok) {
+    let errorData;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = await response.text();
+    }
+
+    throw new ApiError(
+      `File upload failed: ${response.statusText}`,
+      response.status,
+      errorData
+    );
+  }
+
+  // Handle 204 No Content
+  if (response.status === 204) {
+    return null as TResponse;
+  }
+
+  // Parse response
+  let data;
+  try {
+    data = await response.json();
+  } catch (_error) {
+    throw new ApiError("Failed to parse response JSON", response.status);
+  }
+
+  // Validate response if schema provided
+  if (options?.responseSchema) {
+    const validation = options.responseSchema.safeParse(data);
+    if (!validation.success) {
+      throw new ValidationError(
+        "Response validation failed",
+        validation.error.issues
+      );
+    }
+    return validation.data;
+  }
+
+  return data as TResponse;
+}

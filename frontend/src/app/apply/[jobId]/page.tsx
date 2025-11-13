@@ -22,15 +22,37 @@ import {
   Heart,
   RefreshCw,
 } from "lucide-react";
-import { api, ApiError } from "../../../lib/api";
+import { api, ApiError, uploadFile } from "../../../lib/api";
 import type {
   Job,
   JobSeekerProfile,
   ApplicationCreate,
 } from "../../../lib/api";
 
-// ⚠️ TODO: Replace with actual user ID from auth context when authentication is implemented
-const userId = "507f1f77bcf86cd799439011"; // PLACEHOLDER
+/**
+ * Get the current authenticated user ID
+ * 
+ * TODO: Replace with actual auth context when authentication is implemented
+ * Example: const { user } = useAuth(); return user?.id;
+ * 
+ * For now, this function blocks application submission if no user is authenticated
+ * to prevent security issues with hardcoded user IDs.
+ */
+function getCurrentUserId(): string | null {
+  // TODO: Replace with actual auth check
+  // const { user, isAuthenticated } = useAuth();
+  // if (!isAuthenticated || !user?.id) {
+  //   return null;
+  // }
+  // return user.id;
+  
+  // TEMPORARY: Return null to block submissions until auth is implemented
+  // This prevents security issues from hardcoded user IDs
+  return null;
+  
+  // For development/testing only - remove before production:
+  // return "507f1f77bcf86cd799439011";
+}
 
 interface ApplicationFormData {
   // Page 1: Basic Profile Information
@@ -128,12 +150,31 @@ export default function JobApplicationPage(): ReactElement | null {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [skillInputValue, setSkillInputValue] = useState("");
+
+  // Check authentication and redirect if not authenticated
+  useEffect(() => {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      // Redirect to login page if not authenticated
+      router.push(`/login?redirect=/apply/${jobId}`);
+      return;
+    }
+  }, [jobId, router]);
 
   // Fetch job and profile data
   useEffect(() => {
     const fetchData = async (): Promise<void> => {
       if (!jobId) {
         setError("No job ID provided");
+        setLoading(false);
+        return;
+      }
+
+      const currentUserId = getCurrentUserId();
+      if (!currentUserId) {
+        // Don't fetch data if not authenticated
+        setError("Authentication required to apply for jobs. Please log in.");
         setLoading(false);
         return;
       }
@@ -181,7 +222,7 @@ export default function JobApplicationPage(): ReactElement | null {
         // Try to fetch user's job seeker profile
         try {
           const userProfile = (await api.jobSeekerProfiles.getByUserId(
-            userId
+            currentUserId
           )) as JobSeekerProfile;
           setProfile(userProfile);
           setJobSeekerProfileId(userProfile.id);
@@ -322,12 +363,48 @@ export default function JobApplicationPage(): ReactElement | null {
         break;
 
       case 2:
-        if (
-          !applicationData.noExperience &&
-          applicationData.experiences.every((exp) => !exp.role.trim())
-        ) {
-          newErrors.experience =
-            "Please add at least one experience or check 'I don't have experiences to share'";
+        // Validate resume file if provided
+        if (applicationData.resumeFile) {
+          // Validate file type
+          const allowedTypes = [
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+            "application/msword", // .doc
+          ];
+          if (!allowedTypes.includes(applicationData.resumeFile.type)) {
+            newErrors.resumeFile =
+              "Invalid file type. Please upload a PDF, DOCX, or DOC file.";
+          }
+
+          // Validate file size (5MB max)
+          const maxSize = 5 * 1024 * 1024; // 5MB
+          if (applicationData.resumeFile.size > maxSize) {
+            newErrors.resumeFile =
+              "File too large. Maximum size is 5MB. Please compress your resume and try again.";
+          }
+        }
+
+        // Validate experiences
+        if (!applicationData.noExperience) {
+          const hasValidExperience = applicationData.experiences.some(
+            (exp) => exp.role.trim() && exp.company.trim()
+          );
+          if (!hasValidExperience) {
+            newErrors.experience =
+              "Please add at least one experience with both company and role, or check 'I don't have experiences to share'";
+          }
+
+          // Validate individual experience entries
+          applicationData.experiences.forEach((exp, index) => {
+            if (exp.role.trim() && !exp.company.trim()) {
+              newErrors[`experience_${index}_company`] =
+                "Company is required when role is provided";
+            }
+            if (exp.company.trim() && !exp.role.trim()) {
+              newErrors[`experience_${index}_role`] =
+                "Role is required when company is provided";
+            }
+          });
         }
         break;
 
@@ -378,6 +455,16 @@ export default function JobApplicationPage(): ReactElement | null {
   };
 
   const handleSubmit = async (): Promise<void> => {
+    // Check authentication first
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      setError(
+        "Authentication required to submit application. Please log in to apply for this job."
+      );
+      router.push(`/login?redirect=/apply/${jobId}`);
+      return;
+    }
+
     if (!jobSeekerProfileId) {
       setError(
         "Please create a job seeker profile before applying. You can do this from your profile page."
@@ -389,6 +476,51 @@ export default function JobApplicationPage(): ReactElement | null {
     setError(null);
 
     try {
+      // Upload resume file if provided
+      if (applicationData.resumeFile) {
+        try {
+          // Validate file type
+          const allowedTypes = [
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+            "application/msword", // .doc
+          ];
+          if (!allowedTypes.includes(applicationData.resumeFile.type)) {
+            throw new Error(
+              "Invalid file type. Please upload a PDF, DOCX, or DOC file."
+            );
+          }
+
+          // Validate file size (5MB max)
+          const maxSize = 5 * 1024 * 1024; // 5MB
+          if (applicationData.resumeFile.size > maxSize) {
+            throw new Error(
+              "File too large. Maximum size is 5MB. Please compress your resume and try again."
+            );
+          }
+
+          // Upload resume to backend
+          await uploadFile("/api/resumes", applicationData.resumeFile);
+        } catch (uploadError) {
+          console.error("Failed to upload resume:", uploadError);
+          if (uploadError instanceof ApiError) {
+            setError(
+              `Failed to upload resume: ${uploadError.message}. Please try again or submit without a resume.`
+            );
+          } else if (uploadError instanceof Error) {
+            setError(
+              `Resume upload error: ${uploadError.message}. Please try again or submit without a resume.`
+            );
+          } else {
+            setError(
+              "Failed to upload resume. Please try again or submit without a resume."
+            );
+          }
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // Combine cover letter and screening responses into notes
       const notesParts: string[] = [];
       if (applicationData.coverLetter) {
@@ -837,29 +969,24 @@ export default function JobApplicationPage(): ReactElement | null {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  id="skillInput"
+                  value={skillInputValue}
+                  onChange={(e) => setSkillInputValue(e.target.value)}
                   className="flex-1 px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                   placeholder="Add a skill"
                   onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" &&
-                      (e.target as HTMLInputElement).value.trim()
-                    ) {
+                    if (e.key === "Enter" && skillInputValue.trim()) {
                       e.preventDefault();
-                      addSkill((e.target as HTMLInputElement).value);
-                      (e.target as HTMLInputElement).value = "";
+                      addSkill(skillInputValue);
+                      setSkillInputValue("");
                     }
                   }}
                 />
                 <button
                   type="button"
                   onClick={() => {
-                    const input = document.getElementById(
-                      "skillInput"
-                    ) as HTMLInputElement;
-                    if (input && input.value.trim()) {
-                      addSkill(input.value);
-                      input.value = "";
+                    if (skillInputValue.trim()) {
+                      addSkill(skillInputValue);
+                      setSkillInputValue("");
                     }
                   }}
                   className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium whitespace-nowrap"
@@ -1289,12 +1416,18 @@ export default function JobApplicationPage(): ReactElement | null {
   }
 
   // Handle External/Email application methods
-  if (applicationSettings?.applicationMethod === "External") {
-    if (applicationSettings.externalUrl) {
-      // Redirect to external URL
-      if (typeof window !== "undefined") {
+  // Use useEffect for client-side redirect to avoid hydration issues
+  useEffect(() => {
+    if (applicationSettings?.applicationMethod === "External") {
+      if (applicationSettings.externalUrl) {
+        // Redirect to external URL (client-side only)
         window.location.href = applicationSettings.externalUrl;
       }
+    }
+  }, [applicationSettings]);
+
+  if (applicationSettings?.applicationMethod === "External") {
+    if (applicationSettings.externalUrl) {
       return (
         <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-green-100 flex items-center justify-center">
           <div className="text-center">
