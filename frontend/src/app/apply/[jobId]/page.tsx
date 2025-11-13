@@ -417,7 +417,19 @@ export default function JobApplicationPage(): ReactElement | null {
     } catch (err) {
       console.error("Failed to submit application:", err);
       if (err instanceof ApiError) {
-        setError(`Failed to submit application: ${err.message}`);
+        if (err.status === 403) {
+          setError(
+            "Authentication required to submit application. Please log in to apply for this job."
+          );
+        } else if (err.status === 404) {
+          setError(
+            "Job or profile not found. Please ensure you have created a job seeker profile."
+          );
+        } else if (err.status === 409) {
+          setError("You have already applied to this job.");
+        } else {
+          setError(`Failed to submit application: ${err.message}`);
+        }
       } else {
         setError("An unexpected error occurred. Please try again.");
       }
