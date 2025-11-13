@@ -36,9 +36,19 @@ TEST_USERS = {
         "password": "TestJobSeeker123!",
         "account_type": "job_seeker",
     },
+    "job_seeker_2": {
+        "email": "test.jobseeker2@yourapp.com",
+        "password": "TestJobSeeker2123!",
+        "account_type": "job_seeker",
+    },
     "employer": {
         "email": "test.employer@yourapp.com",
         "password": "TestEmployer123!",
+        "account_type": "employer",
+    },
+    "employer_2": {
+        "email": "test.employer2@yourapp.com",
+        "password": "TestEmployer2123!",
         "account_type": "employer",
     },
     "admin": {
