@@ -2,8 +2,6 @@
 Test application status transition workflows and side effects.
 """
 
-from typing import Any
-
 import pytest
 from httpx import AsyncClient
 
@@ -150,14 +148,16 @@ class TestApplicationAcceptanceWorkflow:
         client: AsyncClient,
         employer_with_profile: tuple[str, str, str],
         job_seeker_with_profile: tuple[str, str, str],
-        create_temp_user: Any,
+        job_seeker_2_with_profile: tuple[str, str, str],
     ) -> None:
         """When one application accepted, others are auto-rejected."""
         emp_token, _, _ = employer_with_profile
         js1_token, _, js1_profile_id = job_seeker_with_profile
+        js2_token, _, js2_profile_id = job_seeker_2_with_profile
 
         emp_headers = {"Authorization": f"Bearer {emp_token}"}
         js1_headers = {"Authorization": f"Bearer {js1_token}"}
+        js2_headers = {"Authorization": f"Bearer {js2_token}"}
 
         # 1. Create job
         job_response = await client.post(
@@ -183,32 +183,7 @@ class TestApplicationAcceptanceWorkflow:
         assert app1_response.status_code == HTTP_CREATED
         app1_id = app1_response.json()["id"]
 
-        # 3. Create second job seeker using admin API (bypasses rate limits)
-        import uuid
-
-        unique_email = f"temp.jobseeker2_{uuid.uuid4().hex[:8]}@test.com"
-        js2_token, js2_user_id = await create_temp_user("job_seeker", unique_email)
-
-        if not js2_token or not js2_user_id:
-            pytest.skip("Failed to create second job seeker")
-
-        js2_headers = {"Authorization": f"Bearer {js2_token}"}
-
-        # Create profile for second job seeker
-        js2_profile_response = await client.post(
-            "/api/job-seeker-profiles",
-            headers=js2_headers,
-            json={
-                "full_name": "Job Seeker 2",
-                "phone": "555-0102",
-                "location": "New York, NY",
-                "skills": ["Python"],
-            },
-        )
-        assert js2_profile_response.status_code == HTTP_CREATED
-        js2_profile_id = js2_profile_response.json()["id"]
-
-        # Second job seeker applies
+        # 3. Second job seeker applies (using permanent test user)
         app2_response = await client.post(
             "/api/applications",
             headers=js2_headers,
