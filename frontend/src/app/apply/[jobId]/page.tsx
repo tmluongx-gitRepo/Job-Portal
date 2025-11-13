@@ -179,8 +179,11 @@ export default function JobApplicationPage(): ReactElement | null {
   // Handle External/Email application methods redirect
   // Use useEffect for client-side redirect to avoid hydration issues
   // Must be before any early returns to follow React hooks rules
+  // Only run after applicationSettings is loaded (not null)
   useEffect(() => {
-    if (applicationSettings?.applicationMethod === "External") {
+    if (!applicationSettings) return; // Wait for settings to load
+    
+    if (applicationSettings.applicationMethod === "External") {
       if (applicationSettings.externalUrl) {
         // Redirect to external URL (client-side only)
         window.location.href = applicationSettings.externalUrl;
@@ -190,10 +193,13 @@ export default function JobApplicationPage(): ReactElement | null {
 
   // Handle EEO page skip - redirect to page 5 if EEO is disabled and we're on page 4
   // Must be before any early returns to follow React hooks rules
+  // Only run after applicationSettings is loaded (not null)
   useEffect(() => {
+    if (!applicationSettings) return; // Wait for settings to load
+    
     if (
       currentPage === 4 &&
-      !applicationSettings?.equalOpportunityEnabled
+      !applicationSettings.equalOpportunityEnabled
     ) {
       setCurrentPage(5);
     }
@@ -364,9 +370,40 @@ export default function JobApplicationPage(): ReactElement | null {
     );
   };
 
+  // Reusable file validation function
+  const validateResumeFile = (file: File): { isValid: boolean; error?: string } => {
+    const allowedTypes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+      "application/msword", // .doc
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      return {
+        isValid: false,
+        error: "Invalid file type. Please upload a PDF, DOCX, or DOC file.",
+      };
+    }
+
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      return {
+        isValid: false,
+        error: "File too large. Maximum size is 5MB. Please compress your resume and try again.",
+      };
+    }
+
+    return { isValid: true };
+  };
+
   const handleResumeUpload = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0];
     if (file) {
+      const validation = validateResumeFile(file);
+      if (!validation.isValid) {
+        setError(validation.error || "Invalid file");
+        return;
+      }
       handleInputChange("resumeFile", file);
       handleInputChange("resumeFilename", file.name);
     }
@@ -402,22 +439,9 @@ export default function JobApplicationPage(): ReactElement | null {
       case 2:
         // Validate resume file if provided
         if (applicationData.resumeFile) {
-          // Validate file type
-          const allowedTypes = [
-            "application/pdf",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
-            "application/msword", // .doc
-          ];
-          if (!allowedTypes.includes(applicationData.resumeFile.type)) {
-            newErrors.resumeFile =
-              "Invalid file type. Please upload a PDF, DOCX, or DOC file.";
-          }
-
-          // Validate file size (5MB max)
-          const maxSize = 5 * 1024 * 1024; // 5MB
-          if (applicationData.resumeFile.size > maxSize) {
-            newErrors.resumeFile =
-              "File too large. Maximum size is 5MB. Please compress your resume and try again.";
+          const validation = validateResumeFile(applicationData.resumeFile);
+          if (!validation.isValid) {
+            newErrors.resumeFile = validation.error || "Invalid file";
           }
         }
 
@@ -516,24 +540,10 @@ export default function JobApplicationPage(): ReactElement | null {
       // Upload resume file if provided
       if (applicationData.resumeFile) {
         try {
-          // Validate file type
-          const allowedTypes = [
-            "application/pdf",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
-            "application/msword", // .doc
-          ];
-          if (!allowedTypes.includes(applicationData.resumeFile.type)) {
-            throw new Error(
-              "Invalid file type. Please upload a PDF, DOCX, or DOC file."
-            );
-          }
-
-          // Validate file size (5MB max)
-          const maxSize = 5 * 1024 * 1024; // 5MB
-          if (applicationData.resumeFile.size > maxSize) {
-            throw new Error(
-              "File too large. Maximum size is 5MB. Please compress your resume and try again."
-            );
+          // Validate file using reusable validation function
+          const validation = validateResumeFile(applicationData.resumeFile);
+          if (!validation.isValid) {
+            throw new Error(validation.error || "Invalid file");
           }
 
           // Upload resume to backend
