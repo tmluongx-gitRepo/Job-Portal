@@ -69,7 +69,7 @@ const initialProfileData = {
   ],
 };
 
-const completionItems = [
+const _completionItems = [
   {
     label: "Personal Information",
     completed: true,

@@ -32,22 +32,36 @@ import type {
 /**
  * Get the current authenticated user ID
  * 
- * TODO: Replace with actual auth context when authentication is implemented
- * Example: const { user } = useAuth(); return user?.id;
+ * ⚠️ CRITICAL SECURITY WARNING: This is a placeholder function that MUST be replaced
+ * with actual authentication before production deployment.
  * 
- * For now, this function blocks application submission if no user is authenticated
- * to prevent security issues with hardcoded user IDs.
+ * TODO: Replace with actual auth context when authentication is implemented
+ * Example: const { user, isAuthenticated } = useAuth(); 
+ *          if (!isAuthenticated || !user?.id) throw new Error("Not authenticated");
+ *          return user.id;
+ * 
+ * Current behavior: Blocks all application submissions by returning null.
+ * This prevents security issues from hardcoded user IDs but means the feature
+ * is non-functional until real authentication is implemented.
+ * 
+ * DO NOT bypass this check or hardcode user IDs in production!
  */
 function getCurrentUserId(): string | null {
-  // TODO: Replace with actual auth check
+  // TODO: CRITICAL - Implement real authentication before production
   // const { user, isAuthenticated } = useAuth();
   // if (!isAuthenticated || !user?.id) {
+  //   console.error("[SECURITY] Authentication required but not implemented");
   //   return null;
   // }
   // return user.id;
   
   // TEMPORARY: Return null to block submissions until auth is implemented
   // This prevents security issues from hardcoded user IDs
+  if (process.env.NODE_ENV === "development") {
+    console.warn(
+      "[SECURITY] getCurrentUserId() is a placeholder. Real authentication must be implemented before production."
+    );
+  }
   return null;
   
   // For development/testing only - remove before production:
@@ -110,7 +124,7 @@ export default function JobApplicationPage(): ReactElement | null {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
-  const [profile, setProfile] = useState<JobSeekerProfile | null>(null);
+  const [_profile, setProfile] = useState<JobSeekerProfile | null>(null);
   const [jobSeekerProfileId, setJobSeekerProfileId] = useState<string | null>(
     null
   );
@@ -161,6 +175,29 @@ export default function JobApplicationPage(): ReactElement | null {
       return;
     }
   }, [jobId, router]);
+
+  // Handle External/Email application methods redirect
+  // Use useEffect for client-side redirect to avoid hydration issues
+  // Must be before any early returns to follow React hooks rules
+  useEffect(() => {
+    if (applicationSettings?.applicationMethod === "External") {
+      if (applicationSettings.externalUrl) {
+        // Redirect to external URL (client-side only)
+        window.location.href = applicationSettings.externalUrl;
+      }
+    }
+  }, [applicationSettings]);
+
+  // Handle EEO page skip - redirect to page 5 if EEO is disabled and we're on page 4
+  // Must be before any early returns to follow React hooks rules
+  useEffect(() => {
+    if (
+      currentPage === 4 &&
+      !applicationSettings?.equalOpportunityEnabled
+    ) {
+      setCurrentPage(5);
+    }
+  }, [currentPage, applicationSettings]);
 
   // Fetch job and profile data
   useEffect(() => {
@@ -791,7 +828,10 @@ export default function JobApplicationPage(): ReactElement | null {
                 <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center">
                   <FileText className="w-4 h-4 text-green-600 mr-2" />
                   <span className="text-sm text-green-800">
-                    {applicationData.resumeFilename}
+                    {applicationData.resumeFilename
+                      .replace(/[<>"']/g, "")
+                      .replace(/javascript:/gi, "")
+                      .replace(/on\w+=/gi, "")}
                   </span>
                 </div>
               )}
@@ -1095,14 +1135,9 @@ export default function JobApplicationPage(): ReactElement | null {
         );
 
       case 4:
-        // Skip EEO page if disabled
+        // Skip EEO page if disabled - redirect handled in useEffect above
         if (!applicationSettings?.equalOpportunityEnabled) {
-          // Auto-advance to review page
-          if (currentPage === 4) {
-            setTimeout(() => {
-              setCurrentPage(5);
-            }, 0);
-          }
+          // Return empty while redirect happens via useEffect
           return <></>;
         }
 
@@ -1414,17 +1449,6 @@ export default function JobApplicationPage(): ReactElement | null {
   if (!job) {
     return null;
   }
-
-  // Handle External/Email application methods
-  // Use useEffect for client-side redirect to avoid hydration issues
-  useEffect(() => {
-    if (applicationSettings?.applicationMethod === "External") {
-      if (applicationSettings.externalUrl) {
-        // Redirect to external URL (client-side only)
-        window.location.href = applicationSettings.externalUrl;
-      }
-    }
-  }, [applicationSettings]);
 
   if (applicationSettings?.applicationMethod === "External") {
     if (applicationSettings.externalUrl) {

@@ -34,6 +34,7 @@ export default function JobApplicationSetupPage(): ReactElement {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -141,6 +142,12 @@ export default function JobApplicationSetupPage(): ReactElement {
     try {
       // TODO: When backend supports application settings, update the job with these settings
       // For now, we'll store them in localStorage as a temporary solution
+      // 
+      // ⚠️ LIMITATION: Settings are stored in browser localStorage, which means:
+      // - Settings are only available in the current browser/session
+      // - Settings are not shared across devices or users
+      // - Settings will be lost if browser data is cleared
+      // 
       // In the future, this should be: await api.jobs.update(jobId, { application_settings: ... })
       
       const settingsToSave = {
@@ -148,10 +155,19 @@ export default function JobApplicationSetupPage(): ReactElement {
         ...applicationSettings,
       };
       
-      localStorage.setItem(`job_application_settings_${jobId}`, JSON.stringify(settingsToSave));
-
-      // Redirect to job posting page or show success
-      router.push(`/job-posting?jobId=${jobId}&settingsSaved=true`);
+      try {
+        localStorage.setItem(`job_application_settings_${jobId}`, JSON.stringify(settingsToSave));
+        
+        // Show success feedback before redirect
+        setSuccess(true);
+        
+        // Small delay to show success message, then redirect
+        setTimeout(() => {
+          router.push(`/job-posting?jobId=${jobId}&settingsSaved=true`);
+        }, 1000);
+      } catch (storageError) {
+        throw new Error("Failed to save settings to browser storage");
+      }
     } catch (err) {
       console.error("Failed to save application settings:", err);
       if (err instanceof ApiError) {
@@ -685,6 +701,17 @@ export default function JobApplicationSetupPage(): ReactElement {
             <div className="flex items-center">
               <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
               <p className="text-red-800">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center">
+              <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+              <p className="text-green-800">
+                Settings saved successfully! Redirecting...
+              </p>
             </div>
           </div>
         )}
