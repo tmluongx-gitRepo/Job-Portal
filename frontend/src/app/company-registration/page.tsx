@@ -235,6 +235,80 @@ export default function CompanyRegistration(): React.JSX.Element {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Get missing mandatory fields for Create Account tab
+  const getMissingAccountFields = (): string[] => {
+    const missing: string[] = [];
+
+    if (
+      !registrationData.email.trim() ||
+      validateEmail(registrationData.email)
+    ) {
+      missing.push("Email Address");
+    }
+    if (
+      !companyProfile.company_name.trim() ||
+      companyProfile.company_name.trim().length < 2
+    ) {
+      missing.push("Company Name");
+    }
+    if (
+      !registrationData.first_name.trim() ||
+      validateName(registrationData.first_name, "First name")
+    ) {
+      missing.push("First Name");
+    }
+    if (
+      !registrationData.last_name.trim() ||
+      validateName(registrationData.last_name, "Last name")
+    ) {
+      missing.push("Last Name");
+    }
+    if (companyProfile.phone && validatePhone(companyProfile.phone)) {
+      missing.push("Phone Number (valid format)");
+    }
+
+    return missing;
+  };
+
+  // Get missing mandatory fields for Company Profile tab
+  const getMissingProfileFields = (): string[] => {
+    const missing: string[] = [];
+
+    if (
+      !companyProfile.description.trim() ||
+      validateDescription(companyProfile.description)
+    ) {
+      missing.push("Company Description");
+    }
+    if (!companyProfile.industry) {
+      missing.push("Industry");
+    }
+    if (!companyProfile.company_size) {
+      missing.push("Company Size");
+    }
+    if (!companyProfile.location.trim()) {
+      missing.push("Location");
+    }
+    if (companyProfile.website && validateWebsite(companyProfile.website)) {
+      missing.push("Website (valid format)");
+    }
+    if (
+      companyProfile.founded_year &&
+      validateFoundedYear(companyProfile.founded_year)
+    ) {
+      missing.push("Founded Year (valid year)");
+    }
+
+    return missing;
+  };
+
+  // Check if all mandatory fields are complete
+  const isRegistrationComplete = (): boolean => {
+    const missingAccount = getMissingAccountFields();
+    const missingProfile = getMissingProfileFields();
+    return missingAccount.length === 0 && missingProfile.length === 0;
+  };
+
   const handleNextToProfile = (): void => {
     if (validateRegisterTab()) {
       setActiveTab("profile");
@@ -839,6 +913,50 @@ export default function CompanyRegistration(): React.JSX.Element {
                 seekers. Make sure everything looks great!
               </div>
 
+              {/* Missing Fields Warning for Preview */}
+              {!isRegistrationComplete() && (
+                <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-xl mb-6">
+                  <div className="flex items-start">
+                    <span className="text-xl mr-3">⚠️</span>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-red-900 mb-2">
+                        Registration Incomplete
+                      </h3>
+                      <p className="text-red-800 text-sm mb-3">
+                        Please complete all required fields before submitting
+                        your registration.
+                      </p>
+
+                      {getMissingAccountFields().length > 0 && (
+                        <div className="mb-3">
+                          <h4 className="font-semibold text-red-800 text-sm mb-1">
+                            Create Account Tab:
+                          </h4>
+                          <ul className="list-disc list-inside text-red-700 text-sm space-y-1 ml-2">
+                            {getMissingAccountFields().map((field, index) => (
+                              <li key={index}>{field}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {getMissingProfileFields().length > 0 && (
+                        <div>
+                          <h4 className="font-semibold text-red-800 text-sm mb-1">
+                            Company Profile Tab:
+                          </h4>
+                          <ul className="list-disc list-inside text-red-700 text-sm space-y-1 ml-2">
+                            {getMissingProfileFields().map((field, index) => (
+                              <li key={index}>{field}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-6 mb-6">
                 <div className="flex items-start gap-5 mb-6">
                   <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center text-4xl border-2 border-green-500 flex-shrink-0">
@@ -942,7 +1060,17 @@ export default function CompanyRegistration(): React.JSX.Element {
                 </button>
                 <button
                   onClick={() => void submitRegistration()}
-                  className="px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                  disabled={!isRegistrationComplete()}
+                  className={`px-8 py-3 font-semibold rounded-xl shadow-lg transition-all ${
+                    isRegistrationComplete()
+                      ? "bg-gradient-to-r from-green-500 to-green-600 text-white hover:shadow-xl hover:-translate-y-0.5 cursor-pointer"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-60"
+                  }`}
+                  title={
+                    !isRegistrationComplete()
+                      ? "Please complete all required fields"
+                      : "Submit your registration"
+                  }
                 >
                   Complete Registration ✓
                 </button>
