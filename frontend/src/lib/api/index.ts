@@ -9,7 +9,7 @@
  */
 
 // Export error classes and utilities
-export { ApiError, ValidationError, API_URL } from "./client";
+export { ApiError, ValidationError, API_URL, uploadFile } from "./client";
 
 // Export all API functions
 export { userApi } from "./users";

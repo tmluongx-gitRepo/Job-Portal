@@ -9,7 +9,6 @@ import {
   MapPin,
   FileText,
   Upload,
-  Camera,
   Edit3,
   Save,
   Check,
@@ -102,11 +101,6 @@ const completionItems = [
     completed: false,
     description: "Current resume document",
   },
-  {
-    label: "Profile Photo",
-    completed: false,
-    description: "Professional headshot",
-  },
 ];
 
 export default function ProfilePage(): ReactElement {
@@ -118,6 +112,7 @@ export default function ProfilePage(): ReactElement {
   const [success, setSuccess] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [apiProfile, setApiProfile] = useState<JobSeekerProfile | null>(null);
+  const [skillInputValue, setSkillInputValue] = useState("");
 
   // ⚠️ TODO: Replace with actual user ID from auth context when authentication is implemented
   // This should come from: useAuth() hook, session, or auth context
@@ -221,11 +216,6 @@ export default function ProfilePage(): ReactElement {
       label: "Resume Upload",
       completed: false, // TODO: Track resume upload
       description: "Current resume document",
-    },
-    {
-      label: "Profile Photo",
-      completed: false, // TODO: Track photo upload
-      description: "Professional headshot",
     },
   ];
 
@@ -542,7 +532,7 @@ export default function ProfilePage(): ReactElement {
                     </span>
                   </div>
                   <p className="text-sm text-green-700">
-                    Adding a resume and photo will help employers get to know
+                    Adding a resume will help employers get to know
                     the amazing professional you are.
                   </p>
                 </div>
@@ -585,16 +575,6 @@ export default function ProfilePage(): ReactElement {
                     <User className="w-6 h-6 mr-2" />
                     Personal Information
                   </h3>
-
-                  {/* Profile Photo */}
-                  <div className="relative">
-                    <div className="w-16 h-16 bg-gradient-to-r from-green-100 to-amber-100 rounded-full flex items-center justify-center">
-                      <User className="w-8 h-8 text-green-600" />
-                    </div>
-                    <button className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600 transition-colors">
-                      <Camera className="w-3 h-3 text-white" />
-                    </button>
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1095,28 +1075,23 @@ export default function ProfilePage(): ReactElement {
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      id="skillInput"
+                      value={skillInputValue}
+                      onChange={(e) => setSkillInputValue(e.target.value)}
                       placeholder="Add a skill"
                       className="flex-1 px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
                       onKeyDown={(e) => {
-                        if (
-                          e.key === "Enter" &&
-                          (e.target as HTMLInputElement).value.trim()
-                        ) {
+                        if (e.key === "Enter" && skillInputValue.trim()) {
                           e.preventDefault();
-                          addSkill((e.target as HTMLInputElement).value);
-                          (e.target as HTMLInputElement).value = "";
+                          addSkill(skillInputValue);
+                          setSkillInputValue("");
                         }
                       }}
                     />
                     <button
                       onClick={() => {
-                        const input = document.getElementById(
-                          "skillInput"
-                        ) as HTMLInputElement;
-                        if (input && input.value.trim()) {
-                          addSkill(input.value);
-                          input.value = "";
+                        if (skillInputValue.trim()) {
+                          addSkill(skillInputValue);
+                          setSkillInputValue("");
                         }
                       }}
                       className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all text-sm"

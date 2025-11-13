@@ -621,8 +621,15 @@ export default function JobApplicationSetupPage(): ReactElement {
                   Application Preview
                 </h4>
                 <Link
-                  href={`/apply/${jobId || ""}`}
-                  className="flex items-center px-4 py-2 bg-green-50 text-green-700 border border-green-300 rounded-lg font-medium hover:bg-green-100 transition-all text-sm"
+                  href={jobId ? `/apply/${jobId}` : "#"}
+                  onClick={(e) => {
+                    if (!jobId) {
+                      e.preventDefault();
+                    }
+                  }}
+                  className={`flex items-center px-4 py-2 bg-green-50 text-green-700 border border-green-300 rounded-lg font-medium hover:bg-green-100 transition-all text-sm ${
+                    !jobId ? "pointer-events-none opacity-50 cursor-not-allowed" : ""
+                  }`}
                 >
                   <Eye className="w-4 h-4 mr-2" />
                   Preview Application Form

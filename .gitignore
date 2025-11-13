@@ -50,4 +50,5 @@ chroma_data/
 redis_data/
 
 # AI Example Files
-ai-mockups/PR_DESCRIPTION.md
+ai-mockups/
+PR_DESCRIPTION.md
