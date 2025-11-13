@@ -1329,7 +1329,7 @@ export default function JobApplicationPage(): ReactElement | null {
             href={`/jobs/${jobId}`}
             className="inline-block px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all"
           >
-            ← Back to Job Listing
+            ← Back to Job Listings
           </Link>
         </div>
       </div>
