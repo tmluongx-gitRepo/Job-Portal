@@ -19,6 +19,7 @@ from app.auth.auth_schemas import (
 )
 from app.auth.dependencies import get_current_user
 from app.auth.supabase_client import supabase
+from app.crud.user import create_user
 
 router = APIRouter()
 
@@ -81,6 +82,23 @@ async def register(user_data: UserSignUp) -> TokenResponse | dict[str, Any]:
 
         # Type narrowing for MyPy
         assert response.user is not None
+        assert response.user.email is not None
+
+        # Create user in MongoDB to sync with Supabase
+        try:
+            await create_user(
+                email=response.user.email,
+                account_type=user_data.account_type,
+                supabase_id=response.user.id,
+            )
+        except ValueError:
+            # User already exists in MongoDB, which is fine
+            # This can happen if registration was retried
+            pass
+        except Exception as e:
+            # Log the error but don't fail registration
+            # The user exists in Supabase, they can still use the app
+            print(f"Warning: Failed to sync user to MongoDB: {e}")
 
         # Check if email confirmation is required (no session returned)
         if not response.session:
@@ -93,7 +111,6 @@ async def register(user_data: UserSignUp) -> TokenResponse | dict[str, Any]:
 
         # Type narrowing for MyPy
         assert response.session is not None
-        assert response.user.email is not None
 
         # Extract user info
         user_info = UserInfo(
@@ -165,11 +182,26 @@ async def login(credentials: UserSignIn) -> TokenResponse:
 
         # Extract user metadata
         user_metadata = response.user.user_metadata or {}
+        account_type = user_metadata.get("account_type", "job_seeker")
+
+        # Sync user to MongoDB if not already present (for existing Supabase users)
+        try:
+            await create_user(
+                email=response.user.email,
+                account_type=account_type,
+                supabase_id=response.user.id,
+            )
+        except ValueError:
+            # User already exists in MongoDB, which is expected
+            pass
+        except Exception as e:
+            # Log the error but don't fail login
+            print(f"Warning: Failed to sync user to MongoDB during login: {e}")
 
         user_info = UserInfo(
             id=response.user.id,
             email=response.user.email,
-            account_type=user_metadata.get("account_type"),
+            account_type=account_type,
             email_verified=response.user.email_confirmed_at is not None,
             provider=response.user.app_metadata.get("provider", "email"),
             created_at=response.user.created_at,
