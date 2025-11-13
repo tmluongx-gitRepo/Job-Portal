@@ -22,8 +22,9 @@ import {
   RefreshCw,
   AlertCircle,
 } from "lucide-react";
-import { api, ApiError } from "../../lib/api";
+import { api, ApiError, ValidationError } from "../../lib/api";
 import type { JobSeekerProfile } from "../../lib/api";
+import type { z } from "zod";
 
 // TODO: Replace with API call to fetch user profile data
 const initialProfileData = {
@@ -275,10 +276,7 @@ export default function ProfilePage(): ReactElement {
   const addEducation = (): void => {
     setProfileData((prev) => ({
       ...prev,
-      education: [
-        ...prev.education,
-        { school: "", degree: "", year: "" },
-      ],
+      education: [...prev.education, { school: "", degree: "", year: "" }],
     }));
   };
 
@@ -312,11 +310,7 @@ export default function ProfilePage(): ReactElement {
     }));
   };
 
-  const updateProject = (
-    index: number,
-    field: string,
-    value: string
-  ): void => {
+  const updateProject = (index: number, field: string, value: string): void => {
     setProfileData((prev) => ({
       ...prev,
       projects: prev.projects.map((project, i) =>
@@ -396,7 +390,7 @@ export default function ProfilePage(): ReactElement {
     } catch (err) {
       console.error("Failed to save profile:", err);
       if (err instanceof ValidationError) {
-        const errorMessages = err.issues.map((issue) => {
+        const errorMessages = err.issues.map((issue: z.ZodIssue) => {
           const field = issue.path.join(".");
           return `${field}: ${issue.message}`;
         });
@@ -757,7 +751,6 @@ export default function ProfilePage(): ReactElement {
                   </p>
                 </div>
               </div>
-
 
               {/* Experience */}
               <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">

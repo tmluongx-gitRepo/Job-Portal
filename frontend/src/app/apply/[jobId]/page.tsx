@@ -23,7 +23,11 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { api, ApiError } from "../../../lib/api";
-import type { Job, JobSeekerProfile, ApplicationCreate } from "../../../lib/api";
+import type {
+  Job,
+  JobSeekerProfile,
+  ApplicationCreate,
+} from "../../../lib/api";
 
 // ⚠️ TODO: Replace with actual user ID from auth context when authentication is implemented
 const userId = "507f1f77bcf86cd799439011"; // PLACEHOLDER
@@ -73,7 +77,7 @@ interface ApplicationSettings {
   equalOpportunityEnabled: boolean;
 }
 
-export default function JobApplicationPage(): ReactElement {
+export default function JobApplicationPage(): ReactElement | null {
   const params = useParams();
   const router = useRouter();
   const jobId = params?.jobId as string;
@@ -194,9 +198,7 @@ export default function JobApplicationPage(): ReactElement {
           }));
         } catch (_err) {
           // Profile doesn't exist yet - that's okay
-          console.info(
-            "[Application] No profile found - user can still apply"
-          );
+          console.info("[Application] No profile found - user can still apply");
         }
       } catch (err) {
         console.error("Failed to fetch application data:", err);
@@ -219,7 +221,7 @@ export default function JobApplicationPage(): ReactElement {
 
   const handleInputChange = (
     field: keyof ApplicationFormData,
-    value: string | boolean | File | null
+    value: string | boolean | File | string[] | null
   ): void => {
     setApplicationData((prev) => ({
       ...prev,
@@ -227,7 +229,10 @@ export default function JobApplicationPage(): ReactElement {
     }));
   };
 
-  const handleScreeningResponse = (questionId: string, response: string): void => {
+  const handleScreeningResponse = (
+    questionId: string,
+    response: string
+  ): void => {
     setApplicationData((prev) => ({
       ...prev,
       screeningResponses: {
@@ -251,11 +256,7 @@ export default function JobApplicationPage(): ReactElement {
     }));
   };
 
-  const updateExperience = (
-    id: number,
-    field: string,
-    value: string
-  ): void => {
+  const updateExperience = (id: number, field: string, value: string): void => {
     setApplicationData((prev) => ({
       ...prev,
       experiences: prev.experiences.map((exp) =>
@@ -294,7 +295,9 @@ export default function JobApplicationPage(): ReactElement {
   };
 
   // Basic validation functions
-  const validatePage = (pageNumber: number): {
+  const validatePage = (
+    pageNumber: number
+  ): {
     isValid: boolean;
     errorCount: number;
   } => {
@@ -306,7 +309,8 @@ export default function JobApplicationPage(): ReactElement {
           newErrors.firstName = "First name is required";
         if (!applicationData.lastName.trim())
           newErrors.lastName = "Last name is required";
-        if (!applicationData.email.trim()) newErrors.email = "Email is required";
+        if (!applicationData.email.trim())
+          newErrors.email = "Email is required";
         else if (!/\S+@\S+\.\S+/.test(applicationData.email))
           newErrors.email = "Please enter a valid email";
         if (!applicationData.phone.trim())
@@ -422,7 +426,7 @@ export default function JobApplicationPage(): ReactElement {
     }
   };
 
-  const renderPage = (): ReactElement => {
+  const renderPage = (): ReactElement | null => {
     switch (currentPage) {
       case 1:
         return (
@@ -460,7 +464,9 @@ export default function JobApplicationPage(): ReactElement {
                 <input
                   type="text"
                   value={applicationData.firstName}
-                  onChange={(e) => handleInputChange("firstName", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("firstName", e.target.value)
+                  }
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent bg-white/80 ${
                     errors.firstName
                       ? "border-red-300 focus:ring-red-400"
@@ -469,7 +475,9 @@ export default function JobApplicationPage(): ReactElement {
                   required
                 />
                 {errors.firstName && (
-                  <p className="text-red-600 text-sm mt-1">{errors.firstName}</p>
+                  <p className="text-red-600 text-sm mt-1">
+                    {errors.firstName}
+                  </p>
                 )}
               </div>
 
@@ -480,7 +488,9 @@ export default function JobApplicationPage(): ReactElement {
                 <input
                   type="text"
                   value={applicationData.lastName}
-                  onChange={(e) => handleInputChange("lastName", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("lastName", e.target.value)
+                  }
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent bg-white/80 ${
                     errors.lastName
                       ? "border-red-300 focus:ring-red-400"
@@ -578,7 +588,7 @@ export default function JobApplicationPage(): ReactElement {
                       ? "border-red-300 focus:ring-red-400"
                       : "border-green-300 focus:ring-green-400"
                   }`}
-                  placeholder="85001"
+                  placeholder="5-digit zip code"
                   pattern="[0-9]{5}(-[0-9]{4})?"
                   required
                 />
@@ -628,7 +638,9 @@ export default function JobApplicationPage(): ReactElement {
                     or drag and drop your resume here
                   </p>
                 </div>
-                <p className="text-xs text-green-500">PDF, DOC, or DOCX • Max 5MB</p>
+                <p className="text-xs text-green-500">
+                  PDF, DOC, or DOCX • Max 5MB
+                </p>
               </div>
 
               {applicationData.resumeFilename && (
@@ -855,10 +867,9 @@ export default function JobApplicationPage(): ReactElement {
         // Show screening questions and cover letter based on settings
         const hasScreeningQuestions =
           applicationSettings?.screeningQuestions &&
-          applicationSettings.screeningQuestions.filter((q) => q.trim()).length >
-            0;
-        const showCoverLetter =
-          applicationSettings?.requireCoverLetter ?? true;
+          applicationSettings.screeningQuestions.filter((q) => q.trim())
+            .length > 0;
+        const showCoverLetter = applicationSettings?.requireCoverLetter ?? true;
 
         return (
           <div className="space-y-6">
@@ -953,7 +964,7 @@ export default function JobApplicationPage(): ReactElement {
               setCurrentPage(5);
             }, 0);
           }
-          return null;
+          return <></>;
         }
 
         return (
@@ -1156,7 +1167,9 @@ export default function JobApplicationPage(): ReactElement {
                   ) : (
                     <p>○ Resume not uploaded</p>
                   )}
-                  {applicationData.coverLetter && <p>✓ Cover letter provided</p>}
+                  {applicationData.coverLetter && (
+                    <p>✓ Cover letter provided</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1290,8 +1303,8 @@ export default function JobApplicationPage(): ReactElement {
             Apply via Email
           </h2>
           <p className="text-green-700 mb-6">
-            This employer prefers to receive applications via email. Please
-            send your resume and cover letter to:
+            This employer prefers to receive applications via email. Please send
+            your resume and cover letter to:
           </p>
           {applicationSettings.applicationEmail && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
@@ -1472,4 +1485,3 @@ export default function JobApplicationPage(): ReactElement {
     </div>
   );
 }
-
