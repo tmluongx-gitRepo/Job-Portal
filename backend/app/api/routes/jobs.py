@@ -358,7 +358,10 @@ async def get_job_analytics(
 
         for interview in interviews:
             interview_status = interview.get("status", "")
-            if interview_status in [InterviewStatus.SCHEDULED.value, InterviewStatus.RESCHEDULED.value]:
+            if interview_status in [
+                InterviewStatus.SCHEDULED.value,
+                InterviewStatus.RESCHEDULED.value,
+            ]:
                 interviews_scheduled += 1
             elif interview_status == InterviewStatus.COMPLETED.value:
                 interviews_completed += 1
