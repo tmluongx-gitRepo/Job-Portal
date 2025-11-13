@@ -13,7 +13,9 @@ from app.schemas.employer import (
     EmployerProfileResponse,
     EmployerProfileUpdate,
 )
+from app.schemas.stats import EmployerJobStatsResponse, TopJobStats
 from app.type_definitions import EmployerProfileDocument
+from app.utils.datetime_utils import ensure_utc_datetime
 
 router = APIRouter()
 
@@ -200,3 +202,106 @@ async def delete_profile(profile_id: str, current_user: dict = Depends(get_curre
 
     if not deleted:
         raise HTTPException(status_code=404, detail="Employer profile not found")
+
+
+@router.get("/user/{user_id}/job-stats", response_model=EmployerJobStatsResponse)
+async def get_employer_job_stats(
+    user_id: str, current_user: dict = Depends(get_current_user)
+) -> EmployerJobStatsResponse:
+    """
+    Get job management statistics for an employer.
+
+    **Requires:** Authentication
+    **Authorization:** Only the employer user or admin
+
+    **Note:** Current implementation loads all jobs/applications into memory.
+    For production use with large datasets, consider implementing pagination or
+    MongoDB aggregation pipelines.
+
+    Returns aggregated statistics including:
+    - Total jobs posted (active vs inactive)
+    - Total applications received across all jobs
+    - Recent application activity (last 7 days)
+    - Top 5 jobs by application count
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from app.auth.auth_utils import is_admin
+    from app.database import get_applications_collection, get_jobs_collection
+
+    # Check authorization
+    if user_id != current_user["id"] and not is_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only view your own job statistics",
+        )
+
+    jobs_collection = get_jobs_collection()
+    applications_collection = get_applications_collection()
+
+    # Get all jobs posted by this employer
+    jobs_cursor = jobs_collection.find({"posted_by": user_id})
+    jobs = await jobs_cursor.to_list(length=10000)
+
+    total_jobs = len(jobs)
+    active_jobs = sum(1 for job in jobs if job.get("is_active", True))
+    inactive_jobs = total_jobs - active_jobs
+
+    # Get all job IDs
+    job_ids = [str(job["_id"]) for job in jobs]
+
+    # Get all applications for these jobs
+    total_applications_received = 0
+    applications_this_week = 0
+    job_application_counts: dict[str, int] = {}
+
+    if job_ids:
+        applications_cursor = applications_collection.find({"job_id": {"$in": job_ids}})
+        applications = await applications_cursor.to_list(length=10000)
+
+        total_applications_received = len(applications)
+
+        # Calculate recent applications (last 7 days)
+        seven_days_ago = datetime.now(UTC) - timedelta(days=7)
+        applications_this_week = 0
+        for app in applications:
+            applied_date = app.get("applied_date")
+            if applied_date:
+                # Use utility function for timezone-aware comparison
+                applied_date = ensure_utc_datetime(applied_date)
+                if applied_date and applied_date >= seven_days_ago:
+                    applications_this_week += 1
+
+        # Count applications per job
+        for app in applications:
+            job_id = app.get("job_id", "")
+            job_application_counts[job_id] = job_application_counts.get(job_id, 0) + 1
+
+    # Create job lookup map
+    job_map = {str(job["_id"]): job for job in jobs}
+
+    # Build top jobs list
+    top_jobs_data = []
+    for job_id, app_count in sorted(
+        job_application_counts.items(), key=lambda x: x[1], reverse=True
+    )[:5]:
+        job = job_map.get(job_id)
+        if job:
+            top_jobs_data.append(
+                TopJobStats(
+                    job_id=job_id,
+                    title=job["title"],
+                    applications=app_count,
+                    is_active=job.get("is_active", True),
+                )
+            )
+
+    return EmployerJobStatsResponse(
+        employer_id=user_id,
+        total_jobs=total_jobs,
+        active_jobs=active_jobs,
+        inactive_jobs=inactive_jobs,
+        total_applications_received=total_applications_received,
+        applications_this_week=applications_this_week,
+        top_jobs=top_jobs_data,
+    )

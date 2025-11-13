@@ -29,24 +29,41 @@ DEFAULT_ADMIN_PASSWORD = "AdminPass123!"
 DEFAULT_EMPLOYER_PASSWORD = "EmpPass123!"
 DEFAULT_JOB_SEEKER_PASSWORD = "JSPass123!"
 
-# Permanent Test Users (created once in Supabase, reused across all tests)
-TEST_USERS = {
-    "job_seeker": {
-        "email": "test.jobseeker@yourapp.com",
-        "password": "TestJobSeeker123!",
-        "account_type": "job_seeker",
-    },
-    "employer": {
-        "email": "test.employer@yourapp.com",
-        "password": "TestEmployer123!",
-        "account_type": "employer",
-    },
-    "admin": {
-        "email": "test.admin@yourapp.com",
-        "password": "TestAdmin123!",
-        "account_type": "admin",
-    },
-}
+# Import test users from fixtures module for backward compatibility
+from tests.fixtures.test_users import TEST_USERS  # noqa: E402
+
+__all__ = [
+    "DEFAULT_ADMIN_PASSWORD",
+    "DEFAULT_EMPLOYER_PASSWORD",
+    "DEFAULT_JOB_SEEKER_PASSWORD",
+    "DEFAULT_LIMIT",
+    # Defaults
+    "DEFAULT_PASSWORD",
+    "DEFAULT_SKILLS",
+    "DEFAULT_SKIP",
+    "DEFAULT_TIMEOUT",
+    "EXTENDED_SKILLS",
+    "EXTENDED_SKILLS_COUNT",
+    "HTTP_BAD_REQUEST",
+    "HTTP_CONFLICT",
+    "HTTP_CREATED",
+    "HTTP_FORBIDDEN",
+    "HTTP_INTERNAL_SERVER_ERROR",
+    "HTTP_NOT_FOUND",
+    "HTTP_NO_CONTENT",
+    # HTTP Status Codes
+    "HTTP_OK",
+    "HTTP_UNAUTHORIZED",
+    # Test constants
+    "MIN_PAGE_SIZE",
+    "PAGINATION_LIMIT_DEFAULT",
+    "TEST_EXPERIENCE_YEARS",
+    "TEST_MIN_EXPERIENCE",
+    "TEST_MIN_SALARY",
+    "TEST_SKILL_COUNT",
+    # Test Users
+    "TEST_USERS",
+]
 
 # Pagination
 DEFAULT_SKIP = 0

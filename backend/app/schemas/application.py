@@ -40,7 +40,9 @@ class ApplicationResponse(ApplicationBase):
 
     id: str
     job_seeker_id: str
-    status: str  # "Application Submitted", "Under Review", "Interview Scheduled", "Rejected", "Accepted"
+    status: str  # Workflow: "Application Submitted" → "Under Review" → "Interview Scheduled"
+    # → "interviewed" → "Offer Extended" → "Accepted" (final)
+    # Can be "Rejected" at any point (final)
     applied_date: datetime
     next_step: str | None = None
     interview_scheduled_date: datetime | None = None

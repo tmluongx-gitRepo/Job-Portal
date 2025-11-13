@@ -13,7 +13,7 @@ import asyncio
 from supabase import create_client
 
 from app.config import settings
-from tests.constants import TEST_USERS
+from tests.fixtures.test_users import TEST_USERS
 
 
 async def setup_test_users() -> None:

@@ -816,3 +816,125 @@ class TestJobsRBAC:
         job_detail = detail_response.json()
         assert "title" in job_detail
         assert "description" in job_detail
+
+    # ============================================================================
+    # ANALYTICS ENDPOINT TESTS
+    # ============================================================================
+
+    @pytest.mark.asyncio
+    async def test_employer_can_view_own_job_analytics(
+        self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
+    ) -> None:
+        """Employer can view analytics for their own job."""
+        emp_token, _, _ = employer_with_profile
+        emp_headers = {"Authorization": f"Bearer {emp_token}"}
+
+        # Create a job
+        job_response = await client.post(
+            "/api/jobs",
+            headers=emp_headers,
+            json={
+                "title": "Analytics Test Job",
+                "company": "Test Company",
+                "description": "Test job for analytics",
+                "location": "Remote",
+                "job_type": "Full-time",
+            },
+        )
+        assert job_response.status_code == HTTP_CREATED
+        job_id = job_response.json()["id"]
+
+        # Get analytics for the job
+        analytics_response = await client.get(f"/api/jobs/{job_id}/analytics", headers=emp_headers)
+        assert analytics_response.status_code == HTTP_OK
+
+        analytics = analytics_response.json()
+        assert analytics["job_id"] == job_id
+        assert analytics["job_title"] == "Analytics Test Job"
+        assert "total_applications" in analytics
+        assert "applications_by_status" in analytics
+        assert "recent_applications_count" in analytics
+        assert "interviews_scheduled" in analytics
+        assert "interviews_completed" in analytics
+        assert "avg_interview_rating" in analytics
+        assert "last_application_date" in analytics
+
+    @pytest.mark.asyncio
+    async def test_non_owner_cannot_view_job_analytics(
+        self,
+        client: AsyncClient,
+        employer_with_profile: tuple[str, str, str],
+        job_seeker_with_profile: tuple[str, str, str],
+    ) -> None:
+        """Non-owner cannot view analytics for someone else's job."""
+        emp_token, _, _ = employer_with_profile
+        js_token, _, _ = job_seeker_with_profile
+
+        emp_headers = {"Authorization": f"Bearer {emp_token}"}
+        js_headers = {"Authorization": f"Bearer {js_token}"}
+
+        # Employer creates a job
+        job_response = await client.post(
+            "/api/jobs",
+            headers=emp_headers,
+            json={
+                "title": "Private Analytics Job",
+                "company": "Company 1",
+                "description": "Test",
+                "location": "Remote",
+                "job_type": "Full-time",
+            },
+        )
+        assert job_response.status_code == HTTP_CREATED
+        job_id = job_response.json()["id"]
+
+        # Job seeker tries to view analytics
+        analytics_response = await client.get(f"/api/jobs/{job_id}/analytics", headers=js_headers)
+        assert analytics_response.status_code == HTTP_FORBIDDEN
+
+    @pytest.mark.asyncio
+    async def test_job_seeker_cannot_view_job_analytics(
+        self,
+        client: AsyncClient,
+        employer_with_profile: tuple[str, str, str],
+        job_seeker_with_profile: tuple[str, str, str],
+    ) -> None:
+        """Job seeker cannot view job analytics."""
+        emp_token, _, _ = employer_with_profile
+        js_token, _, _ = job_seeker_with_profile
+
+        emp_headers = {"Authorization": f"Bearer {emp_token}"}
+        js_headers = {"Authorization": f"Bearer {js_token}"}
+
+        # Employer creates a job
+        job_response = await client.post(
+            "/api/jobs",
+            headers=emp_headers,
+            json={
+                "title": "Restricted Analytics Job",
+                "company": "Test Company",
+                "description": "Test",
+                "location": "Remote",
+                "job_type": "Full-time",
+            },
+        )
+        assert job_response.status_code == HTTP_CREATED
+        job_id = job_response.json()["id"]
+
+        # Job seeker tries to view analytics
+        analytics_response = await client.get(f"/api/jobs/{job_id}/analytics", headers=js_headers)
+        assert analytics_response.status_code == HTTP_FORBIDDEN
+
+    @pytest.mark.asyncio
+    async def test_analytics_returns_404_for_nonexistent_job(
+        self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
+    ) -> None:
+        """Analytics endpoint returns 404 for non-existent job."""
+        emp_token, _, _ = employer_with_profile
+        emp_headers = {"Authorization": f"Bearer {emp_token}"}
+
+        fake_job_id = "507f1f77bcf86cd799439011"
+        analytics_response = await client.get(
+            f"/api/jobs/{fake_job_id}/analytics", headers=emp_headers
+        )
+        assert analytics_response.status_code == 404  # noqa: PLR2004

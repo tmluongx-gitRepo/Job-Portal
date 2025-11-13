@@ -243,14 +243,14 @@ class TestInterviewsRBAC:
     ) -> None:
         """Interview list supports status filtering."""
         response = await client.get(
-            "/api/interviews?status=scheduled",
+            "/api/interviews?status=Scheduled",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == HTTP_OK
         data = response.json()
-        # All returned interviews should have status 'scheduled'
+        # All returned interviews should have status 'Scheduled'
         for interview in data["interviews"]:
-            assert interview.get("status") in ["scheduled", None]  # None if empty
+            assert interview.get("status") in ["Scheduled", None]  # None if empty
 
     async def test_interview_list_upcoming_only(
         self, client: AsyncClient, admin_token: str

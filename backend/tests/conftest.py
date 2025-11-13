@@ -479,6 +479,54 @@ async def employer_token(session_client: AsyncClient) -> str:
     )
 
 
+@pytest_asyncio.fixture(scope="session")
+async def job_seeker_2_token(session_client: AsyncClient) -> str:
+    """
+    Login as second permanent test job seeker (session-scoped).
+
+    Used for cross-user tests without creating temporary users.
+    """
+    user = TEST_USERS["job_seeker_2"]
+
+    login_response = await session_client.post(
+        "/api/auth/login", json={"email": user["email"], "password": user["password"]}
+    )
+
+    if login_response.status_code == HTTP_OK:
+        token: str = login_response.json()["access_token"]
+        return token
+
+    pytest.fail(
+        f"Failed to login test job seeker 2: {login_response.status_code}\n"
+        f"Response: {login_response.json()}\n"
+        f"Did you run 'python -m tests.setup_test_users' to create test users?"
+    )
+
+
+@pytest_asyncio.fixture(scope="session")
+async def employer_2_token(session_client: AsyncClient) -> str:
+    """
+    Login as second permanent test employer (session-scoped).
+
+    Used for cross-user tests without creating temporary users.
+    """
+    user = TEST_USERS["employer_2"]
+
+    login_response = await session_client.post(
+        "/api/auth/login", json={"email": user["email"], "password": user["password"]}
+    )
+
+    if login_response.status_code == HTTP_OK:
+        token: str = login_response.json()["access_token"]
+        return token
+
+    pytest.fail(
+        f"Failed to login test employer 2: {login_response.status_code}\n"
+        f"Response: {login_response.json()}\n"
+        f"Did you run 'python -m tests.setup_test_users' to create test users?"
+    )
+
+
 @pytest_asyncio.fixture
 async def job_seeker_with_profile(
     client: AsyncClient, job_seeker_token: str, test_cleaner: DataCleaner
@@ -630,6 +678,157 @@ async def employer_with_profile(
             )
 
     return employer_token, user_id, profile_id
+
+
+@pytest_asyncio.fixture
+async def job_seeker_2_with_profile(
+    client: AsyncClient, job_seeker_2_token: str, test_cleaner: DataCleaner
+) -> tuple[str, str, str]:
+    """
+    Create second job seeker with a complete profile.
+
+    Used for cross-user authorization tests.
+    Returns (token, user_id, profile_id).
+    """
+    if not job_seeker_2_token:
+        pytest.skip("Cannot create job seeker 2 token (email confirmation required)")
+
+    headers = {"Authorization": f"Bearer {job_seeker_2_token}"}
+
+    # Get user info (this triggers JIT provisioning if user doesn't exist)
+    user_response = await client.get("/api/users/me", headers=headers)
+    if user_response.status_code != HTTP_OK:
+        pytest.skip(f"Cannot get user info for job seeker 2: {user_response.status_code}")
+
+    user_id = user_response.json()["id"]
+
+    # Check if profile already exists
+    existing_profile_response = await client.get(
+        f"/api/job-seeker-profiles/user/{user_id}", headers=headers
+    )
+
+    if existing_profile_response.status_code == HTTP_OK:
+        # Profile exists, use it
+        profile_id = existing_profile_response.json()["id"]
+    else:
+        # Profile doesn't exist, create it
+        profile_response = await client.post(
+            "/api/job-seeker-profiles",
+            headers=headers,
+            json={
+                "user_id": user_id,
+                "first_name": "Test",
+                "last_name": "JobSeeker2",
+                "email": TEST_USERS["job_seeker_2"]["email"],
+                "phone": "555-5678",
+                "location": "New York, NY",
+                "skills": ["JavaScript", "React"],
+                "bio": "Second test job seeker",
+            },
+        )
+
+        if profile_response.status_code == HTTP_CREATED:
+            profile_id = profile_response.json()["id"]
+            # Track profile for cleanup
+            test_cleaner.track_profile(profile_id, "job_seeker")
+        elif profile_response.status_code == HTTP_BAD_REQUEST:
+            # Profile already exists (race condition), fetch it
+            error_detail = profile_response.json() if profile_response.content else {}
+            if "already have" in str(error_detail.get("detail", "")).lower():
+                existing_profile_response = await client.get(
+                    f"/api/job-seeker-profiles/user/{user_id}", headers=headers
+                )
+                if existing_profile_response.status_code == HTTP_OK:
+                    profile_id = existing_profile_response.json()["id"]
+                else:
+                    pytest.skip(
+                        f"Profile exists but cannot fetch it: {existing_profile_response.status_code}"
+                    )
+            else:
+                pytest.skip(f"Cannot create job seeker 2 profile: 400\nError: {error_detail}")
+        else:
+            error_detail = profile_response.json() if profile_response.content else "No content"
+            pytest.skip(
+                f"Cannot create job seeker 2 profile: {profile_response.status_code}\n"
+                f"Error: {error_detail}"
+            )
+
+    return job_seeker_2_token, user_id, profile_id
+
+
+@pytest_asyncio.fixture
+async def employer_2_with_profile(
+    client: AsyncClient, employer_2_token: str, test_cleaner: DataCleaner
+) -> tuple[str, str, str]:
+    """
+    Create second employer with a complete profile.
+
+    Used for cross-user authorization tests.
+    Returns (token, user_id, profile_id).
+    """
+    if not employer_2_token:
+        pytest.skip("Cannot create employer 2 token (email confirmation required)")
+
+    headers = {"Authorization": f"Bearer {employer_2_token}"}
+
+    # Get user info (this triggers JIT provisioning if user doesn't exist)
+    user_response = await client.get("/api/users/me", headers=headers)
+    if user_response.status_code != HTTP_OK:
+        pytest.skip(f"Cannot get user info for employer 2: {user_response.status_code}")
+
+    user_id = user_response.json()["id"]
+
+    # Check if profile already exists
+    existing_profile_response = await client.get(
+        f"/api/employer-profiles/user/{user_id}", headers=headers
+    )
+
+    if existing_profile_response.status_code == HTTP_OK:
+        # Profile exists, use it
+        profile_id = existing_profile_response.json()["id"]
+    else:
+        # Create new profile
+        profile_response = await client.post(
+            "/api/employer-profiles",
+            headers=headers,
+            json={
+                "user_id": user_id,
+                "company_name": "Second Test Company",
+                "industry": "Finance",
+                "company_size": "10-50",
+                "website": "https://secondtest.com",
+                "location": "New York, NY",
+                "description": "Second test company",
+            },
+        )
+
+        if profile_response.status_code == HTTP_CREATED:
+            profile_id = profile_response.json()["id"]
+            # Track profile for cleanup
+            test_cleaner.track_profile(profile_id, "employer")
+        elif profile_response.status_code == HTTP_BAD_REQUEST:
+            # Profile already exists (race condition), fetch it
+            error_detail = profile_response.json() if profile_response.content else {}
+            if "already have" in str(error_detail.get("detail", "")).lower():
+                existing_profile_response = await client.get(
+                    f"/api/employer-profiles/user/{user_id}", headers=headers
+                )
+                if existing_profile_response.status_code == HTTP_OK:
+                    profile_id = existing_profile_response.json()["id"]
+                else:
+                    pytest.skip(
+                        f"Profile exists but cannot fetch it: {existing_profile_response.status_code}"
+                    )
+            else:
+                pytest.skip(f"Cannot create employer 2 profile: 400\nError: {error_detail}")
+        else:
+            error_detail = profile_response.json() if profile_response.content else "No content"
+            pytest.skip(
+                f"Cannot create employer 2 profile: {profile_response.status_code}\n"
+                f"Error: {error_detail}"
+            )
+
+    return employer_2_token, user_id, profile_id
 
 
 @pytest_asyncio.fixture

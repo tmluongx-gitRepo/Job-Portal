@@ -99,7 +99,10 @@ class JobDocument(TypedDict):
     posted_by: NotRequired[str]
     industry: NotRequired[str]
     company_size: NotRequired[str]
-    is_active: bool
+    is_active: bool  # Whether job is currently accepting applications (can be toggled by employer)
+    filled: (
+        bool  # Whether position has been filled (set when application accepted) - defaults to False
+    )
     view_count: int
     application_count: int
     created_at: datetime

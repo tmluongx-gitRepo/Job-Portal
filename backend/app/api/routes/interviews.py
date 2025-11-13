@@ -49,7 +49,9 @@ def _serialize_interview(interview: dict, current_user: dict | None = None) -> d
         "interviewer_email": interview.get("interviewer_email"),
         "interviewer_phone": interview.get("interviewer_phone"),
         "notes": interview.get("notes"),  # Public notes visible to job seekers
-        "status": interview["status"],
+        "status": interview["status"].title()
+        if isinstance(interview.get("status"), str)
+        else interview["status"],  # Normalize to title case for backward compatibility
         "reminder_sent": interview.get("reminder_sent", False),
         "cancelled_by": interview.get("cancelled_by"),
         "cancelled_reason": interview.get("cancelled_reason"),
@@ -526,8 +528,10 @@ async def complete_interview(
         )
 
     # Update application status
+    from app.constants import ApplicationStatus
+
     update_data: dict[str, object] = {
-        "status": "interviewed",
+        "status": ApplicationStatus.INTERVIEWED.value,
         "next_step": completion_data.next_step or "Awaiting decision",
     }
     await application_crud.update_application(interview["application_id"], update_data)

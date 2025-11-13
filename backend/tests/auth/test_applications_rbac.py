@@ -1447,3 +1447,168 @@ class TestApplicationsRBAC:
         )
         assert update2.status_code == HTTP_OK
         assert update2.json()["status"] == "Interview Scheduled"
+
+
+class TestApplicationStatusTransitions:
+    """Test status transition validation and authorization."""
+
+    @pytest.mark.asyncio
+    async def test_cannot_accept_without_offer(
+        self,
+        client: AsyncClient,
+        employer_with_profile: tuple[str, str, str],
+        job_seeker_with_profile: tuple[str, str, str],
+    ) -> None:
+        """Cannot accept application without offer being extended."""
+        emp_token, _, _ = employer_with_profile
+        js_token, _, js_profile_id = job_seeker_with_profile
+
+        emp_headers = {"Authorization": f"Bearer {emp_token}"}
+        js_headers = {"Authorization": f"Bearer {js_token}"}
+
+        # Create job
+        job_response = await client.post(
+            "/api/jobs",
+            headers=emp_headers,
+            json={
+                "title": "Test Job",
+                "company": "Test Co",
+                "description": "Test",
+                "location": "Remote",
+                "job_type": "Full-time",
+            },
+        )
+        assert job_response.status_code == HTTP_CREATED
+        job_id = job_response.json()["id"]
+
+        # Apply
+        app_response = await client.post(
+            "/api/applications",
+            headers=js_headers,
+            json={"job_id": job_id, "job_seeker_id": js_profile_id, "notes": "Test"},
+        )
+        assert app_response.status_code == HTTP_CREATED
+        app_id = app_response.json()["id"]
+
+        # Try to accept directly without offer
+        accept_response = await client.put(
+            f"/api/applications/{app_id}",
+            headers=emp_headers,
+            json={"status": "Accepted"},
+        )
+        assert accept_response.status_code == 400  # noqa: PLR2004
+        assert "offer" in accept_response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_cannot_modify_accepted_application(
+        self,
+        client: AsyncClient,
+        employer_with_profile: tuple[str, str, str],
+        job_seeker_with_profile: tuple[str, str, str],
+    ) -> None:
+        """Cannot change status of already accepted application."""
+        emp_token, _, _ = employer_with_profile
+        js_token, _, js_profile_id = job_seeker_with_profile
+
+        emp_headers = {"Authorization": f"Bearer {emp_token}"}
+        js_headers = {"Authorization": f"Bearer {js_token}"}
+
+        # Create job
+        job_response = await client.post(
+            "/api/jobs",
+            headers=emp_headers,
+            json={
+                "title": "Test Job",
+                "company": "Test Co",
+                "description": "Test",
+                "location": "Remote",
+                "job_type": "Full-time",
+            },
+        )
+        assert job_response.status_code == HTTP_CREATED
+        job_id = job_response.json()["id"]
+
+        # Apply
+        app_response = await client.post(
+            "/api/applications",
+            headers=js_headers,
+            json={"job_id": job_id, "job_seeker_id": js_profile_id, "notes": "Test"},
+        )
+        assert app_response.status_code == HTTP_CREATED
+        app_id = app_response.json()["id"]
+
+        # Extend offer
+        await client.put(
+            f"/api/applications/{app_id}",
+            headers=emp_headers,
+            json={"status": "Offer Extended"},
+        )
+
+        # Accept
+        await client.put(
+            f"/api/applications/{app_id}",
+            headers=emp_headers,
+            json={"status": "Accepted"},
+        )
+
+        # Try to reject after acceptance
+        reject_response = await client.put(
+            f"/api/applications/{app_id}",
+            headers=emp_headers,
+            json={"status": "Rejected"},
+        )
+        assert reject_response.status_code == 400  # noqa: PLR2004
+        assert "accepted" in reject_response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_job_seeker_cannot_accept_own_application(
+        self,
+        client: AsyncClient,
+        employer_with_profile: tuple[str, str, str],
+        job_seeker_with_profile: tuple[str, str, str],
+    ) -> None:
+        """Job seeker cannot change status (including accepting)."""
+        emp_token, _, _ = employer_with_profile
+        js_token, _, js_profile_id = job_seeker_with_profile
+
+        emp_headers = {"Authorization": f"Bearer {emp_token}"}
+        js_headers = {"Authorization": f"Bearer {js_token}"}
+
+        # Create job
+        job_response = await client.post(
+            "/api/jobs",
+            headers=emp_headers,
+            json={
+                "title": "Test Job",
+                "company": "Test Co",
+                "description": "Test",
+                "location": "Remote",
+                "job_type": "Full-time",
+            },
+        )
+        assert job_response.status_code == HTTP_CREATED
+        job_id = job_response.json()["id"]
+
+        # Apply
+        app_response = await client.post(
+            "/api/applications",
+            headers=js_headers,
+            json={"job_id": job_id, "job_seeker_id": js_profile_id, "notes": "Test"},
+        )
+        assert app_response.status_code == HTTP_CREATED
+        app_id = app_response.json()["id"]
+
+        # Extend offer (employer)
+        await client.put(
+            f"/api/applications/{app_id}",
+            headers=emp_headers,
+            json={"status": "Offer Extended"},
+        )
+
+        # Job seeker tries to accept their own application
+        accept_response = await client.put(
+            f"/api/applications/{app_id}",
+            headers=js_headers,
+            json={"status": "Accepted"},
+        )
+        assert accept_response.status_code == HTTP_FORBIDDEN

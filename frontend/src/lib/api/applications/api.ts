@@ -82,4 +82,34 @@ export const applicationApi = {
       responseSchema: z.object({ count: z.number() }),
     });
   },
+
+  /**
+   * Helper: Reject an application with a reason
+   */
+  async reject(applicationId: string, rejectionReason: string) {
+    return this.update(applicationId, {
+      status: "Rejected",
+      rejection_reason: rejectionReason,
+    });
+  },
+
+  /**
+   * Helper: Extend an offer to an applicant
+   */
+  async extendOffer(applicationId: string, nextStep?: string) {
+    return this.update(applicationId, {
+      status: "Offer Extended",
+      next_step: nextStep || "Awaiting candidate response",
+    });
+  },
+
+  /**
+   * Helper: Accept an application (marks job as filled, rejects others)
+   */
+  async accept(applicationId: string) {
+    return this.update(applicationId, {
+      status: "Accepted",
+      next_step: "Onboarding",
+    });
+  },
 };

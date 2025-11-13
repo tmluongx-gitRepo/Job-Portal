@@ -3,9 +3,12 @@ from collections.abc import Iterable
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.auth.dependencies import get_current_user, get_optional_user, require_employer
+from app.constants import InterviewStatus
 from app.crud import job as job_crud
 from app.schemas.job import JobCreate, JobResponse, JobUpdate
+from app.schemas.stats import JobAnalyticsResponse
 from app.type_definitions import JobDocument
+from app.utils.datetime_utils import ensure_utc_datetime
 
 router = APIRouter()
 
@@ -266,3 +269,118 @@ async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Job with id {job_id} not found"
         )
+
+
+@router.get("/{job_id}/analytics", response_model=JobAnalyticsResponse)
+async def get_job_analytics(
+    job_id: str, current_user: dict = Depends(get_current_user)
+) -> JobAnalyticsResponse:
+    """
+    Get analytics for a specific job posting.
+
+    **Requires:** Authentication
+    **Authorization:** Only the employer who posted the job can view analytics (or admins)
+
+    Returns aggregated statistics including:
+    - Total applications and breakdown by status
+    - Interview metrics (scheduled, completed, average rating)
+    - Recent activity (last 7 days)
+    - Last application date
+
+    **Note:** Current implementation loads all applications/interviews into memory.
+    For production use with large datasets, consider implementing pagination or
+    MongoDB aggregation pipelines.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from app.auth.auth_utils import is_admin
+    from app.database import get_applications_collection, get_interviews_collection
+
+    # Check if job exists
+    existing_job = await job_crud.get_job_by_id(job_id)
+    if not existing_job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Job with id {job_id} not found"
+        )
+
+    # Check if user is the owner or admin
+    if str(existing_job.get("posted_by")) != current_user["id"] and not is_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only view analytics for jobs you posted",
+        )
+
+    applications_collection = get_applications_collection()
+    interviews_collection = get_interviews_collection()
+
+    # Get all applications for this job
+    applications_cursor = applications_collection.find({"job_id": job_id})
+    applications = await applications_cursor.to_list(length=10000)
+
+    total_applications = len(applications)
+
+    # Calculate applications by status
+    applications_by_status: dict[str, int] = {}
+    for app in applications:
+        status_val = app.get("status", "Unknown")
+        applications_by_status[status_val] = applications_by_status.get(status_val, 0) + 1
+
+    # Calculate recent applications (last 7 days)
+    seven_days_ago = datetime.now(UTC) - timedelta(days=7)
+    recent_applications_count = 0
+    for app in applications:
+        applied_date = app.get("applied_date")
+        if applied_date:
+            # Ensure timezone-aware comparison using utility function
+            applied_date = ensure_utc_datetime(applied_date)
+            if applied_date and applied_date >= seven_days_ago:
+                recent_applications_count += 1
+
+    # Get last application date
+    last_application_date = None
+    if applications:
+        last_application_date = max(
+            (app.get("applied_date") for app in applications if app.get("applied_date")),
+            default=None,
+        )
+
+    # Get application IDs for interview lookup
+    application_ids = [str(app["_id"]) for app in applications]
+
+    # Get interviews for these applications
+    interviews_scheduled = 0
+    interviews_completed = 0
+    ratings: list[float] = []
+
+    if application_ids:
+        interviews_cursor = interviews_collection.find({"application_id": {"$in": application_ids}})
+        interviews = await interviews_cursor.to_list(length=10000)
+
+        for interview in interviews:
+            interview_status = interview.get("status", "")
+            if interview_status in [
+                InterviewStatus.SCHEDULED.value,
+                InterviewStatus.RESCHEDULED.value,
+            ]:
+                interviews_scheduled += 1
+            elif interview_status == InterviewStatus.COMPLETED.value:
+                interviews_completed += 1
+                rating = interview.get("rating")
+                # Validate rating is numeric before adding
+                if rating is not None and isinstance(rating, int | float):
+                    ratings.append(float(rating))
+
+    # Calculate average interview rating
+    avg_interview_rating = sum(ratings) / len(ratings) if ratings else None
+
+    return JobAnalyticsResponse(
+        job_id=job_id,
+        job_title=existing_job["title"],
+        total_applications=total_applications,
+        applications_by_status=applications_by_status,
+        recent_applications_count=recent_applications_count,
+        interviews_scheduled=interviews_scheduled,
+        interviews_completed=interviews_completed,
+        avg_interview_rating=avg_interview_rating,
+        last_application_date=last_application_date,
+    )

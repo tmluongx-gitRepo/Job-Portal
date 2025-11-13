@@ -1,8 +1,10 @@
+import logging
 from collections.abc import Iterable
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.auth.dependencies import get_current_user, require_job_seeker
+from app.constants import ApplicationStatus
 from app.crud import application as application_crud
 from app.crud import job as job_crud
 from app.crud import job_seeker_profile as profile_crud
@@ -15,6 +17,7 @@ from app.schemas.application import (
 from app.type_definitions import ApplicationDocument
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _serialize_application(document: ApplicationDocument) -> ApplicationResponse:
@@ -342,6 +345,28 @@ async def update_application(
                 detail="Only the employer can update application status",
             )
 
+    # Validate status transitions
+    new_status = application_update.status
+    if new_status:
+        current_status = existing_application.get("status", "")
+
+        # Validate: Cannot modify terminal states
+        if current_status and ApplicationStatus.is_terminal(current_status):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot modify application with terminal status '{current_status}'",
+            )
+
+        # Validate: Can only accept if offer was extended
+        if (
+            new_status == ApplicationStatus.ACCEPTED.value
+            and current_status != ApplicationStatus.OFFER_EXTENDED.value
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot accept application without an offer being extended",
+            )
+
     # Update the application
     update_data = application_update.model_dump(exclude_unset=True)
     updated_application = await application_crud.update_application(
@@ -353,6 +378,22 @@ async def update_application(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Application with id {application_id} not found",
         )
+
+    # Handle side effects based on new status
+    if new_status == ApplicationStatus.ACCEPTED.value:
+        job_id = str(existing_application.get("job_id"))
+        # 1. Cancel all interviews for this application
+        await application_crud.cancel_all_interviews_for_application(application_id)
+
+        # 2. Mark job as filled (inactive)
+        await job_crud.update_job(job_id, {"is_active": False, "filled": True})
+
+        # 3. Auto-reject all other applications for this job
+        await application_crud.reject_other_applications_for_job(job_id, application_id)
+
+    elif new_status == ApplicationStatus.REJECTED.value:
+        # Cancel any scheduled interviews for this application
+        await application_crud.cancel_all_interviews_for_application(application_id)
 
     return _serialize_application(updated_application)
 

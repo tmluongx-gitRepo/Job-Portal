@@ -605,3 +605,87 @@ class TestJobSeekerProfilesRBAC:
         assert len(profile["skills"]) == TEST_SKILL_COUNT
         assert profile["experience_years"] == TEST_EXPERIENCE_YEARS
         assert "Full stack" in profile["bio"]
+
+    # ============================================================================
+    # APPLICATION STATS ENDPOINT TESTS
+    # ============================================================================
+
+    @pytest.mark.asyncio
+    async def test_job_seeker_can_view_own_application_stats(
+        self, client: AsyncClient, job_seeker_with_profile: tuple[str, str, str]
+    ) -> None:
+        """Job seeker can view their own application statistics."""
+        js_token, user_id, _ = job_seeker_with_profile
+        headers = {"Authorization": f"Bearer {js_token}"}
+
+        # Get application stats
+        stats_response = await client.get(
+            f"/api/job-seeker-profiles/user/{user_id}/application-stats", headers=headers
+        )
+        assert stats_response.status_code == HTTP_OK
+
+        stats = stats_response.json()
+        assert "job_seeker_id" in stats
+        assert "total_applications" in stats
+        assert "applications_by_status" in stats
+        assert "applications_this_week" in stats
+        assert "interviews_scheduled" in stats
+        assert "interviews_completed" in stats
+        assert "avg_interview_rating" in stats
+        assert "last_application_date" in stats
+
+    @pytest.mark.asyncio
+    async def test_non_owner_cannot_view_job_seeker_application_stats(
+        self,
+        client: AsyncClient,
+        job_seeker_with_profile: tuple[str, str, str],
+        employer_with_profile: tuple[str, str, str],
+    ) -> None:
+        """Non-owner cannot view another user's application statistics."""
+        js_token, user_id, _ = job_seeker_with_profile
+        emp_token, _, _ = employer_with_profile
+
+        emp_headers = {"Authorization": f"Bearer {emp_token}"}
+
+        # Employer tries to view job seeker's stats
+        stats_response = await client.get(
+            f"/api/job-seeker-profiles/user/{user_id}/application-stats",
+            headers=emp_headers,
+        )
+        assert stats_response.status_code == HTTP_FORBIDDEN
+
+    @pytest.mark.asyncio
+    async def test_employer_cannot_view_job_seeker_application_stats(
+        self,
+        client: AsyncClient,
+        job_seeker_with_profile: tuple[str, str, str],
+        employer_with_profile: tuple[str, str, str],
+    ) -> None:
+        """Employer cannot view job seeker application statistics."""
+        js_token, user_id, _ = job_seeker_with_profile
+        emp_token, _, _ = employer_with_profile
+
+        emp_headers = {"Authorization": f"Bearer {emp_token}"}
+
+        # Employer tries to view job seeker stats
+        stats_response = await client.get(
+            f"/api/job-seeker-profiles/user/{user_id}/application-stats",
+            headers=emp_headers,
+        )
+        assert stats_response.status_code == HTTP_FORBIDDEN
+
+    @pytest.mark.asyncio
+    async def test_application_stats_returns_404_for_user_without_profile(
+        self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
+    ) -> None:
+        """Application stats endpoint returns 404 for user without job seeker profile."""
+        emp_token, user_id, _ = employer_with_profile
+        emp_headers = {"Authorization": f"Bearer {emp_token}"}
+
+        # Employer (who doesn't have a job seeker profile) tries to view their own stats
+        # This should fail because they don't have a job seeker profile
+        stats_response = await client.get(
+            f"/api/job-seeker-profiles/user/{user_id}/application-stats",
+            headers=emp_headers,
+        )
+        assert stats_response.status_code == 404  # noqa: PLR2004

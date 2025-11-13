@@ -24,6 +24,7 @@ async def create_job(job_data: dict[str, object], posted_by: str | None = None) 
         **job_data,
         "posted_by": posted_by,
         "is_active": True,
+        "filled": False,  # Explicitly set filled to False for new jobs
         "view_count": 0,
         "application_count": 0,
         "created_at": datetime.now(UTC),
