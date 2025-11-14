@@ -49,7 +49,7 @@ async def summarise_conversation(
 
     llm = ChatOpenAI(
         api_key=settings.OPENAI_API_KEY,
-        model=settings.OPENAI_CHAT_MODEL,
+        model=settings.OPENAI_SUMMARY_MODEL or settings.OPENAI_CHAT_MODEL,
         temperature=0,
         streaming=False,
     )

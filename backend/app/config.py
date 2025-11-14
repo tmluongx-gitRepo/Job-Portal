@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # OpenAI / LangChain
     OPENAI_API_KEY: str = ""
     OPENAI_CHAT_MODEL: str = "gpt-4o-mini"
+    OPENAI_JOB_SEEKER_MODEL: str | None = None
+    OPENAI_EMPLOYER_MODEL: str | None = None
+    OPENAI_SUMMARY_MODEL: str | None = None
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-large"
     LANGCHAIN_TRACING_ENABLED: bool = False
     LANGCHAIN_PROJECT: str | None = None
