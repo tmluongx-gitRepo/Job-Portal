@@ -54,40 +54,40 @@ class ChatOrchestrator:
         if account_type == "employer":
             agent = self._employer_agent
 
-        response_event = await agent.generate(message, user_context)
-        assistant_payload = response_event.get("data", {})
-        text = assistant_payload.get("text") or ""
+        matches, chunk_iterator = await agent.stream(message, user_context)
+
+        if matches:
+            yield {"type": ChatEventType.MATCHES.value, "data": {"matches": matches}}  # type: ignore[misc]
+
+        accumulated: list[str] = []
+        async for chunk in chunk_iterator:
+            accumulated.append(chunk)
+            yield {
+                "type": ChatEventType.TOKEN.value,
+                "data": {"text": chunk},
+            }  # type: ignore[misc]
+
+        text = "".join(accumulated)
 
         await self._session_store.save_message(
             session=session,
             message={
                 "role": ChatRole.ASSISTANT.value,
                 "text": text,
-                "structured": assistant_payload,
+                "structured": {"matches": matches, "text": text},
             },
         )
 
-        matches = assistant_payload.get("matches")
-        if matches:
-            yield {"type": ChatEventType.MATCHES.value, "data": {"matches": matches}}  # type: ignore[misc]
-
-        if text:
-            for token in text.split():
-                yield {
-                    "type": ChatEventType.TOKEN.value,
-                    "data": {"text": token + " "},
-                }  # type: ignore[misc]
-
-            new_summary = await summarise_conversation(
-                current_summary=session.summary,
-                user_message=message,
-                assistant_message=text,
-            )
-            await self._session_store.update_summary(session=session, summary=new_summary)
-            yield {
-                "type": ChatEventType.SUMMARY.value,
-                "data": {"summary": new_summary},
-            }  # type: ignore[misc]
+        new_summary = await summarise_conversation(
+            current_summary=session.summary,
+            user_message=message,
+            assistant_message=text,
+        )
+        await self._session_store.update_summary(session=session, summary=new_summary)
+        yield {
+            "type": ChatEventType.SUMMARY.value,
+            "data": {"summary": new_summary},
+        }  # type: ignore[misc]
 
         yield {"type": ChatEventType.COMPLETE.value, "data": {}}  # type: ignore[misc]
 

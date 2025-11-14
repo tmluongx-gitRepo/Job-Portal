@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from app.config import settings
-from app.database import get_collection
+from app.database import get_collection, get_job_seeker_profiles_collection, get_jobs_collection
 
 FALLBACK_JOB_MATCHES: list[dict[str, Any]] = [
     {
@@ -96,7 +96,13 @@ async def fetch_job_matches_for_user(
         limit=limit,
         where={"kind": "job"},
     )
-    return matches[:limit] if matches else FALLBACK_JOB_MATCHES[:limit]
+    if matches:
+        return matches[:limit]
+
+    # Metadata fallback: rank jobs by simple heuristics (skills overlap, location)
+    weights = _extract_weights_from_user_context(user_context)
+    fallback = await _metadata_job_matches(weights=weights, limit=limit)
+    return fallback if fallback else FALLBACK_JOB_MATCHES[:limit]
 
 
 async def fetch_candidate_matches_for_employer(
@@ -111,4 +117,101 @@ async def fetch_candidate_matches_for_employer(
         limit=limit,
         where={"kind": "candidate"},
     )
-    return matches[:limit] if matches else FALLBACK_CANDIDATE_MATCHES[:limit]
+    if matches:
+        return matches[:limit]
+
+    weights = _extract_weights_from_user_context(user_context)
+    fallback = await _metadata_candidate_matches(weights=weights, limit=limit)
+    return fallback if fallback else FALLBACK_CANDIDATE_MATCHES[:limit]
+
+
+def _extract_weights_from_user_context(user_context: dict) -> dict[str, Any]:
+    return {
+        "skills": set(map(str.lower, user_context.get("skills", []))),
+        "location": str(user_context.get("location", "")).lower(),
+        "industry": str(user_context.get("industry", "")).lower(),
+    }
+
+
+async def _metadata_job_matches(*, weights: dict[str, Any], limit: int) -> list[dict[str, Any]]:
+    collection = get_jobs_collection()
+
+    def _score_job(job: dict[str, Any]) -> dict[str, Any] | None:
+        skills = set(map(str.lower, job.get("skills_required", [])))
+        score = 0.0
+        if weights["skills"] and skills:
+            score += len(weights["skills"] & skills) / max(len(skills), 1)
+        if weights["location"] and str(job.get("location", "")).lower().startswith(
+            weights["location"]
+        ):
+            score += 0.25
+        if weights["industry"] and str(job.get("industry", "")).lower() == weights["industry"]:
+            score += 0.15
+
+        if score == 0:
+            return None
+
+        return {
+            "job_id": str(job.get("_id")),
+            "title": job.get("title"),
+            "match_score": round(min(score, 0.95), 2),
+        }
+
+    def _query() -> list[dict[str, Any]]:
+        cursor = collection.find({"is_active": True}).limit(100)
+        matches = []
+        for doc in cursor:  # type: ignore[attr-defined]
+            scored = _score_job(doc)
+            if scored:
+                matches.append(scored)
+        matches.sort(key=lambda item: item["match_score"], reverse=True)
+        return matches[:limit]
+
+    try:
+        return await asyncio.to_thread(_query)
+    except Exception:  # pragma: no cover
+        return []
+
+
+async def _metadata_candidate_matches(
+    *, weights: dict[str, Any], limit: int
+) -> list[dict[str, Any]]:
+    collection = get_job_seeker_profiles_collection()
+
+    def _score_candidate(profile: dict[str, Any]) -> dict[str, Any] | None:
+        skills = set(map(str.lower, profile.get("skills", [])))
+        score = 0.0
+        if weights["skills"] and skills:
+            score += len(weights["skills"] & skills) / max(len(weights["skills"]), 1)
+        if weights["location"] and str(profile.get("location", "")).lower().startswith(
+            weights["location"]
+        ):
+            score += 0.25
+        if weights["industry"]:
+            experience = profile.get("work_history", [])
+            if any(weights["industry"] in str(entry).lower() for entry in experience):
+                score += 0.15
+
+        if score == 0:
+            return None
+
+        return {
+            "candidate_id": str(profile.get("_id")),
+            "name": " ".join(filter(None, [profile.get("first_name"), profile.get("last_name")])),
+            "match_score": round(min(score, 0.95), 2),
+        }
+
+    def _query() -> list[dict[str, Any]]:
+        cursor = collection.find({}).limit(100)
+        matches = []
+        for doc in cursor:  # type: ignore[attr-defined]
+            scored = _score_candidate(doc)
+            if scored:
+                matches.append(scored)
+        matches.sort(key=lambda item: item["match_score"], reverse=True)
+        return matches[:limit]
+
+    try:
+        return await asyncio.to_thread(_query)
+    except Exception:  # pragma: no cover
+        return []

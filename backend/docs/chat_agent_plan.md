@@ -87,15 +87,15 @@ Key modules to add under `app/`:
    - `EmployerAgent`:
      - ✅ Returns placeholder candidates; real retrieval to follow.
 7. **Shared tools**
-   - `chain.py`: ✅ stub LangChain v1 runnables for each agent (ready to swap with real chains).
-   - `tools/retrievers.py`: ✅ attempts Chroma queries with graceful fallbacks until embeddings land.
-   - `tools/scoring.py`: matching score calculation (e.g., weighted cosine similarity + metadata filters) (TBD).
+   - `chain.py`: ✅ LangChain v1 runnables with streaming/fallback support.
+   - `tools/retrievers.py`: ✅ Chroma query attempt + fallback; TODO integrate real embeddings & scoring heuristics.
+   - `tools/scoring.py`: matching score calculation (cosine similarity + metadata weighting) (Design pending).
    - `tools/prompts.py`: prompt templates for each agent (TBD).
 
 ### Phase 3 – Streaming & Caching (pending)
 8. **Streaming implementation**
-   - ✅ Orchestrator emits match payloads plus tokenised responses over WebSocket.
-   - TODO: switch to real LangChain streaming once OpenAI integration is enabled.
+   - ✅ Orchestrator emits match payloads and tokenised responses via LangChain (fallback if OpenAI unavailable).
+   - TODO: enable true OpenAI streaming once credentials/config available in environment.
 9. **Caching hooks**
    - Decorate embedding/LLM calls with Redis caching (`cache_embedding`, `cache_llm_response`).
    - Cache conversation summaries keyed by `(user_id, session_id)`.
@@ -187,6 +187,34 @@ llm_response:{hash}                  # cached LLM output for identical prompt/co
 - ✅ Phase 0 scaffolding landed (configuration + module skeletons).
 - ✅ Phase 1 (session persistence + Redis cache) in progress — storage layer completed.
 - ✅ WebSocket streaming loop echoes structured responses per role.
-- Next immediate tasks: replace stub chains with real LangChain retrieval + LLM streaming.
+- ✅ Rolling summaries persisted + cached after every assistant reply.
+- Next immediate tasks: wire real Chroma retrieval embeddings + scoring, enable true OpenAI streaming, and surface protocol expectations to frontend team.
+
+### Upcoming Milestones
+1. Integrate resume/job embeddings into `tools/retrievers.py` with scoring heuristics (vector similarity + metadata weighting).
+2. Enable OpenAI streaming end-to-end (when credentials available) and add retry/backoff handling.
+3. Define frontend message protocol (event types, payload schema) and document in README/architecture (in progress, see event schema above).
+
+### Embedding Ingestion TODO
+- Create embedding generation pipeline (resume + job documents) with batch processing and Chroma upsert utilities. **(In progress: see `app/ai/embeddings.py`, `app/ai/indexers.py`, `app/tasks/embedding_tasks.py`)**
+- Store denormalised metadata alongside embeddings (skills, location, industry) for scoring helper to consume.
+- Establish consistency checkers / backfill scripts so new resumés/jobs trigger embedding updates automatically.
+- Add score fusion logic (vector similarity + metadata weighting) for realist job/candidate matching.
+
+## WebSocket Event Schema
+
+The `/api/chat/ws` endpoint streams JSON payloads with the following shapes:
+
+| Event `type` | Payload | Notes |
+|--------------|---------|-------|
+| `info` | `{ "message": str, "session_id": str }` | Sent immediately after connection opens |
+| `history` | `{ "messages": [ {"role": str, "payload_type": str, "text": str | null, "structured": object | null, "created_at": str } ] }` | Cached transcript (most recent messages) |
+| `summary` | `{ "summary": str }` | Rolling conversation summary (updated after each assistant reply) |
+| `matches` | `{ "matches": [...] }` | Structured match list (jobs or candidates) |
+| `token` | `{ "text": str }` | Streaming token/text chunk (LangChain/OpenAI when enabled) |
+| `complete` | `{}` | Signals end of assistant turn |
+| `error` | `{ "message": str }` | Reserved for failure cases |
+
+Clients should handle receiving `history` and `summary` immediately after the initial `info`, then append `token` chunks until a `complete` event arrives. `matches` can appear before tokens when relevant. Future enhancements may add `metadata` fields (e.g., scoring breakdowns) but will remain backward-compatible.
 
 If you pick up this work, please update this file with progress notes and any new decisions so the next teammate has a clear starting point.
