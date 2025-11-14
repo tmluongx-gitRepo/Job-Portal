@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.ai.chat.constants import ChatEventType
+
 
 class EmployerAgent:
     """Placeholder implementation for the employer focused agent."""
@@ -11,10 +13,12 @@ class EmployerAgent:
     def __init__(self) -> None:
         self._ready = False
 
-    async def generate(self, message: str, context: dict[str, Any]) -> dict[str, Any]:
-        """Return a structured response for the employer.
-
-        The real implementation will query ChromaDB, perform candidate matching
-        and stream LangChain outputs. For now we raise to make the stub explicit.
-        """
-        raise NotImplementedError("EmployerAgent.generate is not yet implemented")
+    async def generate(self, _message: str, _context: dict[str, Any]) -> dict[str, Any]:
+        """Return a stubbed structured response for the employer."""
+        return {
+            "type": ChatEventType.TOKEN.value,
+            "data": {
+                "text": "Employer agent not yet implemented",
+                "matches": [],
+            },
+        }
