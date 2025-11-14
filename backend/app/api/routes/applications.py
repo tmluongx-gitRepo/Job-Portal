@@ -3,6 +3,7 @@ from collections.abc import Iterable
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.auth.auth_utils import is_admin, is_employer, is_job_seeker
 from app.auth.dependencies import get_current_user, require_job_seeker
 from app.constants import ApplicationStatus
 from app.crud import application as application_crud
@@ -149,8 +150,6 @@ async def list_applications(
     - **job_id**: Filter by job ID
     - **status**: Filter by application status
     """
-    from app.auth.auth_utils import is_admin, is_employer, is_job_seeker
-
     # Admins can see all applications with any filter
     if is_admin(current_user):
         applications = await application_crud.get_applications(
@@ -264,8 +263,6 @@ async def get_application(
         )
 
     # Check authorization
-    from app.auth.auth_utils import is_admin, is_job_seeker
-
     if not is_admin(current_user):
         # Get job seeker profile if user is job seeker
         if is_job_seeker(current_user):
@@ -316,8 +313,6 @@ async def update_application(
         )
 
     # Check authorization
-    from app.auth.auth_utils import is_admin, is_job_seeker
-
     if not is_admin(current_user):
         # Get job seeker profile if user is job seeker
         if is_job_seeker(current_user):
@@ -419,8 +414,6 @@ async def delete_application(
         )
 
     # Check authorization - only applicant or admin can delete
-    from app.auth.auth_utils import is_admin
-
     if not is_admin(current_user):
         # Verify user owns the job seeker profile that applied
         profile = await profile_crud.get_profile_by_user_id(current_user["id"])

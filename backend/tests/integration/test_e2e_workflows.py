@@ -23,7 +23,7 @@ class TestIntegrationWorkflows:
         self, client: AsyncClient, job_seeker_with_profile: tuple[str, str, str]
     ) -> None:
         """Test updating profile and viewing changes."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         js_headers = {"Authorization": f"Bearer {js_token}"}
 
         # Get initial profile

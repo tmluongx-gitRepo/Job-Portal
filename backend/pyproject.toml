@@ -56,6 +56,10 @@ module = [
     "chromadb.*",
     "redis.*",
     "dropbox.*",
+    "supabase.*",
+    "fastapi.*",
+    "pymongo.*",
+    "pytest_asyncio.*",
 ]
 ignore_missing_imports = true
 

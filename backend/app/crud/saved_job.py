@@ -186,7 +186,7 @@ async def delete_saved_job(saved_job_id: str) -> bool:
     except Exception:
         return False
     else:
-        return result.deleted_count > 0
+        return result.deleted_count > 0  # type: ignore[no-any-return]
 
 
 async def count_saved_jobs(job_seeker_id: str) -> int:
@@ -200,4 +200,4 @@ async def count_saved_jobs(job_seeker_id: str) -> int:
         Number of saved jobs
     """
     saved_jobs = get_saved_jobs_collection()
-    return await saved_jobs.count_documents({"job_seeker_id": job_seeker_id})
+    return await saved_jobs.count_documents({"job_seeker_id": job_seeker_id})  # type: ignore[no-any-return]

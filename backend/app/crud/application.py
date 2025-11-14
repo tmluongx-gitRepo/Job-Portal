@@ -213,7 +213,7 @@ async def get_applications_count(
     if status:
         query["status"] = status
 
-    return await collection.count_documents(query)
+    return await collection.count_documents(query)  # type: ignore[no-any-return]
 
 
 async def check_duplicate_application(job_seeker_id: str, job_id: str) -> bool:
@@ -335,4 +335,4 @@ async def reject_other_applications_for_job(job_id: str, except_application_id: 
     except Exception:
         return 0
     else:
-        return result.modified_count
+        return result.modified_count  # type: ignore[no-any-return]

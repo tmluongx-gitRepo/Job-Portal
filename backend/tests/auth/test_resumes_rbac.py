@@ -77,7 +77,7 @@ class TestResumesRBAC:
         create_temp_user: Callable[[str, str], Awaitable[tuple[str | None, str | None]]],
     ) -> None:
         """Job seeker A cannot access Job seeker B's resume."""
-        js_token_a, js_user_id_a, _ = job_seeker_with_profile
+        js_token_a, _js_user_id_a, _ = job_seeker_with_profile
 
         # Create Job seeker B
         js_token_b, js_user_id_b = await create_temp_user("job_seeker", "temp.resume.js@test.com")
@@ -145,7 +145,7 @@ class TestResumesRBAC:
         self, client: AsyncClient, job_seeker_with_profile: tuple[str, str, str]
     ) -> None:
         """Resume fields appear in job seeker profile (even if no resume uploaded)."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        _js_token, _js_user_id, js_profile_id = job_seeker_with_profile
 
         # Get job seeker profile
         response = await client.get(f"/api/job-seeker-profiles/{js_profile_id}")
@@ -176,7 +176,7 @@ class TestResumesRBAC:
         create_temp_user: Callable[[str, str], Awaitable[tuple[str | None, str | None]]],
     ) -> None:
         """Comprehensive test: Job seeker A cannot access, update, or delete Job seeker B's resume."""
-        js_token_a, js_user_id_a, _ = job_seeker_with_profile
+        js_token_a, _js_user_id_a, _ = job_seeker_with_profile
 
         # Create Job seeker B
         js_token_b, js_user_id_b = await create_temp_user("job_seeker", "temp.resume.b@test.com")

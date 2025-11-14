@@ -93,7 +93,7 @@ class TestSavedJobsAPI:
         self, client: AsyncClient, job_seeker_with_profile: tuple[str, str, str]
     ) -> None:
         """Cannot save a job that doesn't exist."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, js_user_id, _js_profile_id = job_seeker_with_profile
 
         response = await client.post(
             "/api/saved-jobs",
@@ -150,8 +150,8 @@ class TestSavedJobsAPIIntegration:
         test_cleaner: DataCleaner,
     ) -> None:
         """Test complete workflow: create job, save it, update notes, delete."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
-        emp_token, emp_user_id, emp_profile_id = employer_with_profile
+        js_token, js_user_id, _js_profile_id = job_seeker_with_profile
+        emp_token, _emp_user_id, _emp_profile_id = employer_with_profile
 
         # 1. Employer creates a job
         job_response = await client.post(
@@ -275,8 +275,8 @@ class TestSavedJobsRBAC:
         test_cleaner: DataCleaner,
     ) -> None:
         """Job seeker A cannot view Job seeker B's saved jobs."""
-        js_token_a, js_user_id_a, js_profile_id_a = job_seeker_with_profile
-        emp_token, emp_user_id, _ = employer_with_profile
+        js_token_a, _js_user_id_a, _js_profile_id_a = job_seeker_with_profile
+        emp_token, _emp_user_id, _ = employer_with_profile
 
         # Create Job seeker B
         js_token_b, js_user_id_b = await create_temp_user("job_seeker", "temp.js.b@test.com")
@@ -489,7 +489,7 @@ class TestSavedJobsRBAC:
         test_cleaner: DataCleaner,
     ) -> None:
         """Job seeker A cannot save a job using Job seeker B's profile."""
-        js_token_a, js_user_id_a, _ = job_seeker_with_profile
+        js_token_a, _js_user_id_a, _ = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create Job seeker B

@@ -108,4 +108,4 @@ async def delete_resume(job_seeker_id: str) -> bool:
     except Exception:
         return False
     else:
-        return result.deleted_count > 0
+        return result.deleted_count > 0  # type: ignore[no-any-return]

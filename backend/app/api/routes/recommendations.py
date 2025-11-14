@@ -6,6 +6,7 @@ from collections.abc import Iterable
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.auth.auth_utils import is_admin
 from app.auth.dependencies import get_current_user, require_admin
 from app.crud import job as job_crud
 from app.crud import job_seeker_profile as profile_crud
@@ -131,8 +132,6 @@ async def get_recommendations_for_job_seeker(
     Returns recommendations sorted by match percentage (highest first) with full job details.
     """
     # Verify user can access these recommendations
-    from app.auth.auth_utils import is_admin
-
     if not is_admin(current_user):
         # Get user's job seeker profile
         profile = await profile_crud.get_profile_by_user_id(current_user["id"])
@@ -258,8 +257,6 @@ async def get_recommendation(
         )
 
     # Verify ownership
-    from app.auth.auth_utils import is_admin
-
     if not is_admin(current_user):
         profile = await profile_crud.get_profile_by_user_id(current_user["id"])
         if not profile or str(recommendation.get("job_seeker_id")) != str(profile["_id"]):

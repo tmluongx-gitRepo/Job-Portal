@@ -3,12 +3,20 @@ Job Seeker Profile API routes.
 """
 
 from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.auth.auth_utils import is_admin
 from app.auth.dependencies import get_current_user, get_optional_user, require_job_seeker
 from app.constants import InterviewStatus
 from app.crud import job_seeker_profile as profile_crud
+from app.crud import resume as resume_crud
+from app.database import (
+    get_applications_collection,
+    get_interviews_collection,
+    get_resumes_collection,
+)
 from app.schemas.job_seeker import (
     JobSeekerPreferencesSchema,
     JobSeekerProfileCreate,
@@ -41,8 +49,6 @@ async def _serialize_profile(document: JobSeekerProfileDocument) -> JobSeekerPro
     # Populate resume fields from resumes collection
     resume_file_url = None
     resume_file_name = None
-
-    from app.crud import resume as resume_crud
 
     resume = await resume_crud.get_resume_by_job_seeker(str(document["user_id"]))
     if resume:
@@ -79,8 +85,6 @@ async def _serialize_profiles(
 
     Optimized to batch-fetch resumes to avoid N+1 queries.
     """
-    from app.database import get_resumes_collection
-
     # Convert to list to allow multiple iterations
     docs_list = list(documents)
 
@@ -268,8 +272,6 @@ async def update_profile(
         raise HTTPException(status_code=404, detail="Profile not found")
 
     # Check ownership
-    from app.auth.auth_utils import is_admin
-
     if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="You can only update your own profile"
@@ -303,8 +305,6 @@ async def delete_profile(profile_id: str, current_user: dict = Depends(get_curre
         raise HTTPException(status_code=404, detail="Profile not found")
 
     # Check ownership
-    from app.auth.auth_utils import is_admin
-
     if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete your own profile"
@@ -337,11 +337,6 @@ async def get_job_seeker_application_stats(
     For production use with large datasets, consider implementing pagination or
     MongoDB aggregation pipelines.
     """
-    from datetime import UTC, datetime, timedelta
-
-    from app.auth.auth_utils import is_admin
-    from app.database import get_applications_collection, get_interviews_collection
-
     # Check authorization
     if user_id != current_user["id"] and not is_admin(current_user):
         raise HTTPException(

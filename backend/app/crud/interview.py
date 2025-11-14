@@ -113,7 +113,7 @@ async def get_interview_by_id(interview_id: str) -> InterviewDocument | None:
     try:
         # Validate ObjectId format before querying
         obj_id = ObjectId(interview_id)
-        return await collection.find_one({"_id": obj_id})  # type: ignore[return-value]
+        return await collection.find_one({"_id": obj_id})  # type: ignore[no-any-return]
     except InvalidId:
         # Invalid ObjectId format - return None (not found)
         return None
@@ -136,7 +136,7 @@ async def get_interview_by_application_id(application_id: str) -> InterviewDocum
         Interview document if found, None otherwise
     """
     collection = get_interviews_collection()
-    return await collection.find_one({"application_id": application_id})  # type: ignore[return-value]
+    return await collection.find_one({"application_id": application_id})  # type: ignore[no-any-return]
 
 
 async def get_interviews(
@@ -194,7 +194,7 @@ async def get_interviews(
         query["status"] = status
 
     cursor = collection.find(query).sort("scheduled_date", -1).skip(skip).limit(limit)
-    return await cursor.to_list(length=limit)  # type: ignore[return-value]
+    return await cursor.to_list(length=limit)  # type: ignore[no-any-return]
 
 
 async def update_interview(
@@ -342,7 +342,7 @@ async def count_interviews(
     if status:
         query["status"] = status
 
-    return await collection.count_documents(query)
+    return await collection.count_documents(query)  # type: ignore[no-any-return]
 
 
 async def delete_interview(interview_id: str) -> bool:
@@ -365,7 +365,7 @@ async def delete_interview(interview_id: str) -> bool:
         logging.exception(f"Failed to delete interview {interview_id}")
         return False
     else:
-        return result.deleted_count > 0
+        return result.deleted_count > 0  # type: ignore[no-any-return]
 
 
 async def delete_interviews_by_application_id(application_id: str) -> int:
@@ -381,7 +381,7 @@ async def delete_interviews_by_application_id(application_id: str) -> int:
     collection = get_interviews_collection()
 
     result = await collection.delete_many({"application_id": application_id})
-    return result.deleted_count
+    return result.deleted_count  # type: ignore[no-any-return]
 
 
 async def delete_interviews_by_job_id(job_id: str) -> int:
@@ -397,4 +397,4 @@ async def delete_interviews_by_job_id(job_id: str) -> int:
     collection = get_interviews_collection()
 
     result = await collection.delete_many({"job_id": job_id})
-    return result.deleted_count
+    return result.deleted_count  # type: ignore[no-any-return]

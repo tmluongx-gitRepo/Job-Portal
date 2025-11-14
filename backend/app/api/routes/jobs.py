@@ -1,10 +1,14 @@
 from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.auth.auth_utils import is_admin
 from app.auth.dependencies import get_current_user, get_optional_user, require_employer
 from app.constants import InterviewStatus
+from app.crud import employer_profile as profile_crud
 from app.crud import job as job_crud
+from app.database import get_applications_collection, get_interviews_collection
 from app.schemas.job import JobCreate, JobResponse, JobUpdate
 from app.schemas.stats import JobAnalyticsResponse
 from app.type_definitions import JobDocument
@@ -63,8 +67,6 @@ async def create_job(job: JobCreate, employer: dict = Depends(require_employer))
     Employers must have a profile before posting jobs.
     """
     # Check if employer has a profile
-    from app.crud import employer_profile as profile_crud
-
     employer_profile = await profile_crud.get_profile_by_user_id(employer["id"])
     if not employer_profile:
         raise HTTPException(
@@ -219,8 +221,6 @@ async def update_job(
         )
 
     # Check if user is the owner or admin
-    from app.auth.auth_utils import is_admin
-
     # Normalize posted_by to string for comparison (it's stored as ObjectId in MongoDB)
     if str(existing_job.get("posted_by")) != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
@@ -255,8 +255,6 @@ async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)
         )
 
     # Check if user is the owner or admin
-    from app.auth.auth_utils import is_admin
-
     # Normalize posted_by to string for comparison (it's stored as ObjectId in MongoDB)
     if str(existing_job.get("posted_by")) != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
@@ -291,11 +289,6 @@ async def get_job_analytics(
     For production use with large datasets, consider implementing pagination or
     MongoDB aggregation pipelines.
     """
-    from datetime import UTC, datetime, timedelta
-
-    from app.auth.auth_utils import is_admin
-    from app.database import get_applications_collection, get_interviews_collection
-
     # Check if job exists
     existing_job = await job_crud.get_job_by_id(job_id)
     if not existing_job:

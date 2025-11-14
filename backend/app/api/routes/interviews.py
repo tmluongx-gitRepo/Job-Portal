@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.auth.auth_utils import is_admin, is_employer, is_job_seeker
 from app.auth.dependencies import get_current_user
+from app.constants import ApplicationStatus
 from app.crud import application as application_crud
 from app.crud import interview as interview_crud
 from app.crud import job as job_crud
@@ -313,7 +314,7 @@ async def list_upcoming_interviews(
     **Requires:** Authentication
     **Authorization:** Same as list_interviews
     """
-    return await list_interviews(
+    return await list_interviews(  # type: ignore[no-any-return]
         skip=skip,
         limit=limit,
         status_filter=None,
@@ -528,8 +529,6 @@ async def complete_interview(
         )
 
     # Update application status
-    from app.constants import ApplicationStatus
-
     update_data: dict[str, object] = {
         "status": ApplicationStatus.INTERVIEWED.value,
         "next_step": completion_data.next_step or "Awaiting decision",

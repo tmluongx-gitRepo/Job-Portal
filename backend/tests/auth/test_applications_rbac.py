@@ -40,7 +40,7 @@ class TestApplicationsRBAC:
         employer_with_profile: tuple[str, str, str],
     ) -> None:
         """Job seekers can create applications to jobs."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Employer creates a job first
@@ -122,7 +122,7 @@ class TestApplicationsRBAC:
         create_temp_user: Callable[[str, str], Awaitable[tuple[str | None, str | None]]],
     ) -> None:
         """Job seekers cannot create applications using another user's profile."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, _js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create a job
@@ -199,7 +199,7 @@ class TestApplicationsRBAC:
         employer_with_profile: tuple[str, str, str],
     ) -> None:
         """Cannot apply to inactive jobs."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Employer creates an inactive job
@@ -250,7 +250,7 @@ class TestApplicationsRBAC:
         employer_with_profile: tuple[str, str, str],
     ) -> None:
         """Cannot create duplicate applications to the same job."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create a job
@@ -308,7 +308,7 @@ class TestApplicationsRBAC:
         employer_with_profile: tuple[str, str, str],
     ) -> None:
         """Job seekers see only their own applications."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create a job and apply
@@ -357,8 +357,8 @@ class TestApplicationsRBAC:
         employer_with_profile: tuple[str, str, str],
     ) -> None:
         """Employers see only applications to their jobs."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
-        emp_token, emp_user_id, _ = employer_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
+        emp_token, _emp_user_id, _ = employer_with_profile
 
         # Create a job
         emp_headers = {"Authorization": f"Bearer {emp_token}"}
@@ -410,7 +410,7 @@ class TestApplicationsRBAC:
         if not admin_token:
             pytest.skip("Admin token required for testing")
 
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create job and application
@@ -536,7 +536,7 @@ class TestApplicationsRBAC:
         employer_with_profile: tuple[str, str, str],
     ) -> None:
         """Job seekers can view their own applications."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create job and apply
@@ -585,7 +585,7 @@ class TestApplicationsRBAC:
         employer_with_profile: tuple[str, str, str],
     ) -> None:
         """Employers can view applications to their jobs."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create job
@@ -638,7 +638,7 @@ class TestApplicationsRBAC:
         if not admin_token:
             pytest.skip("Admin token required for testing")
 
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create job and application
@@ -688,7 +688,7 @@ class TestApplicationsRBAC:
         create_temp_user: Callable[[str, str], Awaitable[tuple[str | None, str | None]]],
     ) -> None:
         """Job seekers cannot view other job seekers' applications."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, _js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create another job seeker
@@ -778,7 +778,7 @@ class TestApplicationsRBAC:
         employer_with_profile: tuple[str, str, str],
     ) -> None:
         """Job seekers can update notes on their applications."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create job and apply
@@ -830,7 +830,7 @@ class TestApplicationsRBAC:
         employer_with_profile: tuple[str, str, str],
     ) -> None:
         """Job seekers cannot update application status."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create job and apply
@@ -880,7 +880,7 @@ class TestApplicationsRBAC:
         employer_with_profile: tuple[str, str, str],
     ) -> None:
         """Employers can update status of applications to their jobs."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create job
@@ -934,7 +934,7 @@ class TestApplicationsRBAC:
         create_temp_user: Callable[[str, str], Awaitable[tuple[str | None, str | None]]],
     ) -> None:
         """Employers cannot update applications to other employers' jobs."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create another employer
@@ -1021,7 +1021,7 @@ class TestApplicationsRBAC:
         if not admin_token:
             pytest.skip("Admin token required for testing")
 
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create job and application
@@ -1088,7 +1088,7 @@ class TestApplicationsRBAC:
         employer_with_profile: tuple[str, str, str],
     ) -> None:
         """Job seekers can withdraw their own applications."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create job and apply
@@ -1138,7 +1138,7 @@ class TestApplicationsRBAC:
         employer_with_profile: tuple[str, str, str],
     ) -> None:
         """Employers cannot delete applications (only applicant can withdraw)."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create job and apply
@@ -1188,7 +1188,7 @@ class TestApplicationsRBAC:
         if not admin_token:
             pytest.skip("Admin token required for testing")
 
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create job and application
@@ -1236,7 +1236,7 @@ class TestApplicationsRBAC:
         create_temp_user: Callable[[str, str], Awaitable[tuple[str | None, str | None]]],
     ) -> None:
         """Job seekers cannot withdraw other job seekers' applications."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, _js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create another job seeker
@@ -1326,7 +1326,7 @@ class TestApplicationsRBAC:
         employer_with_profile: tuple[str, str, str],
     ) -> None:
         """Complete workflow: Create → View → Update → Delete."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Employer creates job
@@ -1386,7 +1386,7 @@ class TestApplicationsRBAC:
         employer_with_profile: tuple[str, str, str],
     ) -> None:
         """Employer workflow: View applications → Update status."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
         emp_token, _, _ = employer_with_profile
 
         # Create job
