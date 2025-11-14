@@ -101,6 +101,34 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # n8n Automation Platform
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: job-portal-n8n
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-false}
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-}
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=${N8N_PORT:-5678}
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-UTC}
+      # Database configuration (SQLite with connection pool)
+      - DB_SQLITE_POOL_SIZE=5
+      # Task runners configuration
+      - N8N_RUNNERS_ENABLED=true
+      # Security settings
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_GIT_NODE_DISABLE_BARE_REPOS=true
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - job-portal-network
+    restart: unless-stopped
+
 networks:
   job-portal-network:
     driver: bridge
@@ -108,3 +136,4 @@ networks:
 volumes:
   chroma_data:
   redis_data:
+  n8n_data:
