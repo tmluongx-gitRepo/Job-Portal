@@ -74,7 +74,7 @@ async def job_seeker_stream(
     def factory() -> AsyncIterator[str]:
         llm = ChatOpenAI(
             api_key=settings.OPENAI_API_KEY,
-            model=settings.OPENAI_CHAT_MODEL,
+            model=settings.OPENAI_JOB_SEEKER_MODEL or settings.OPENAI_CHAT_MODEL,
             temperature=0,
             streaming=True,
         )
@@ -122,7 +122,7 @@ async def employer_stream(
     def factory() -> AsyncIterator[str]:
         llm = ChatOpenAI(
             api_key=settings.OPENAI_API_KEY,
-            model=settings.OPENAI_CHAT_MODEL,
+            model=settings.OPENAI_EMPLOYER_MODEL or settings.OPENAI_CHAT_MODEL,
             temperature=0,
             streaming=True,
         )
