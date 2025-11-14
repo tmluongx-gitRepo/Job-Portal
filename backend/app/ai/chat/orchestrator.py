@@ -8,6 +8,7 @@ from typing import Protocol
 from app.ai.chat.agents import EmployerAgent, JobSeekerAgent
 from app.ai.chat.constants import ChatEventType, ChatRole
 from app.ai.chat.sessions import ChatSession, ChatSessionStore
+from app.ai.chat.summarizer import summarise_conversation
 from app.services.chat_history import ChatHistoryService
 
 
@@ -76,6 +77,17 @@ class ChatOrchestrator:
                     "type": ChatEventType.TOKEN.value,
                     "data": {"text": token + " "},
                 }  # type: ignore[misc]
+
+            new_summary = await summarise_conversation(
+                current_summary=session.summary,
+                user_message=message,
+                assistant_message=text,
+            )
+            await self._session_store.update_summary(session=session, summary=new_summary)
+            yield {
+                "type": ChatEventType.SUMMARY.value,
+                "data": {"summary": new_summary},
+            }  # type: ignore[misc]
 
         yield {"type": ChatEventType.COMPLETE.value, "data": {}}  # type: ignore[misc]
 

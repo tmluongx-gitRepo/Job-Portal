@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
+from app.ai.chat.constants import ChatEventType
 from app.ai.chat.orchestrator import get_chat_orchestrator
 from app.ai.chat.sessions import ChatSessionStore
 from app.auth.dependencies import get_current_user
+from app.config import settings
 
 router = APIRouter()
 
@@ -31,11 +33,30 @@ async def chat_websocket(
     try:
         await websocket.send_json(
             {
-                "type": "info",
+                "type": ChatEventType.INFO.value,
                 "message": "Chat connection established",
                 "session_id": session.session_id,
             }
         )
+
+        summary, history = await session_store.hydrate_context(
+            session=session,
+            limit=settings.CHAT_RECENT_MESSAGE_LIMIT,
+        )
+        if summary:
+            await websocket.send_json(
+                {
+                    "type": ChatEventType.SUMMARY.value,
+                    "data": {"summary": summary},
+                }
+            )
+        if history:
+            await websocket.send_json(
+                {
+                    "type": ChatEventType.HISTORY.value,
+                    "data": {"messages": history},
+                }
+            )
 
         while True:
             payload = await websocket.receive_json()

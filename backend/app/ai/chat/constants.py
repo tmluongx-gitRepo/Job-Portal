@@ -12,5 +12,7 @@ class ChatEventType(str, Enum):
     INFO = "info"
     TOKEN = "token"
     MATCHES = "matches"
+    HISTORY = "history"
+    SUMMARY = "summary"
     COMPLETE = "complete"
     ERROR = "error"
