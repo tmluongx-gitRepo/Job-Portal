@@ -49,7 +49,7 @@ def _format_matches(matches: Sequence[dict[str, Any]]) -> str:
 
 
 async def job_seeker_response(message: str, context: dict[str, Any]) -> dict[str, Any]:
-    matches = await fetch_job_matches_for_user(_user_context=context)
+    matches = await fetch_job_matches_for_user(user_context=context)
     if not settings.OPENAI_API_KEY or ChatOpenAI is None:
         return {
             "text": f"Stub: showing example roles relevant to {message.strip() or 'your latest request'}.",
@@ -76,7 +76,7 @@ async def job_seeker_response(message: str, context: dict[str, Any]) -> dict[str
 
 
 async def employer_response(message: str, context: dict[str, Any]) -> dict[str, Any]:
-    matches = await fetch_candidate_matches_for_employer(_user_context=context)
+    matches = await fetch_candidate_matches_for_employer(user_context=context)
     if not settings.OPENAI_API_KEY or ChatOpenAI is None:
         return {
             "text": f"Stub: returning example candidates relevant to {message.strip() or 'your open roles'}.",

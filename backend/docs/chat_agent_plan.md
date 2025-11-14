@@ -88,7 +88,7 @@ Key modules to add under `app/`:
      - ✅ Returns placeholder candidates; real retrieval to follow.
 7. **Shared tools**
    - `chain.py`: ✅ stub LangChain v1 runnables for each agent (ready to swap with real chains).
-   - `tools/retrievers.py`: wrappers around Chroma queries, embedding generation, caching, implemented with LangChain v1 retriever + runnable patterns (TBD).
+   - `tools/retrievers.py`: ✅ attempts Chroma queries with graceful fallbacks until embeddings land.
    - `tools/scoring.py`: matching score calculation (e.g., weighted cosine similarity + metadata filters) (TBD).
    - `tools/prompts.py`: prompt templates for each agent (TBD).
 
