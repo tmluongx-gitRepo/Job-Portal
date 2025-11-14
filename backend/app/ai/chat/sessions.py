@@ -70,6 +70,50 @@ class ChatSessionStore:
             payload=json.dumps(payload, ensure_ascii=False),
         )
 
+    async def hydrate_context(
+        self, *, session: ChatSession, limit: int
+    ) -> tuple[str | None, list[dict[str, Any]]]:
+        """Return cached summary and recent messages, warming cache if required."""
+
+        summary = await self._cache.get_summary(session_id=session.session_id)
+        if summary is None and session.summary:
+            summary = session.summary
+            await self._cache.set_summary(session_id=session.session_id, summary=summary)
+
+        cached_messages = await self._cache.get_recent_messages(session_id=session.session_id)
+        messages: list[dict[str, Any]] = []
+        for entry in cached_messages:
+            try:
+                messages.append(json.loads(entry))
+            except json.JSONDecodeError:  # pragma: no cover - cache drift
+                continue
+
+        if not messages:
+            docs = await self._history.fetch_recent(session_id=session.session_id, limit=limit)
+            for doc in docs:
+                created_at = doc.get("created_at")
+                msg = {
+                    "role": doc.get("role"),
+                    "payload_type": doc.get("payload_type"),
+                    "text": doc.get("text"),
+                    "structured": doc.get("structured"),
+                    "created_at": created_at.isoformat() if created_at else None,
+                }
+                messages.append(msg)
+                await self._cache.push_recent_message(
+                    session_id=session.session_id,
+                    payload=json.dumps(msg, ensure_ascii=False),
+                )
+
+        return summary, messages
+
+    async def update_summary(self, *, session: ChatSession, summary: str) -> None:
+        """Persist and cache the rolling summary for the session."""
+
+        session.summary = summary
+        await self._history.upsert_summary(session_id=session.session_id, summary=summary)
+        await self._cache.set_summary(session_id=session.session_id, summary=summary)
+
     @staticmethod
     def _document_to_session(document: ChatSessionDocument) -> ChatSession:
         return ChatSession(

@@ -103,11 +103,11 @@ Key modules to add under `app/`:
 
 ### Phase 4 – Persistence & Summaries (pending)
 10. **Long-term history**
-    - Save messages and agent responses to Mongo after each turn.
-    - Implement periodic summarisation (post N turns) to reduce future context size.
-    - Store summary checkpoints in both Mongo and Redis.
+    - ✅ Messages persist to Mongo after each turn via `ChatHistoryService`.
+    - ✅ Rolling summary updated after assistant replies (LangChain fallback when OpenAI unavailable).
+    - ✅ Summary cached in Redis for fast reuse across reconnects.
 11. **Resume session**
-    - On socket connect, fetch latest session summary + last few messages from Mongo, warm Redis cache, and send optional “context restored” event to frontend.
+    - ✅ WebSocket hydrates summary + recent messages from cache/DB and emits them on connect.
 
 ### Phase 5 – Monitoring, Testing, Docs (pending)
 12. **Monitoring**
