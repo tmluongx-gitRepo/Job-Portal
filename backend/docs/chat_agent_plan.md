@@ -94,9 +94,8 @@ Key modules to add under `app/`:
 
 ### Phase 3 – Streaming & Caching (pending)
 8. **Streaming implementation**
-   - Connect orchestrator output stream to FastAPI WebSocket/SSE response.
-   - Ensure partial tokens flush to the client with minimal buffering.
-   - Encode structured data (e.g., JSON frames) alongside text stream.
+   - ✅ Orchestrator emits match payloads plus tokenised responses over WebSocket.
+   - TODO: switch to real LangChain streaming once OpenAI integration is enabled.
 9. **Caching hooks**
    - Decorate embedding/LLM calls with Redis caching (`cache_embedding`, `cache_llm_response`).
    - Cache conversation summaries keyed by `(user_id, session_id)`.

@@ -55,19 +55,28 @@ class ChatOrchestrator:
 
         response_event = await agent.generate(message, user_context)
         assistant_payload = response_event.get("data", {})
-        if "text" not in assistant_payload or assistant_payload.get("text") is None:
-            assistant_payload["text"] = ""
+        text = assistant_payload.get("text") or ""
 
         await self._session_store.save_message(
             session=session,
             message={
                 "role": ChatRole.ASSISTANT.value,
-                "text": assistant_payload.get("text"),
+                "text": text,
                 "structured": assistant_payload,
             },
         )
 
-        yield response_event  # type: ignore[misc]
+        matches = assistant_payload.get("matches")
+        if matches:
+            yield {"type": ChatEventType.MATCHES.value, "data": {"matches": matches}}  # type: ignore[misc]
+
+        if text:
+            for token in text.split():
+                yield {
+                    "type": ChatEventType.TOKEN.value,
+                    "data": {"text": token + " "},
+                }  # type: ignore[misc]
+
         yield {"type": ChatEventType.COMPLETE.value, "data": {}}  # type: ignore[misc]
 
 
