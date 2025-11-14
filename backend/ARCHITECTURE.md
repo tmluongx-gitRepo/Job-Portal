@@ -130,6 +130,13 @@ Routers are then registered with CORS enabled via settings (`settings.CORS_ORIGI
 
 Every router imports shared auth dependencies to enforce RBAC consistently.
 
+### Conversational Chat (LangChain scaffolding)
+- **Endpoint:** `/api/chat/ws` (FastAPI WebSocket) authenticates via Supabase JWT and streams JSON events (`info`, `history`, `summary`, `matches`, `token`, `complete`, `error`). See `docs/chat_agent_plan.md` for the event schema.
+- **Session handling:** `ChatSessionStore` + `ChatHistoryService` persist transcripts in Mongo (`chat_sessions`, `chat_messages`) and cache summaries/recent turns in Redis to warm reconnects.
+- **Orchestrator:** `ChatOrchestrator` selects job-seeker vs employer agent, streams LangChain output (fallback tokens if OpenAI unavailable), emits match payloads, and refreshes a rolling summary each turn.
+- **Agents & tools:** `app/ai/chat/agents/*` call runnables defined in `app/ai/chat/chain.py`; retrieval utilities currently rely on placeholder data but are wired for Chroma queries once embeddings land.
+- **Embedding pipeline:** `app/ai/embeddings.py`, `app/ai/indexers.py`, `app/tasks/embedding_tasks.py` provide scaffolding for generating embeddings and upserting them into Chroma (jobs/resumes).
+
 ---
 
 ## Testing & Quality Gates
