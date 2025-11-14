@@ -40,22 +40,34 @@ class StubSessionStore:
             summary=self.summary,
         )
 
-    async def save_message(self, *, _session: ChatSession, message: dict[str, Any]) -> None:
+    async def save_message(
+        self,
+        *,
+        session: ChatSession,  # noqa: ARG002
+        message: dict[str, Any],
+    ) -> None:
         if self.messages is not None:
             self.messages.append(message)
 
     async def hydrate_context(
-        self, *, _session: ChatSession, _limit: int
+        self,
+        *,
+        session: ChatSession,  # noqa: ARG002
+        limit: int,  # noqa: ARG002
     ) -> tuple[str | None, list[dict[str, Any]]]:
         return self.summary, list(self.history or [])
 
-    async def update_summary(self, *, _session: ChatSession, summary: str) -> None:
+    async def update_summary(self, *, session: ChatSession, summary: str) -> None:  # noqa: ARG002
         self.summary = summary
 
 
 class StubOrchestrator:
     async def stream_response(
-        self, *, _message: str, _user_context: dict, _session: ChatSession
+        self,
+        *,
+        message: str,  # noqa: ARG002
+        user_context: dict,  # noqa: ARG002
+        session: ChatSession,  # noqa: ARG002
     ) -> AsyncIterator[dict[str, Any]]:
         yield {
             "type": ChatEventType.MATCHES.value,

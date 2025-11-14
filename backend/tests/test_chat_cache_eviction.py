@@ -61,7 +61,7 @@ class FakeRedis:
             end_index = end + 1
         return items[start:end_index]
 
-    def pipeline(self, _transaction: bool = True) -> FakePipeline:
+    def pipeline(self, transaction: bool = True) -> FakePipeline:  # noqa: ARG002
         return FakePipeline(self, "")
 
     def _rpush(self, key: str, payload: str) -> None:
