@@ -161,6 +161,18 @@ def get_interviews_collection() -> AsyncIOMotorCollection:
     return db["interviews"]
 
 
+def get_chat_sessions_collection() -> AsyncIOMotorCollection:
+    """Get chat_sessions collection from MongoDB."""
+    db = get_mongo_database()
+    return db["chat_sessions"]
+
+
+def get_chat_messages_collection() -> AsyncIOMotorCollection:
+    """Get chat_messages collection from MongoDB."""
+    db = get_mongo_database()
+    return db["chat_messages"]
+
+
 async def _init_user_indexes(db: Any) -> None:
     """Initialize indexes for users and profiles."""
     # Users collection indexes
@@ -262,9 +274,24 @@ async def _init_feature_indexes(db: Any) -> None:
     await interviews.create_index([("job_seeker_id", 1), ("status", 1)])  # Job seeker filtering
 
 
+async def _init_chat_indexes(db: Any) -> None:
+    """Initialize indexes for chat sessions and messages."""
+
+    chat_sessions = db["chat_sessions"]
+    await chat_sessions.create_index("session_id", unique=True)
+    await chat_sessions.create_index("user_id")
+    await chat_sessions.create_index([("user_id", 1), ("status", 1)])
+    await chat_sessions.create_index([("last_interaction_at", -1)])
+
+    chat_messages = db["chat_messages"]
+    await chat_messages.create_index("session_id")
+    await chat_messages.create_index([("session_id", 1), ("created_at", -1)])
+
+
 async def init_db_indexes() -> None:
     """Initialize all database indexes."""
     db = get_mongo_database()
     await _init_user_indexes(db)
     await _init_job_indexes(db)
     await _init_feature_indexes(db)
+    await _init_chat_indexes(db)

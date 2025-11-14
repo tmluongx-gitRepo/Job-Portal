@@ -47,6 +47,18 @@ class Settings(BaseSettings):
     DROPBOX_APP_SECRET: str = ""
     DROPBOX_ACCESS_TOKEN: str = ""
 
+    # OpenAI / LangChain
+    OPENAI_API_KEY: str = ""
+    OPENAI_CHAT_MODEL: str = "gpt-4o-mini"
+    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-large"
+    LANGCHAIN_TRACING_ENABLED: bool = False
+    LANGCHAIN_PROJECT: str | None = None
+
+    # Conversational agent settings
+    CHAT_SESSION_TTL_SECONDS: int = 60 * 60 * 48  # 48 hours
+    CHAT_RECENT_MESSAGE_LIMIT: int = 20
+    CHAT_SUMMARY_MAX_TOKENS: int = 750
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://frontend:3000"]
 
