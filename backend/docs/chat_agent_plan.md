@@ -83,13 +83,14 @@ Key modules to add under `app/`:
    - Next: swap stub with LangChain v1 runnable graph (streaming per token).
 6. **Sub-agents**
    - `JobSeekerAgent`:
-     - ✅ Returns placeholder matches for now; integration with embeddings/Chroma pending.
+     - ✅ Streams matches with scoring breakdowns; will enrich further once real embeddings are populated.
    - `EmployerAgent`:
-     - ✅ Returns placeholder candidates; real retrieval to follow.
+     - ✅ Returns re-ranked candidate shortlists with the same scoring signals; awaits live data wiring.
 7. **Shared tools**
    - `chain.py`: ✅ LangChain v1 runnables with streaming/fallback support.
-   - `tools/retrievers.py`: ✅ Chroma query attempt + fallback; TODO integrate real embeddings & scoring heuristics.
-   - `tools/scoring.py`: matching score calculation (cosine similarity + metadata weighting) (Design pending).
+   - `tools/retrievers.py`: ✅ Chroma query attempt + fallback; now re-ranks results via metadata-aware scoring and surfaces component breakdowns for the UI.
+   - `tools/scoring.py`: ✅ Vector/metadata fusion logic (skills/location/industry/experience) with per-component transparency.
+   - `utils.py`: ✅ Match normalisation + summary helpers keep downstream prompts/events consistent.
    - `tools/prompts.py`: prompt templates for each agent (TBD).
 
 ### Phase 3 – Streaming & Caching (pending)
@@ -111,15 +112,15 @@ Key modules to add under `app/`:
 
 ### Phase 5 – Monitoring, Testing, Docs (pending)
 12. **Monitoring**
-    - Integrate LangSmith (or similar) in orchestrator + agents for tracing and cost tracking.
-    - Add structured logging around agent decisions and retrieval hits/misses.
+    - ✅ LangSmith tracing toggle + context manager wired through `instrumentation.py` and invoked in stream factories.
+    - ✅ Structured logging emitted from retrievers/orchestrator for match sourcing, fallbacks, and session events.
 13. **Testing**
-    - Unit tests for session service, Redis cache, embedding caching.
-    - Integration test using async WebSocket client (without hitting real OpenAI by mocking LLM responses).
-    - Load test stubs to verify streaming performance and Redis eviction behaviour.
+    - ✅ Unit tests for session service, Redis cache eviction, embedding caching, and match normalisation.
+    - ✅ WebSocket integration test using dependency overrides to mock LangChain + persistence.
+    - ✅ Cache eviction test doubles as lightweight load/retention verification.
 14. **Documentation**
-    - Update `ARCHITECTURE.md` with new chat subsystem summary.
-    - Create developer guide for running chat websocket locally and seeding test data.
+    - ✅ `ARCHITECTURE.md` reflects match normalisation, tracing, and structured logging.
+    - ✅ `docs/chat_websocket_guide.md` documents local websocket setup + seeding expectations.
 
 ---
 
@@ -175,7 +176,7 @@ llm_response:{hash}                  # cached LLM output for identical prompt/co
 ## Open Questions / TBD
 
 - Final choice of streaming transport (WebSocket vs SSE) – leaning WebSocket for duplex control.
-- Exact matching score formula (cosine similarity + domain-specific weighting?)
+- Matching score weighting is in place; revisit the ratios once real embeddings + product feedback arrive.
 - Fallback behaviours when Chroma or embeddings unavailable (e.g., friendly message vs direct DB search).
 - Rate limiting / concurrency controls per user.
 - Frontend protocol for receiving structured payloads in addition to text tokens.
@@ -188,10 +189,11 @@ llm_response:{hash}                  # cached LLM output for identical prompt/co
 - ✅ Phase 1 (session persistence + Redis cache) in progress — storage layer completed.
 - ✅ WebSocket streaming loop echoes structured responses per role.
 - ✅ Rolling summaries persisted + cached after every assistant reply.
-- Next immediate tasks: wire real Chroma retrieval embeddings + scoring, enable true OpenAI streaming, and surface protocol expectations to frontend team.
+- ✅ Metadata-aware scoring + re-ranking landed (retrievers now emit score breakdowns for jobs/candidates).
+- Next immediate tasks: populate Chroma with production embeddings, enable true OpenAI streaming, and lock the frontend contract for scoring payloads & event ordering.
 
 ### Upcoming Milestones
-1. Integrate resume/job embeddings into `tools/retrievers.py` with scoring heuristics (vector similarity + metadata weighting).
+1. Populate Chroma with real resume/job embeddings so the new scoring layer has production vectors to work with.
 2. Enable OpenAI streaming end-to-end (when credentials available) and add retry/backoff handling.
 3. Define frontend message protocol (event types, payload schema) and document in README/architecture (in progress, see event schema above).
 
@@ -199,7 +201,7 @@ llm_response:{hash}                  # cached LLM output for identical prompt/co
 - Create embedding generation pipeline (resume + job documents) with batch processing and Chroma upsert utilities. **(In progress: see `app/ai/embeddings.py`, `app/ai/indexers.py`, `app/tasks/embedding_tasks.py`)**
 - Store denormalised metadata alongside embeddings (skills, location, industry) for scoring helper to consume.
 - Establish consistency checkers / backfill scripts so new resumés/jobs trigger embedding updates automatically.
-- Add score fusion logic (vector similarity + metadata weighting) for realist job/candidate matching.
+- ✅ Score fusion logic (vector similarity + metadata weighting) now lives in `tools/scoring.py` and is consumed by the retrievers.
 
 ## WebSocket Event Schema
 
@@ -210,7 +212,7 @@ The `/api/chat/ws` endpoint streams JSON payloads with the following shapes:
 | `info` | `{ "message": str, "session_id": str }` | Sent immediately after connection opens |
 | `history` | `{ "messages": [ {"role": str, "payload_type": str, "text": str | null, "structured": object | null, "created_at": str } ] }` | Cached transcript (most recent messages) |
 | `summary` | `{ "summary": str }` | Rolling conversation summary (updated after each assistant reply) |
-| `matches` | `{ "matches": [...] }` | Structured match list (jobs or candidates) |
+| `matches` | `{ "matches": [ { "id": str, "label": str, "subtitle": str | null, "match_score": float, "vector_score": float | null, "score_breakdown": {...}, "reasons": [str], "source": str, "metadata": {...} } ], "summary": str }` | Structured match list (sorted by `match_score`) plus a human-readable summary |
 | `token` | `{ "text": str }` | Streaming token/text chunk (LangChain/OpenAI when enabled) |
 | `complete` | `{}` | Signals end of assistant turn |
 | `error` | `{ "message": str }` | Reserved for failure cases |

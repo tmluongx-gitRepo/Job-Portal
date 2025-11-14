@@ -133,9 +133,10 @@ Every router imports shared auth dependencies to enforce RBAC consistently.
 ### Conversational Chat (LangChain scaffolding)
 - **Endpoint:** `/api/chat/ws` (FastAPI WebSocket) authenticates via Supabase JWT and streams JSON events (`info`, `history`, `summary`, `matches`, `token`, `complete`, `error`). See `docs/chat_agent_plan.md` for the event schema.
 - **Session handling:** `ChatSessionStore` + `ChatHistoryService` persist transcripts in Mongo (`chat_sessions`, `chat_messages`) and cache summaries/recent turns in Redis to warm reconnects.
-- **Orchestrator:** `ChatOrchestrator` selects job-seeker vs employer agent, streams LangChain output (fallback tokens if OpenAI unavailable), emits match payloads, and refreshes a rolling summary each turn.
-- **Agents & tools:** `app/ai/chat/agents/*` call runnables defined in `app/ai/chat/chain.py`; retrieval utilities currently rely on placeholder data but are wired for Chroma queries once embeddings land.
+- **Orchestrator:** `ChatOrchestrator` selects job-seeker vs employer agent, streams LangChain output (fallback tokens if OpenAI unavailable), emits normalised match payloads with score breakdowns + summaries, persists them as `payload_type="matches"`, and refreshes a rolling conversation summary.
+- **Agents & tools:** `app/ai/chat/agents/*` call runnables defined in `app/ai/chat/chain.py`; `tools/retrievers.py` now re-ranks vector results (or metadata fallbacks) using `tools/scoring.py`, feeding structured reasons into the prompt formatter so downstream consumers see why an item scored well.
 - **Embedding pipeline:** `app/ai/embeddings.py`, `app/ai/indexers.py`, `app/tasks/embedding_tasks.py` provide scaffolding for generating embeddings and upserting them into Chroma (jobs/resumes).
+- **Monitoring:** `app/ai/chat/instrumentation.py` toggles LangSmith tracing via settings and exposes the `logger` used across retrievers/orchestrator for structured event logs.
 
 ---
 
