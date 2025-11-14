@@ -79,20 +79,13 @@ Key modules to add under `app/`:
 
 ### Phase 2 – Agent Orchestration (pending)
 5. **Orchestrator**
-   - Build `orchestrator.py` using LangChain v1 Runnable interfaces / `AgentExecutor`.
-   - Inputs: user message, role, session summary, recent history, optional structured context.
-   - Outputs: streaming tokens + structured payload (jobs/candidates with scores).
-   - Decision logic: if role = `job_seeker` → `JobSeekerAgent`; if `employer` → `EmployerAgent`; fallback for generic Q&A.
+   - ✅ Stub orchestrator dispatches by role and persists chat turns.
+   - Next: swap stub with LangChain v1 runnable graph (streaming per token).
 6. **Sub-agents**
    - `JobSeekerAgent`:
-     - Fetch resume embedding (from Mongo/Chroma). If missing, trigger fallback message.
-     - Use OpenAI `text-embedding-3-large` for new embeddings, cached via Redis.
-     - Query Chroma for top-N jobs; re-rank using matching score service.
-     - Compose a prompt with retrieved context; stream response via LLM.
+     - ✅ Returns placeholder matches for now; integration with embeddings/Chroma pending.
    - `EmployerAgent`:
-     - Fetch employer profile + active jobs.
-     - Retrieve candidate embeddings from Chroma; re-rank using matching score service.
-     - Return structured candidate list + summary message.
+     - ✅ Returns placeholder candidates; real retrieval to follow.
 7. **Shared tools**
    - `tools/retrievers.py`: wrappers around Chroma queries, embedding generation, caching, implemented with LangChain v1 retriever + runnable patterns.
    - `tools/scoring.py`: matching score calculation (e.g., weighted cosine similarity + metadata filters).

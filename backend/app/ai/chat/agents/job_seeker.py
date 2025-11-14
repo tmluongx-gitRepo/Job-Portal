@@ -15,10 +15,22 @@ class JobSeekerAgent:
 
     async def generate(self, _message: str, _context: dict[str, Any]) -> dict[str, Any]:
         """Return a stubbed structured response for the job seeker."""
+        query = _message.strip() or "your recent request"
         return {
             "type": ChatEventType.TOKEN.value,
             "data": {
-                "text": "Job seeker agent not yet implemented",
-                "matches": [],
+                "text": f"Stub: showing example roles relevant to {query}.",
+                "matches": [
+                    {
+                        "job_id": "sample-job-1",
+                        "title": "AI Solutions Engineer",
+                        "match_score": 0.82,
+                    },
+                    {
+                        "job_id": "sample-job-2",
+                        "title": "Data Scientist",
+                        "match_score": 0.78,
+                    },
+                ],
             },
         }
