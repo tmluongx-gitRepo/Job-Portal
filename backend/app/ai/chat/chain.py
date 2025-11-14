@@ -4,12 +4,28 @@ from __future__ import annotations
 
 from typing import Any
 
-from langchain_core.runnables import RunnableLambda
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import Runnable, RunnableLambda
+
+JOB_SEEKER_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        ("system", "You are a helpful agent assisting job seekers."),
+        ("human", "{message}"),
+    ]
+)
+
+EMPLOYER_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        ("system", "You are a helpful agent assisting employers."),
+        ("human", "{message}"),
+    ]
+)
 
 
-def _job_seeker_stub(inputs: dict[str, Any]) -> dict[str, Any]:
-    message = str(inputs.get("message", "")).strip()
-    query = message or "your latest request"
+def _job_seeker_stub(prompt_value: Any) -> dict[str, Any]:
+    messages = prompt_value.to_messages()
+    user_message = messages[-1].content.strip()
+    query = user_message or "your latest request"
     return {
         "text": f"Stub: showing example roles relevant to {query}.",
         "matches": [
@@ -27,9 +43,10 @@ def _job_seeker_stub(inputs: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _employer_stub(inputs: dict[str, Any]) -> dict[str, Any]:
-    message = str(inputs.get("message", "")).strip()
-    query = message or "your open roles"
+def _employer_stub(prompt_value: Any) -> dict[str, Any]:
+    messages = prompt_value.to_messages()
+    user_message = messages[-1].content.strip()
+    query = user_message or "your open roles"
     return {
         "text": f"Stub: returning example candidates relevant to {query}.",
         "matches": [
@@ -47,13 +64,13 @@ def _employer_stub(inputs: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def build_job_seeker_chain() -> RunnableLambda:
+def build_job_seeker_chain() -> Runnable[dict[str, Any], dict[str, Any]]:
     """Return a LangChain runnable for job seeker queries (stub)."""
 
-    return RunnableLambda(_job_seeker_stub)
+    return JOB_SEEKER_PROMPT | RunnableLambda(_job_seeker_stub)
 
 
-def build_employer_chain() -> RunnableLambda:
+def build_employer_chain() -> Runnable[dict[str, Any], dict[str, Any]]:
     """Return a LangChain runnable for employer queries (stub)."""
 
-    return RunnableLambda(_employer_stub)
+    return EMPLOYER_PROMPT | RunnableLambda(_employer_stub)
