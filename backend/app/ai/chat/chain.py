@@ -1,76 +1,102 @@
-"""LangChain v1 runnable scaffolding for chat agents."""
+"""LangChain chains for role-aware chat agents."""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
+from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import Runnable, RunnableLambda
+from langchain_core.runnables import RunnableLambda, RunnableParallel
+
+from app.ai.chat.tools.retrievers import (
+    fetch_candidate_matches_for_employer,
+    fetch_job_matches_for_user,
+)
+from app.config import settings
+
+try:
+    from langchain_openai import ChatOpenAI
+except ImportError:  # pragma: no cover - optional dependency
+    ChatOpenAI = None  # type: ignore[assignment]
+
 
 JOB_SEEKER_PROMPT = ChatPromptTemplate.from_messages(
     [
-        ("system", "You are a helpful agent assisting job seekers."),
+        (
+            "system",
+            "You are helping a job seeker. Use the provided job matches to craft a helpful reply.\n\n"
+            "Matches:\n{matches_summary}",
+        ),
         ("human", "{message}"),
     ]
 )
 
 EMPLOYER_PROMPT = ChatPromptTemplate.from_messages(
     [
-        ("system", "You are a helpful agent assisting employers."),
+        (
+            "system",
+            "You are helping an employer find candidates. Use the candidate shortlist to craft recommendations.\n\n"
+            "Candidates:\n{matches_summary}",
+        ),
         ("human", "{message}"),
     ]
 )
 
 
-def _job_seeker_stub(prompt_value: Any) -> dict[str, Any]:
-    messages = prompt_value.to_messages()
-    user_message = messages[-1].content.strip()
-    query = user_message or "your latest request"
-    return {
-        "text": f"Stub: showing example roles relevant to {query}.",
-        "matches": [
-            {
-                "job_id": "sample-job-1",
-                "title": "AI Solutions Engineer",
-                "match_score": 0.82,
-            },
-            {
-                "job_id": "sample-job-2",
-                "title": "Data Scientist",
-                "match_score": 0.78,
-            },
-        ],
-    }
+def _format_matches(matches: Sequence[dict[str, Any]]) -> str:
+    return "\n".join(f"- {item}" for item in matches)
 
 
-def _employer_stub(prompt_value: Any) -> dict[str, Any]:
-    messages = prompt_value.to_messages()
-    user_message = messages[-1].content.strip()
-    query = user_message or "your open roles"
-    return {
-        "text": f"Stub: returning example candidates relevant to {query}.",
-        "matches": [
-            {
-                "candidate_id": "sample-candidate-1",
-                "name": "Jordan Lee",
-                "match_score": 0.84,
-            },
-            {
-                "candidate_id": "sample-candidate-2",
-                "name": "Casey Morgan",
-                "match_score": 0.8,
-            },
-        ],
-    }
+async def job_seeker_response(message: str, context: dict[str, Any]) -> dict[str, Any]:
+    matches = await fetch_job_matches_for_user(_user_context=context)
+    if not settings.OPENAI_API_KEY or ChatOpenAI is None:
+        return {
+            "text": f"Stub: showing example roles relevant to {message.strip() or 'your latest request'}.",
+            "matches": matches,
+        }
+
+    llm = ChatOpenAI(
+        api_key=settings.OPENAI_API_KEY,
+        model=settings.OPENAI_CHAT_MODEL,
+        temperature=0,
+        streaming=False,
+    )
+    chain = (
+        RunnableParallel(
+            message=RunnableLambda(lambda _: message),
+            matches_summary=RunnableLambda(lambda _: _format_matches(matches)),
+        )
+        | JOB_SEEKER_PROMPT
+        | llm
+        | StrOutputParser()
+    )
+    response_text = await chain.ainvoke({})
+    return {"text": response_text, "matches": matches}
 
 
-def build_job_seeker_chain() -> Runnable[dict[str, Any], dict[str, Any]]:
-    """Return a LangChain runnable for job seeker queries (stub)."""
+async def employer_response(message: str, context: dict[str, Any]) -> dict[str, Any]:
+    matches = await fetch_candidate_matches_for_employer(_user_context=context)
+    if not settings.OPENAI_API_KEY or ChatOpenAI is None:
+        return {
+            "text": f"Stub: returning example candidates relevant to {message.strip() or 'your open roles'}.",
+            "matches": matches,
+        }
 
-    return JOB_SEEKER_PROMPT | RunnableLambda(_job_seeker_stub)
-
-
-def build_employer_chain() -> Runnable[dict[str, Any], dict[str, Any]]:
-    """Return a LangChain runnable for employer queries (stub)."""
-
-    return EMPLOYER_PROMPT | RunnableLambda(_employer_stub)
+    llm = ChatOpenAI(
+        api_key=settings.OPENAI_API_KEY,
+        model=settings.OPENAI_CHAT_MODEL,
+        temperature=0,
+        streaming=False,
+    )
+    chain = (
+        RunnableParallel(
+            message=RunnableLambda(lambda _: message),
+            matches_summary=RunnableLambda(lambda _: _format_matches(matches)),
+        )
+        | EMPLOYER_PROMPT
+        | llm
+        | StrOutputParser()
+    )
+    response_text = await chain.ainvoke({})
+    return {"text": response_text, "matches": matches}

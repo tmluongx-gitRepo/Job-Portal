@@ -11,5 +11,6 @@ class ChatRole(str, Enum):
 class ChatEventType(str, Enum):
     INFO = "info"
     TOKEN = "token"
+    MATCHES = "matches"
     COMPLETE = "complete"
     ERROR = "error"
