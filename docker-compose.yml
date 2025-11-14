@@ -102,15 +102,20 @@ services:
     restart: unless-stopped
 
   # n8n Automation Platform
+  # SECURITY NOTE: For production use, MUST set authentication:
+  #   - Set N8N_BASIC_AUTH_ACTIVE=true
+  #   - Set strong N8N_BASIC_AUTH_USER and N8N_BASIC_AUTH_PASSWORD
+  # Without auth, anyone with network access can control workflows!
   n8n:
     image: n8nio/n8n:latest
     container_name: job-portal-n8n
     ports:
       - "${N8N_PORT:-5678}:5678"
     environment:
-      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-false}
-      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-}
+      # Basic Auth (REQUIRED for production - see security note above)
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-true}
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-CHANGE_THIS_PASSWORD}
       - N8N_HOST=${N8N_HOST:-localhost}
       - N8N_PORT=${N8N_PORT:-5678}
       - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
@@ -120,7 +125,9 @@ services:
       # Task runners configuration
       - N8N_RUNNERS_ENABLED=true
       # Security settings
-      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      # SECURITY: Blocks workflow nodes from accessing env vars by default
+      # Set to false only if workflows need env access (not recommended)
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=${N8N_BLOCK_ENV_ACCESS_IN_NODE:-true}
       - N8N_GIT_NODE_DISABLE_BARE_REPOS=true
       - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
     volumes:
