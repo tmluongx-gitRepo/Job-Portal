@@ -1496,7 +1496,7 @@ class TestApplicationStatusTransitions:
             headers=emp_headers,
             json={"status": "Accepted"},
         )
-        assert accept_response.status_code == 400  # noqa: PLR2004
+        assert accept_response.status_code == 400
         assert "offer" in accept_response.json()["detail"].lower()
 
     @pytest.mark.asyncio
@@ -1557,7 +1557,7 @@ class TestApplicationStatusTransitions:
             headers=emp_headers,
             json={"status": "Rejected"},
         )
-        assert reject_response.status_code == 400  # noqa: PLR2004
+        assert reject_response.status_code == 400
         assert "accepted" in reject_response.json()["detail"].lower()
 
     @pytest.mark.asyncio

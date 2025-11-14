@@ -688,4 +688,4 @@ class TestJobSeekerProfilesRBAC:
             f"/api/job-seeker-profiles/user/{user_id}/application-stats",
             headers=emp_headers,
         )
-        assert stats_response.status_code == 404  # noqa: PLR2004
+        assert stats_response.status_code == 404

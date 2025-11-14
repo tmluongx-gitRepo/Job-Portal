@@ -67,8 +67,8 @@ exclude = [
 [lint.per-file-ignores]
 # Ignore import violations in __init__.py files
 "__init__.py" = ["F401", "F403"]
-# Ignore assert statements in tests
-"tests/**/*.py" = ["S101", "PLC0415"]
+# Ignore assert statements, magic values, and ternary suggestions in tests
+"tests/**/*.py" = ["S101", "PLC0415", "PLR2004", "SIM108"]
 # Allow inline imports in auth/crud modules to avoid circular dependencies
 "app/auth/*.py" = ["PLC0415"]
 "app/crud/*.py" = ["PLC0415"]

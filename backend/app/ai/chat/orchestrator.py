@@ -7,6 +7,7 @@ from typing import Protocol
 
 from app.ai.chat.agents import EmployerAgent, JobSeekerAgent
 from app.ai.chat.constants import ChatEventType, ChatRole
+from app.ai.chat.instrumentation import configure_tracing, logger
 from app.ai.chat.sessions import ChatSession, ChatSessionStore
 from app.ai.chat.summarizer import summarise_conversation
 from app.services.chat_history import ChatHistoryService
@@ -28,6 +29,7 @@ class ChatOrchestrator:
         session_store: ChatSessionStore | None = None,
         history_service: ChatHistoryService | None = None,
     ) -> None:
+        configure_tracing()
         self._session_store = session_store or ChatSessionStore()
         self._history_service = history_service or ChatHistoryService()
         self._job_seeker_agent = JobSeekerAgent()
@@ -40,6 +42,15 @@ class ChatOrchestrator:
 
         This stub simply echoes the request until LangChain chains are wired.
         """
+
+        logger.info(
+            "chat.user_message",
+            extra={
+                "session_id": session.session_id,
+                "user_id": session.user_id,
+                "account_type": session.role,
+            },
+        )
 
         await self._session_store.save_message(
             session=session,
@@ -54,10 +65,29 @@ class ChatOrchestrator:
         if account_type == "employer":
             agent = self._employer_agent
 
-        matches, chunk_iterator = await agent.stream(message, user_context)
+        matches, match_summary, chunk_iterator = await agent.stream(message, user_context)
 
         if matches:
-            yield {"type": ChatEventType.MATCHES.value, "data": {"matches": matches}}  # type: ignore[misc]
+            await self._session_store.save_message(
+                session=session,
+                message={
+                    "role": ChatRole.ASSISTANT.value,
+                    "payload_type": "matches",
+                    "structured": {"matches": matches, "summary": match_summary},
+                },
+            )
+            logger.info(
+                "chat.matches_emitted",
+                extra={
+                    "session_id": session.session_id,
+                    "user_id": session.user_id,
+                    "match_count": len(matches),
+                },
+            )
+            yield {
+                "type": ChatEventType.MATCHES.value,
+                "data": {"matches": matches, "summary": match_summary},
+            }  # type: ignore[misc]
 
         accumulated: list[str] = []
         async for chunk in chunk_iterator:
@@ -67,21 +97,25 @@ class ChatOrchestrator:
                 "data": {"text": chunk},
             }  # type: ignore[misc]
 
-        text = "".join(accumulated)
+        assistant_text = "".join(accumulated)
 
         await self._session_store.save_message(
             session=session,
             message={
                 "role": ChatRole.ASSISTANT.value,
-                "text": text,
-                "structured": {"matches": matches, "text": text},
+                "text": assistant_text,
+                "structured": {
+                    "matches": matches,
+                    "matches_summary": match_summary,
+                    "text": assistant_text,
+                },
             },
         )
 
         new_summary = await summarise_conversation(
             current_summary=session.summary,
             user_message=message,
-            assistant_message=text,
+            assistant_message=assistant_text,
         )
         await self._session_store.update_summary(session=session, summary=new_summary)
         yield {

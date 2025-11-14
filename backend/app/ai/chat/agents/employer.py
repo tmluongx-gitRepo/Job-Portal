@@ -14,9 +14,9 @@ class EmployerAgent:
 
     async def stream(
         self, message: str, context: dict[str, Any]
-    ) -> tuple[list[dict[str, Any]], AsyncIterator[str]]:
-        matches, factory = await employer_stream(message, context)
-        return list(matches), factory()
+    ) -> tuple[list[dict[str, Any]], str, AsyncIterator[str]]:
+        matches, summary, factory = await employer_stream(message, context)
+        return list(matches), summary, factory()
 
     async def generate(self, message: str, context: dict[str, Any]) -> dict[str, Any]:
         """Return structured data notes for the employer conversation."""
