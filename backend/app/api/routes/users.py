@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth import user_service
+from app.auth.auth_utils import is_admin
 from app.auth.dependencies import get_current_user, require_admin
 from app.crud import user as user_crud  # Admin-only functions
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
@@ -99,8 +100,6 @@ async def get_user(user_id: str, current_user: dict = Depends(get_current_user))
     You can view your own account or admins can view any account.
     """
     # Check if viewing own account or is admin
-    from app.auth.auth_utils import is_admin
-
     if user_id != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="You can only view your own account"
@@ -176,8 +175,6 @@ async def update_user(
     - Admins can update any account including account_type
     """
     # Check if updating own account or is admin
-    from app.auth.auth_utils import is_admin
-
     is_own_account = user_id == current_user["id"]
     is_admin_user = is_admin(current_user)
 
@@ -237,8 +234,6 @@ async def delete_user(user_id: str, current_user: dict = Depends(get_current_use
     This action cannot be undone.
     """
     # Check if deleting own account or is admin
-    from app.auth.auth_utils import is_admin
-
     if user_id != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete your own account"

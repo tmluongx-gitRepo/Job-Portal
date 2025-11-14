@@ -277,4 +277,4 @@ async def get_jobs_count(is_active: bool | None = None, posted_by: str | None = 
     if posted_by:
         query["posted_by"] = posted_by
 
-    return await collection.count_documents(query)
+    return await collection.count_documents(query)  # type: ignore[no-any-return]

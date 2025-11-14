@@ -59,7 +59,7 @@ class TestJobsRBAC:
         self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
     ) -> None:
         """Employers can create job postings."""
-        token, user_id, profile_id = employer_with_profile
+        token, user_id, _profile_id = employer_with_profile
 
         headers = {"Authorization": f"Bearer {token}"}
         response = await client.post(
@@ -103,7 +103,7 @@ class TestJobsRBAC:
         self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
     ) -> None:
         """Employers can update their own job postings."""
-        token, user_id, profile_id = employer_with_profile
+        token, _user_id, _profile_id = employer_with_profile
 
         headers = {"Authorization": f"Bearer {token}"}
 
@@ -140,7 +140,7 @@ class TestJobsRBAC:
         create_temp_user: Any,
     ) -> None:
         """Employers cannot update other employers' job postings."""
-        token, user_id, profile_id = employer_with_profile
+        token, _user_id, _profile_id = employer_with_profile
 
         # Create job as first employer
         headers1 = {"Authorization": f"Bearer {token}"}
@@ -160,7 +160,7 @@ class TestJobsRBAC:
         job_id = create_response.json()["id"]
 
         # Create a second employer to test cross-user authorization
-        token2, user_id2 = await create_temp_user("employer", "temp.employer.jobs@test.com")
+        token2, _user_id2 = await create_temp_user("employer", "temp.employer.jobs@test.com")
         if not token2:
             pytest.skip("Failed to create temporary employer user")
 
@@ -180,7 +180,7 @@ class TestJobsRBAC:
         if not admin_token:
             pytest.skip("Email confirmation required for testing")
 
-        token, user_id, profile_id = employer_with_profile
+        token, _user_id, _profile_id = employer_with_profile
 
         # Create job as employer
         emp_headers = {"Authorization": f"Bearer {token}"}
@@ -214,7 +214,7 @@ class TestJobsRBAC:
         self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
     ) -> None:
         """Employers can delete their own job postings."""
-        token, user_id, profile_id = employer_with_profile
+        token, _user_id, _profile_id = employer_with_profile
 
         headers = {"Authorization": f"Bearer {token}"}
 
@@ -250,7 +250,7 @@ class TestJobsRBAC:
         if not job_seeker_token:
             pytest.skip("Email confirmation required for testing")
 
-        token, user_id, profile_id = employer_with_profile
+        token, _user_id, _profile_id = employer_with_profile
 
         # Create job as employer
         emp_headers = {"Authorization": f"Bearer {token}"}
@@ -701,8 +701,8 @@ class TestJobsRBAC:
         job_seeker_with_profile: tuple[str, str, str],
     ) -> None:
         """Complete workflow: Create profile → Post job → Update → Receive application → Close."""
-        emp_token, emp_user_id, emp_profile_id = employer_with_profile
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        emp_token, _emp_user_id, _emp_profile_id = employer_with_profile
+        js_token, _js_user_id, _js_profile_id = job_seeker_with_profile
 
         emp_headers = {"Authorization": f"Bearer {emp_token}"}
         js_headers = {"Authorization": f"Bearer {js_token}"}

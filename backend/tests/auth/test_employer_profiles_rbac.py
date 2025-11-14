@@ -108,7 +108,7 @@ class TestEmployerProfilesRBAC:
         self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
     ) -> None:
         """Employers can update their own profile."""
-        token, user_id, profile_id = employer_with_profile
+        token, _user_id, profile_id = employer_with_profile
 
         headers = {"Authorization": f"Bearer {token}"}
         response = await client.put(
@@ -169,7 +169,7 @@ class TestEmployerProfilesRBAC:
         self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
     ) -> None:
         """Employers can delete their own profile."""
-        token, user_id, profile_id = employer_with_profile
+        token, _user_id, profile_id = employer_with_profile
 
         headers = {"Authorization": f"Bearer {token}"}
         response = await client.delete(f"/api/employer-profiles/{profile_id}", headers=headers)
@@ -266,7 +266,7 @@ class TestEmployerProfilesRBAC:
         self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
     ) -> None:
         """Cannot create duplicate profile for same user."""
-        token, user_id, profile_id = employer_with_profile
+        token, user_id, _profile_id = employer_with_profile
         headers = {"Authorization": f"Bearer {token}"}
 
         # Try to create another profile for same user
@@ -387,7 +387,7 @@ class TestEmployerProfilesRBAC:
         self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
     ) -> None:
         """Employer workflow: Update company profile over time."""
-        token, user_id, profile_id = employer_with_profile
+        token, _user_id, profile_id = employer_with_profile
         headers = {"Authorization": f"Bearer {token}"}
 
         # Step 1: Update basic info
@@ -500,7 +500,7 @@ class TestEmployerProfilesRBAC:
         job_seeker_with_profile: tuple[str, str, str],
     ) -> None:
         """Non-owner cannot view another user's job statistics."""
-        emp_token, user_id, _ = employer_with_profile
+        _emp_token, user_id, _ = employer_with_profile
         js_token, _, _ = job_seeker_with_profile
 
         js_headers = {"Authorization": f"Bearer {js_token}"}
@@ -519,7 +519,7 @@ class TestEmployerProfilesRBAC:
         job_seeker_with_profile: tuple[str, str, str],
     ) -> None:
         """Job seeker cannot view employer job statistics."""
-        emp_token, user_id, _ = employer_with_profile
+        _emp_token, user_id, _ = employer_with_profile
         js_token, _, _ = job_seeker_with_profile
 
         js_headers = {"Authorization": f"Bearer {js_token}"}

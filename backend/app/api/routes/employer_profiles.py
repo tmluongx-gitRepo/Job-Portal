@@ -3,11 +3,14 @@ Employer Profile API routes.
 """
 
 from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.auth.auth_utils import is_admin
 from app.auth.dependencies import get_current_user, get_optional_user, require_employer
 from app.crud import employer_profile as profile_crud
+from app.database import get_applications_collection, get_jobs_collection
 from app.schemas.employer import (
     EmployerProfileCreate,
     EmployerProfileResponse,
@@ -157,8 +160,6 @@ async def update_profile(
         raise HTTPException(status_code=404, detail="Employer profile not found")
 
     # Check ownership
-    from app.auth.auth_utils import is_admin
-
     if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="You can only update your own profile"
@@ -191,8 +192,6 @@ async def delete_profile(profile_id: str, current_user: dict = Depends(get_curre
         raise HTTPException(status_code=404, detail="Employer profile not found")
 
     # Check ownership
-    from app.auth.auth_utils import is_admin
-
     if str(existing_profile.get("user_id")) != current_user["id"] and not is_admin(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete your own profile"
@@ -224,11 +223,6 @@ async def get_employer_job_stats(
     - Recent application activity (last 7 days)
     - Top 5 jobs by application count
     """
-    from datetime import UTC, datetime, timedelta
-
-    from app.auth.auth_utils import is_admin
-    from app.database import get_applications_collection, get_jobs_collection
-
     # Check authorization
     if user_id != current_user["id"] and not is_admin(current_user):
         raise HTTPException(

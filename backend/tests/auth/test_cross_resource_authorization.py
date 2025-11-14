@@ -58,7 +58,7 @@ class TestCrossResourceAuthorization:
         if not admin_token:
             pytest.skip("Email confirmation required for testing")
 
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
+        _js_token, js_user_id, js_profile_id = job_seeker_with_profile
 
         # Admin deletes user
         admin_headers = {"Authorization": f"Bearer {admin_token}"}
@@ -74,7 +74,7 @@ class TestCrossResourceAuthorization:
         self, client: AsyncClient, employer_with_profile: tuple[str, str, str]
     ) -> None:
         """Employers can only see applications to their own jobs."""
-        emp_token, _, emp_profile_id = employer_with_profile
+        emp_token, _, _emp_profile_id = employer_with_profile
         emp_headers = {"Authorization": f"Bearer {emp_token}"}
 
         # Employer creates a job
@@ -136,8 +136,8 @@ class TestCrossResourceAuthorization:
         test_cleaner: DataCleaner,
     ) -> None:
         """Deleting a job should affect its applications."""
-        js_token, js_user_id, js_profile_id = job_seeker_with_profile
-        emp_token, _, emp_profile_id = employer_with_profile
+        js_token, _js_user_id, js_profile_id = job_seeker_with_profile
+        emp_token, _, _emp_profile_id = employer_with_profile
 
         # Employer posts job
         emp_headers = {"Authorization": f"Bearer {emp_token}"}
