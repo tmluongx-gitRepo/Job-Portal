@@ -1,36 +1,26 @@
-"""LangChain v1 agent that handles employer conversations (scaffold)."""
+"""LangChain v1 agent that handles employer conversations."""
 
 from __future__ import annotations
 
 from typing import Any
 
+from langchain_core.runnables import RunnableLambda  # type: ignore[import-not-found]
+
+from app.ai.chat.chain import build_employer_chain
 from app.ai.chat.constants import ChatEventType
 
 
 class EmployerAgent:
-    """Placeholder implementation for the employer focused agent."""
+    """LangChain-backed agent for employer oriented conversations."""
 
-    def __init__(self) -> None:
-        self._ready = False
+    def __init__(self, *, chain: RunnableLambda | None = None) -> None:
+        self._chain = chain or build_employer_chain()
 
-    async def generate(self, _message: str, _context: dict[str, Any]) -> dict[str, Any]:
-        """Return a stubbed structured response for the employer."""
-        query = _message.strip() or "your open roles"
+    async def generate(self, message: str, context: dict[str, Any]) -> dict[str, Any]:
+        """Return structured data notes for the employer conversation."""
+
+        payload = await self._chain.ainvoke({"message": message, "context": context})
         return {
             "type": ChatEventType.TOKEN.value,
-            "data": {
-                "text": f"Stub: returning example candidates relevant to {query}.",
-                "matches": [
-                    {
-                        "candidate_id": "sample-candidate-1",
-                        "name": "Jordan Lee",
-                        "match_score": 0.84,
-                    },
-                    {
-                        "candidate_id": "sample-candidate-2",
-                        "name": "Casey Morgan",
-                        "match_score": 0.8,
-                    },
-                ],
-            },
+            "data": payload,
         }
