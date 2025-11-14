@@ -87,9 +87,10 @@ Key modules to add under `app/`:
    - `EmployerAgent`:
      - ✅ Returns placeholder candidates; real retrieval to follow.
 7. **Shared tools**
-   - `tools/retrievers.py`: wrappers around Chroma queries, embedding generation, caching, implemented with LangChain v1 retriever + runnable patterns.
-   - `tools/scoring.py`: matching score calculation (e.g., weighted cosine similarity + metadata filters).
-   - `tools/prompts.py`: prompt templates for each agent.
+   - `chain.py`: ✅ stub LangChain v1 runnables for each agent (ready to swap with real chains).
+   - `tools/retrievers.py`: wrappers around Chroma queries, embedding generation, caching, implemented with LangChain v1 retriever + runnable patterns (TBD).
+   - `tools/scoring.py`: matching score calculation (e.g., weighted cosine similarity + metadata filters) (TBD).
+   - `tools/prompts.py`: prompt templates for each agent (TBD).
 
 ### Phase 3 – Streaming & Caching (pending)
 8. **Streaming implementation**
@@ -186,6 +187,7 @@ llm_response:{hash}                  # cached LLM output for identical prompt/co
 
 - ✅ Phase 0 scaffolding landed (configuration + module skeletons).
 - ✅ Phase 1 (session persistence + Redis cache) in progress — storage layer completed.
-- Next immediate tasks: wire FastAPI streaming endpoint and integrate orchestrator logic.
+- ✅ WebSocket streaming loop echoes structured responses per role.
+- Next immediate tasks: replace stub chains with real LangChain retrieval + LLM streaming.
 
 If you pick up this work, please update this file with progress notes and any new decisions so the next teammate has a clear starting point.

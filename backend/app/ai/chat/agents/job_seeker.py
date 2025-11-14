@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from langchain_core.runnables import RunnableLambda
+from langchain_core.runnables import Runnable
 
 from app.ai.chat.chain import build_job_seeker_chain
 from app.ai.chat.constants import ChatEventType
@@ -13,7 +13,7 @@ from app.ai.chat.constants import ChatEventType
 class JobSeekerAgent:
     """LangChain-backed agent focused on job seeker interactions."""
 
-    def __init__(self, *, chain: RunnableLambda | None = None) -> None:
+    def __init__(self, *, chain: Runnable[dict[str, Any], dict[str, Any]] | None = None) -> None:
         self._chain = chain or build_job_seeker_chain()
 
     async def generate(self, message: str, context: dict[str, Any]) -> dict[str, Any]:
