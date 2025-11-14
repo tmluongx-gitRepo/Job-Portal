@@ -9,8 +9,16 @@ import {
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, Mail, Lock, Eye, EyeOff, Heart, Users } from "lucide-react";
-import { api, ApiError, ValidationError } from "@/lib/api";
+import {
+  User as UserIcon,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Heart,
+  Users,
+} from "lucide-react";
+import { api, ApiError, ValidationError, type User } from "@/lib/api";
 
 export default function SignupPage(): ReactElement {
   const router = useRouter();
@@ -95,7 +103,7 @@ export default function SignupPage(): ReactElement {
           ? "job_seeker"
           : formData.accountType;
 
-      const user = await api.users.create({
+      const user: User = await api.users.create({
         email: formData.email,
         account_type: accountType,
       });
@@ -190,7 +198,12 @@ export default function SignupPage(): ReactElement {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form
+              onSubmit={(e) => {
+                void handleSubmit(e);
+              }}
+              className="space-y-6"
+            >
               {/* Account Type Selection */}
               <div>
                 <label className="block text-sm font-medium text-green-800 mb-3">
@@ -213,7 +226,7 @@ export default function SignupPage(): ReactElement {
                       className="sr-only"
                     />
                     <div className="flex flex-col items-center text-center w-full">
-                      <User className="w-6 h-6 text-green-600 mb-2" />
+                      <UserIcon className="w-6 h-6 text-green-600 mb-2" />
                       <span className="font-medium text-green-800">
                         Find Work
                       </span>
