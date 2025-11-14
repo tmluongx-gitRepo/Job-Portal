@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from langchain_core.runnables import RunnableLambda  # type: ignore[import-not-found]
+from langchain_core.runnables import RunnableLambda
 
 
 def _job_seeker_stub(inputs: dict[str, Any]) -> dict[str, Any]:

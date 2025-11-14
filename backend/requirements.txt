@@ -30,6 +30,12 @@ dropbox==12.0.2
 python-dotenv==1.0.1
 httpx==0.28.1
 
+# AI / LangChain
+langchain==0.2.6
+langchain-core==0.2.10
+langchain-openai==0.1.8
+langsmith==0.1.77
+
 # Development
 pytest==8.3.4
 pytest-asyncio==0.24.0

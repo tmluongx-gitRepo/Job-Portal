@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from langchain_core.runnables import RunnableLambda  # type: ignore[import-not-found]
+from langchain_core.runnables import RunnableLambda
 
 from app.ai.chat.chain import build_employer_chain
 from app.ai.chat.constants import ChatEventType
