@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import (
     applications,
+    chat,
     employer_profiles,
     health,
     interviews,
@@ -122,6 +123,7 @@ app.include_router(interviews.router, prefix="/api/interviews", tags=["Interview
 app.include_router(saved_jobs.router, prefix="/api/saved-jobs", tags=["Saved Jobs"])
 app.include_router(resumes.router, prefix="/api/resumes", tags=["Resumes"])
 app.include_router(recommendations.router, prefix="/api/recommendations", tags=["Recommendations"])
+app.include_router(chat.router, tags=["Chat"])
 
 
 @app.get("/")

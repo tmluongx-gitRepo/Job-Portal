@@ -74,8 +74,8 @@ Key modules to add under `app/`:
    - ✅ `ChatHistoryService` implemented with Mongo CRUD hooks.
    - ✅ Redis chat cache wrapper (`RedisChatCache`) stores summaries + recent turns with TTL.
 4. **Authentication integration**
-   - Add `@router.websocket` or SSE endpoint under `/api/chat`.
-   - Reuse `get_current_user` dependency to authenticate the socket and derive role.
+   - ✅ `/api/chat/ws` WebSocket skeleton with `get_current_user` auth guard.
+   - Streaming logic to be implemented in next phase (currently returns handshake message).
 
 ### Phase 2 – Agent Orchestration (pending)
 5. **Orchestrator**
