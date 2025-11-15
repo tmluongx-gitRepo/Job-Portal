@@ -3,6 +3,7 @@
  * Shared across all API modules
  */
 import { z } from "zod";
+import { getAccessToken } from "../auth";
 
 // Get API URL from environment variable
 export const API_URL =
@@ -74,14 +75,40 @@ export async function apiRequest<TResponse>(
     console.log(`[API Client] Full URL: ${fullUrl}`);
   }
 
+  // Get authentication token if available
+  const token = getAccessToken();
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...fetchOptions.headers,
+  };
+
+  // Add Bearer token if available
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+    // Debug logging in development
+    if (
+      typeof window !== "undefined" &&
+      process.env.NODE_ENV === "development"
+    ) {
+      console.log("[API Client] Token found, adding Authorization header");
+    }
+  } else {
+    // Debug logging in development
+    if (
+      typeof window !== "undefined" &&
+      process.env.NODE_ENV === "development"
+    ) {
+      console.warn(
+        "[API Client] No token found - request will be unauthenticated"
+      );
+    }
+  }
+
   let response: Response;
   try {
     response = await fetch(fullUrl, {
       ...fetchOptions,
-      headers: {
-        "Content-Type": "application/json",
-        ...fetchOptions.headers,
-      },
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (fetchError) {
@@ -226,10 +253,21 @@ export async function uploadFile<TResponse>(
     });
   }
 
+  // Get authentication token if available
+  const token = getAccessToken();
+  const headers: Record<string, string> = {};
+  // Don't set Content-Type header - browser will set it with boundary for FormData
+
+  // Add Bearer token if available
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   let response: Response;
   try {
     response = await fetch(fullUrl, {
       method: "POST",
+      headers,
       body: formData,
       // Don't set Content-Type header - browser will set it with boundary
     });

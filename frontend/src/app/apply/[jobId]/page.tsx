@@ -23,50 +23,12 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { api, ApiError, uploadFile } from "../../../lib/api";
+import { getCurrentUserId } from "../../../lib/auth";
 import type {
   Job,
   JobSeekerProfile,
   ApplicationCreate,
 } from "../../../lib/api";
-
-/**
- * Get the current authenticated user ID
- *
- * ⚠️ CRITICAL SECURITY WARNING: This is a placeholder function that MUST be replaced
- * with actual authentication before production deployment.
- *
- * TODO: Replace with actual auth context when authentication is implemented
- * Example: const { user, isAuthenticated } = useAuth();
- *          if (!isAuthenticated || !user?.id) throw new Error("Not authenticated");
- *          return user.id;
- *
- * Current behavior: Blocks all application submissions by returning null.
- * This prevents security issues from hardcoded user IDs but means the feature
- * is non-functional until real authentication is implemented.
- *
- * DO NOT bypass this check or hardcode user IDs in production!
- */
-function getCurrentUserId(): string | null {
-  // TODO: CRITICAL - Implement real authentication before production
-  // const { user, isAuthenticated } = useAuth();
-  // if (!isAuthenticated || !user?.id) {
-  //   console.error("[SECURITY] Authentication required but not implemented");
-  //   return null;
-  // }
-  // return user.id;
-
-  // TEMPORARY: Return null to block submissions until auth is implemented
-  // This prevents security issues from hardcoded user IDs
-  if (process.env.NODE_ENV === "development") {
-    console.warn(
-      "[SECURITY] getCurrentUserId() is a placeholder. Real authentication must be implemented before production."
-    );
-  }
-  return null;
-
-  // For development/testing only - remove before production:
-  // return "507f1f77bcf86cd799439011";
-}
 
 interface ApplicationFormData {
   // Page 1: Basic Profile Information
