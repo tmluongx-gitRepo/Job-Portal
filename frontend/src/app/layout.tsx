@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import ChatbotWrapper from "../components/ChatbotWrapper";
 
 export const metadata: Metadata = {
   title: "Career Harmony - Job Portal",
@@ -21,6 +22,7 @@ export default function RootLayout({
         <Header />
         <main>{children}</main>
         <Footer />
+        <ChatbotWrapper />
       </body>
     </html>
   );
