@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, cast
+import asyncio
+import importlib
+import logging
+from typing import TYPE_CHECKING, Any, cast
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -11,17 +14,23 @@ from pydantic import SecretStr
 
 from app.config import settings
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:  # pragma: no cover - type checking only
     from langchain_openai import ChatOpenAI as ChatOpenAIType
 else:  # pragma: no cover - runtime fallback typing
     ChatOpenAIType = Any
 
-try:
-    from langchain_openai import ChatOpenAI as _ChatOpenAI
-except ImportError:  # pragma: no cover - optional dependency
-    _ChatOpenAI = None
 
-ChatOpenAI: ChatOpenAIType | None = cast(Optional["ChatOpenAIType"], _ChatOpenAI)
+def _resolve_chat_openai_cls() -> Any | None:
+    try:
+        module = importlib.import_module("langchain_openai")
+    except ImportError:  # pragma: no cover - optional dependency
+        return None
+    return getattr(module, "ChatOpenAI", None)
+
+
+_CHAT_OPENAI_CLS = _resolve_chat_openai_cls()
 
 
 SUMMARY_PROMPT = ChatPromptTemplate.from_messages(
@@ -51,18 +60,21 @@ async def summarise_conversation(
     """Return an updated rolling summary for the conversation."""
 
     base_summary = current_summary or ""
-    if not settings.OPENAI_API_KEY or ChatOpenAI is None:
+    llm_cls = _CHAT_OPENAI_CLS
+    if not settings.OPENAI_API_KEY or llm_cls is None:
         truncated = (
             base_summary + "\n" + f"User: {user_message}" + "\n" + f"Assistant: {assistant_message}"
         ).strip()
         return truncated[-settings.CHAT_SUMMARY_MAX_TOKENS * 5 :]
 
-    assert ChatOpenAI is not None  # for type checkers
-    llm = ChatOpenAI(
-        api_key=SecretStr(settings.OPENAI_API_KEY),
-        model=settings.OPENAI_SUMMARY_MODEL or settings.OPENAI_CHAT_MODEL,
-        temperature=0,
-        streaming=False,
+    llm = cast(
+        Any,
+        llm_cls(
+            api_key=SecretStr(settings.OPENAI_API_KEY),
+            model=settings.OPENAI_SUMMARY_MODEL or settings.OPENAI_CHAT_MODEL,
+            temperature=0,
+            streaming=False,
+        ),
     )
     chain = (
         RunnableLambda(
@@ -77,5 +89,33 @@ async def summarise_conversation(
         | llm
         | StrOutputParser()
     )
-    result = await chain.ainvoke({})
-    return str(result)
+
+    attempts = max(1, settings.CHAT_SUMMARY_MAX_RETRIES)
+    min_delay = max(0.1, settings.CHAT_SUMMARY_RETRY_MIN_DELAY)
+
+    for attempt in range(attempts):
+        try:
+            result = await chain.ainvoke({})
+            return str(result)
+        except Exception as exc:  # pragma: no cover - upstream network flakiness
+            logger.warning(
+                "chat.summary.retry",
+                extra={
+                    "attempt": attempt + 1,
+                    "max_attempts": attempts,
+                    "error": str(exc),
+                },
+            )
+            if attempt + 1 >= attempts:
+                truncated = (
+                    base_summary
+                    + "\n"
+                    + f"User: {user_message}"
+                    + "\n"
+                    + f"Assistant: {assistant_message}"
+                ).strip()
+                return truncated[-settings.CHAT_SUMMARY_MAX_TOKENS * 5 :]
+            await asyncio.sleep(min_delay * (2**attempt))
+
+    # Should never reach here
+    return base_summary

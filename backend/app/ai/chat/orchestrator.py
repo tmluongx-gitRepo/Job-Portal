@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Callable
-from typing import Protocol
+from typing import Any, TypedDict
 
 from app.ai.chat.agents import EmployerAgent, JobSeekerAgent
 from app.ai.chat.constants import ChatEventType, ChatRole
@@ -13,11 +13,11 @@ from app.ai.chat.summarizer import summarise_conversation
 from app.services.chat_history import ChatHistoryService
 
 
-class StreamEvent(Protocol):
-    """Protocol describing a streaming event payload."""
+class StreamEvent(TypedDict):
+    """Structure of orchestrator events emitted over the websocket."""
 
     type: str
-    data: dict
+    data: dict[str, Any]
 
 
 class ChatOrchestrator:
@@ -34,6 +34,7 @@ class ChatOrchestrator:
         self._history_service = history_service or ChatHistoryService()
         self._job_seeker_agent = JobSeekerAgent()
         self._employer_agent = EmployerAgent()
+        self._inflight: bool = False
 
     async def stream_response(
         self, *, message: str, user_context: dict, session: ChatSession
@@ -42,6 +43,17 @@ class ChatOrchestrator:
 
         This stub simply echoes the request until LangChain chains are wired.
         """
+
+        if self._inflight:
+            yield {
+                "type": ChatEventType.ERROR.value,
+                "data": {
+                    "message": "A previous message is still being processed. Please wait before sending another.",
+                },
+            }
+            return
+
+        self._inflight = True
 
         logger.info(
             "chat.user_message",
@@ -52,78 +64,81 @@ class ChatOrchestrator:
             },
         )
 
-        await self._session_store.save_message(
-            session=session,
-            message={
-                "role": ChatRole.USER.value,
-                "text": message,
-            },
-        )
+        try:
+            await self._session_store.save_message(
+                session=session,
+                message={
+                    "role": ChatRole.USER.value,
+                    "text": message,
+                },
+            )
 
-        account_type = user_context.get("account_type", "job_seeker")
-        agent: JobSeekerAgent | EmployerAgent = self._job_seeker_agent
-        if account_type == "employer":
-            agent = self._employer_agent
+            account_type = user_context.get("account_type", "job_seeker")
+            agent: JobSeekerAgent | EmployerAgent = self._job_seeker_agent
+            if account_type == "employer":
+                agent = self._employer_agent
 
-        matches, match_summary, chunk_iterator = await agent.stream(message, user_context)
+            matches, match_summary, chunk_iterator = await agent.stream(message, user_context)
 
-        if matches:
+            if matches:
+                await self._session_store.save_message(
+                    session=session,
+                    message={
+                        "role": ChatRole.ASSISTANT.value,
+                        "payload_type": "matches",
+                        "structured": {"matches": matches, "summary": match_summary},
+                    },
+                )
+                logger.info(
+                    "chat.matches_emitted",
+                    extra={
+                        "session_id": session.session_id,
+                        "user_id": session.user_id,
+                        "match_count": len(matches),
+                    },
+                )
+                yield {
+                    "type": ChatEventType.MATCHES.value,
+                    "data": {"matches": matches, "summary": match_summary},
+                }  # type: ignore[misc]
+
+            accumulated: list[str] = []
+            async for chunk in chunk_iterator:
+                accumulated.append(chunk)
+                yield {
+                    "type": ChatEventType.TOKEN.value,
+                    "data": {"text": chunk},
+                }  # type: ignore[misc]
+
+            assistant_text = "".join(accumulated)
+
             await self._session_store.save_message(
                 session=session,
                 message={
                     "role": ChatRole.ASSISTANT.value,
-                    "payload_type": "matches",
-                    "structured": {"matches": matches, "summary": match_summary},
-                },
-            )
-            logger.info(
-                "chat.matches_emitted",
-                extra={
-                    "session_id": session.session_id,
-                    "user_id": session.user_id,
-                    "match_count": len(matches),
-                },
-            )
-            yield {
-                "type": ChatEventType.MATCHES.value,
-                "data": {"matches": matches, "summary": match_summary},
-            }  # type: ignore[misc]
-
-        accumulated: list[str] = []
-        async for chunk in chunk_iterator:
-            accumulated.append(chunk)
-            yield {
-                "type": ChatEventType.TOKEN.value,
-                "data": {"text": chunk},
-            }  # type: ignore[misc]
-
-        assistant_text = "".join(accumulated)
-
-        await self._session_store.save_message(
-            session=session,
-            message={
-                "role": ChatRole.ASSISTANT.value,
-                "text": assistant_text,
-                "structured": {
-                    "matches": matches,
-                    "matches_summary": match_summary,
                     "text": assistant_text,
+                    "structured": {
+                        "matches": matches,
+                        "matches_summary": match_summary,
+                        "text": assistant_text,
+                    },
                 },
-            },
-        )
+            )
 
-        new_summary = await summarise_conversation(
-            current_summary=session.summary,
-            user_message=message,
-            assistant_message=assistant_text,
-        )
-        await self._session_store.update_summary(session=session, summary=new_summary)
-        yield {
-            "type": ChatEventType.SUMMARY.value,
-            "data": {"summary": new_summary},
-        }  # type: ignore[misc]
+            new_summary = await summarise_conversation(
+                current_summary=session.summary,
+                user_message=message,
+                assistant_message=assistant_text,
+            )
+            await self._session_store.update_summary(session=session, summary=new_summary)
+            yield {
+                "type": ChatEventType.SUMMARY.value,
+                "data": {"summary": new_summary},
+            }  # type: ignore[misc]
 
-        yield {"type": ChatEventType.COMPLETE.value, "data": {}}  # type: ignore[misc]
+            yield {"type": ChatEventType.COMPLETE.value, "data": {}}  # type: ignore[misc]
+        finally:
+            self._inflight = False
 
 
 StreamFactory = Callable[[], ChatOrchestrator]

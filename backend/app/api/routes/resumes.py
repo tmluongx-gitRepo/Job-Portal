@@ -1,9 +1,9 @@
-"""
-Resume API routes.
-"""
+"""Resume API routes with automatic embedding ingestion hooks."""
 
+import asyncio
 import contextlib
 import io
+import logging
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
@@ -12,10 +12,13 @@ from app.auth.auth_utils import is_admin
 from app.auth.dependencies import get_current_user, require_job_seeker
 from app.crud import resume as resume_crud
 from app.schemas.resume import ResumeMetadataResponse, ResumeUploadResponse
+from app.tasks.embedding_tasks import process_candidates, remove_candidates
 from app.type_definitions import ResumeDocument
 from app.utils.dropbox_utils import get_dropbox_service
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 # File validation constants
 ALLOWED_CONTENT_TYPES = {
@@ -105,6 +108,8 @@ async def upload_resume(
             content_type=file.content_type or "application/pdf",
         )
 
+        _schedule_candidate_embedding(job_seeker["id"])
+
         return _serialize_resume_upload(resume)
 
     except ValueError as e:
@@ -131,6 +136,32 @@ async def get_my_resume(
         )
 
     return _serialize_resume_metadata(resume)
+
+
+def _schedule_candidate_embedding(candidate_id: str) -> None:
+    async def _runner() -> None:
+        try:
+            await process_candidates([candidate_id])
+        except Exception:  # pragma: no cover - background defensive logging
+            logger.exception(
+                "resume.embedding_ingest_failed",
+                extra={"candidate_id": candidate_id},
+            )
+
+    asyncio.create_task(_runner())  # noqa: RUF006
+
+
+def _schedule_candidate_removal(candidate_id: str) -> None:
+    async def _runner() -> None:
+        try:
+            await remove_candidates([candidate_id])
+        except Exception:  # pragma: no cover - background defensive logging
+            logger.exception(
+                "resume.embedding_delete_failed",
+                extra={"candidate_id": candidate_id},
+            )
+
+    asyncio.create_task(_runner())  # noqa: RUF006
 
 
 @router.get("/{resume_id}", response_model=ResumeMetadataResponse)
@@ -237,3 +268,5 @@ async def delete_my_resume(job_seeker: dict = Depends(require_job_seeker)) -> No
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete resume metadata",
         )
+
+    _schedule_candidate_removal(job_seeker["id"])

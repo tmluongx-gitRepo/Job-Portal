@@ -1,4 +1,10 @@
-"""Redis-based caching helpers for chat sessions (scaffold)."""
+"""Redis-based caching helpers for chat sessions (scaffold).
+
+The module caches a single RedisChatCache instance per Python process. In multi-worker
+deployments (e.g. gunicorn with multiple workers) each worker process will naturally obtain
+its own connection, but threaded access within a process is not guarded. If the runtime model
+changes, favour explicit dependency injection instead of relying on the singleton below.
+"""
 
 from __future__ import annotations
 
@@ -68,6 +74,7 @@ _chat_cache: RedisChatCache | None = None
 
 
 def get_chat_cache() -> RedisChatCache:
+    """Return the process-local RedisChatCache singleton."""
     global _chat_cache
     if _chat_cache is None:
         _chat_cache = RedisChatCache()

@@ -96,7 +96,7 @@ Key modules to add under `app/`:
 ### Phase 3 – Streaming & Caching (pending)
 8. **Streaming implementation**
    - ✅ Orchestrator emits match payloads and tokenised responses via LangChain (fallback if OpenAI unavailable).
-   - TODO: enable true OpenAI streaming once credentials/config available in environment.
+   - ✅ Retry/backoff around token streaming and summaries to tolerate transient OpenAI/network hiccups.
 9. **Caching hooks**
    - Decorate embedding/LLM calls with Redis caching (`cache_embedding`, `cache_llm_response`).
    - Cache conversation summaries keyed by `(user_id, session_id)`.
@@ -193,19 +193,20 @@ llm_response:{hash}                  # cached LLM output for identical prompt/co
 - Next immediate tasks: populate Chroma with production embeddings, enable true OpenAI streaming, and lock the frontend contract for scoring payloads & event ordering.
 
 ### Upcoming Milestones
-1. Populate Chroma with real resume/job embeddings so the new scoring layer has production vectors to work with.
+1. Populate Chroma with real resume/job embeddings so the new scoring layer has production vectors to work with. **Auto-ingestion now occurs on resume upload and job create/update/delete; CLI remains for bulk/backfill.**
 2. Enable OpenAI streaming end-to-end (when credentials available) and add retry/backoff handling.
 3. Define frontend message protocol (event types, payload schema) and document in README/architecture (in progress, see event schema above).
 
 ### Embedding Ingestion TODO
-- Create embedding generation pipeline (resume + job documents) with batch processing and Chroma upsert utilities. **(In progress: see `app/ai/embeddings.py`, `app/ai/indexers.py`, `app/tasks/embedding_tasks.py`)**
+- Create embedding generation pipeline (resume + job documents) with batch processing and Chroma upsert utilities. **(In progress: see `app/ai/embeddings.py`, `app/ai/indexers.py`, `app/tasks/embedding_tasks.py`, `app/scripts/ingest_embeddings.py`).**
 - Store denormalised metadata alongside embeddings (skills, location, industry) for scoring helper to consume.
 - Establish consistency checkers / backfill scripts so new resumés/jobs trigger embedding updates automatically.
 - ✅ Score fusion logic (vector similarity + metadata weighting) now lives in `tools/scoring.py` and is consumed by the retrievers.
 
 ## WebSocket Event Schema
 
-The `/api/chat/ws` endpoint streams JSON payloads with the following shapes:
+The `/api/chat/ws` endpoint streams JSON payloads with the following shapes (source of
+truth lives in `backend/app/ai/chat/constants.py` + `backend/app/api/routes/chat.py`):
 
 | Event `type` | Payload | Notes |
 |--------------|---------|-------|
@@ -220,3 +221,5 @@ The `/api/chat/ws` endpoint streams JSON payloads with the following shapes:
 Clients should handle receiving `history` and `summary` immediately after the initial `info`, then append `token` chunks until a `complete` event arrives. `matches` can appear before tokens when relevant. Future enhancements may add `metadata` fields (e.g., scoring breakdowns) but will remain backward-compatible.
 
 If you pick up this work, please update this file with progress notes and any new decisions so the next teammate has a clear starting point.
+- Added CLI `python -m app.scripts.ingest_embeddings` to seed jobs/candidates on demand (flags `--jobs`, `--candidates`, `--skip-*`).
+- Optional Celery beat hook via `tasks.embedding_tasks.register_embedding_periodic_tasks(celery_app)` to schedule daily backfills.

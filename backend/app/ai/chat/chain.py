@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+import importlib
 from collections.abc import AsyncIterator, Callable, Sequence
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -23,12 +25,16 @@ if TYPE_CHECKING:  # pragma: no cover - type checking only
 else:  # pragma: no cover - runtime fallback typing
     ChatOpenAIType = Any
 
-try:
-    from langchain_openai import ChatOpenAI as _ChatOpenAI
-except ImportError:  # pragma: no cover - optional dependency
-    _ChatOpenAI = None
 
-ChatOpenAI: ChatOpenAIType | None = cast(Optional["ChatOpenAIType"], _ChatOpenAI)
+def _resolve_chat_openai_cls() -> Any | None:
+    try:
+        module = importlib.import_module("langchain_openai")
+    except ImportError:  # pragma: no cover - optional dependency
+        return None
+    return getattr(module, "ChatOpenAI", None)
+
+
+_CHAT_OPENAI_CLS = _resolve_chat_openai_cls()
 
 
 JOB_SEEKER_PROMPT = ChatPromptTemplate.from_messages(
@@ -64,7 +70,8 @@ async def job_seeker_stream(
     raw_matches = await fetch_job_matches_for_user(user_context=context)
     matches, summary = prepare_matches(raw_matches, audience=AUDIENCE_JOB_SEEKER)
 
-    if not settings.OPENAI_API_KEY or ChatOpenAI is None:
+    llm_cls = _CHAT_OPENAI_CLS
+    if not settings.OPENAI_API_KEY or llm_cls is None:
         fallback_text = (
             f"Here are the latest matches:\n{summary}"
             if matches
@@ -79,13 +86,20 @@ async def job_seeker_stream(
         )
         return matches, summary, lambda: _fallback_stream(fallback_text)
 
+    retry_attempts = max(1, settings.CHAT_STREAM_MAX_RETRIES)
+    min_delay = max(0.1, settings.CHAT_STREAM_RETRY_MIN_DELAY)
+
     def factory() -> AsyncIterator[str]:
-        assert ChatOpenAI is not None  # for type checkers
-        llm = ChatOpenAI(
-            api_key=SecretStr(settings.OPENAI_API_KEY),
-            model=settings.OPENAI_JOB_SEEKER_MODEL or settings.OPENAI_CHAT_MODEL,
-            temperature=0,
-            streaming=True,
+        # LangChain's OpenAI wrapper accepts either SecretStr or plain strings; we
+        # wrap once here to appease type checkers without mutating global settings.
+        llm = cast(
+            Any,
+            llm_cls(
+                api_key=SecretStr(settings.OPENAI_API_KEY),
+                model=settings.OPENAI_JOB_SEEKER_MODEL or settings.OPENAI_CHAT_MODEL,
+                temperature=0,
+                streaming=True,
+            ),
         )
         chain = (
             RunnableParallel(
@@ -98,9 +112,31 @@ async def job_seeker_stream(
         )
 
         async def generator() -> AsyncIterator[str]:
-            with tracing_context("job_seeker_stream"):
-                async for chunk in chain.astream({}):
-                    yield chunk
+            for attempt in range(retry_attempts):
+                try:
+                    with tracing_context("job_seeker_stream"):
+                        async for chunk in chain.astream({}):
+                            yield chunk
+                    return  # noqa: TRY300
+                except Exception as exc:  # pragma: no cover - flakiness hard to simulate
+                    logger.warning(
+                        "chat.stream.retry",
+                        extra={
+                            "audience": AUDIENCE_JOB_SEEKER,
+                            "attempt": attempt + 1,
+                            "max_attempts": retry_attempts,
+                            "error": str(exc),
+                        },
+                    )
+                    if attempt + 1 >= retry_attempts:
+                        fallback_text = (
+                            f"Here are the latest matches:\n{summary}"
+                            if matches
+                            else "I don't see any relevant roles yet, but I'll keep checking."
+                        )
+                        yield fallback_text
+                        return
+                    await asyncio.sleep(min_delay * (2**attempt))
 
         return generator()
 
@@ -113,7 +149,8 @@ async def employer_stream(
     raw_matches = await fetch_candidate_matches_for_employer(user_context=context)
     matches, summary = prepare_matches(raw_matches, audience=AUDIENCE_EMPLOYER)
 
-    if not settings.OPENAI_API_KEY or ChatOpenAI is None:
+    llm_cls = _CHAT_OPENAI_CLS
+    if not settings.OPENAI_API_KEY or llm_cls is None:
         fallback_text = (
             f"Here are some candidates:\n{summary}"
             if matches
@@ -128,13 +165,18 @@ async def employer_stream(
         )
         return matches, summary, lambda: _fallback_stream(fallback_text)
 
+    retry_attempts = max(1, settings.CHAT_STREAM_MAX_RETRIES)
+    min_delay = max(0.1, settings.CHAT_STREAM_RETRY_MIN_DELAY)
+
     def factory() -> AsyncIterator[str]:
-        assert ChatOpenAI is not None  # for type checkers
-        llm = ChatOpenAI(
-            api_key=SecretStr(settings.OPENAI_API_KEY),
-            model=settings.OPENAI_EMPLOYER_MODEL or settings.OPENAI_CHAT_MODEL,
-            temperature=0,
-            streaming=True,
+        llm = cast(
+            Any,
+            llm_cls(
+                api_key=SecretStr(settings.OPENAI_API_KEY),
+                model=settings.OPENAI_EMPLOYER_MODEL or settings.OPENAI_CHAT_MODEL,
+                temperature=0,
+                streaming=True,
+            ),
         )
         chain = (
             RunnableParallel(
@@ -147,9 +189,31 @@ async def employer_stream(
         )
 
         async def generator() -> AsyncIterator[str]:
-            with tracing_context("employer_stream"):
-                async for chunk in chain.astream({}):
-                    yield chunk
+            for attempt in range(retry_attempts):
+                try:
+                    with tracing_context("employer_stream"):
+                        async for chunk in chain.astream({}):
+                            yield chunk
+                    return  # noqa: TRY300
+                except Exception as exc:  # pragma: no cover - flakiness hard to simulate
+                    logger.warning(
+                        "chat.stream.retry",
+                        extra={
+                            "audience": AUDIENCE_EMPLOYER,
+                            "attempt": attempt + 1,
+                            "max_attempts": retry_attempts,
+                            "error": str(exc),
+                        },
+                    )
+                    if attempt + 1 >= retry_attempts:
+                        fallback_text = (
+                            f"Here are some candidates:\n{summary}"
+                            if matches
+                            else "I don't have any great candidates just yet, let's gather more data."
+                        )
+                        yield fallback_text
+                        return
+                    await asyncio.sleep(min_delay * (2**attempt))
 
         return generator()
 

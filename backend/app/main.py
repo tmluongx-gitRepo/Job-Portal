@@ -19,7 +19,7 @@ from app.api.routes import (
     users,
 )
 from app.auth import routes as auth_routes
-from app.config import settings
+from app.config import settings, validate_runtime_configuration
 from app.database import (
     close_mongo_client,
     get_chroma_client,
@@ -34,6 +34,11 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan events."""
     # Startup
     print(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+    try:
+        validate_runtime_configuration()
+    except RuntimeError as exc:
+        print(f"⚠️  Configuration validation failed: {exc}")
+        raise
 
     # Initialize ChromaDB connection
     try:

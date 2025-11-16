@@ -242,3 +242,6 @@ class ChatMessageDocument(TypedDict):
     structured: NotRequired[Any]
     tokens_used: NotRequired[int | None]
     created_at: datetime
+    # NOTE: We rely on ChatSessionDocument.user_id for provenance. If future
+    # auditing requires per-message user identifiers, add a redundant
+    # session_user_id field here and in persistence layer.

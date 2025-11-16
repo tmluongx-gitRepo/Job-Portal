@@ -19,7 +19,7 @@ class EmployerAgent:
         return list(matches), summary, factory()
 
     async def generate(self, message: str, context: dict[str, Any]) -> dict[str, Any]:
-        """Return structured data notes for the employer conversation."""
+        """Return a websocket-ready token event payload for employer conversations."""
 
         payload = await employer_response(message, context)
         return {

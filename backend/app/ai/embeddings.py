@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
+import logging
 from collections.abc import Sequence
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import SecretStr
 
@@ -18,14 +20,19 @@ if TYPE_CHECKING:  # pragma: no cover - type checking only
 else:  # pragma: no cover - runtime fallback typing
     OpenAIEmbeddingsType = Any
 
-try:
-    from langchain_openai import OpenAIEmbeddings as _OpenAIEmbeddings
-except ImportError:  # pragma: no cover - optional dependency
-    _OpenAIEmbeddings = None
 
-OpenAIEmbeddings: OpenAIEmbeddingsType | None = cast(
-    Optional["OpenAIEmbeddingsType"], _OpenAIEmbeddings
-)
+def _resolve_openai_embeddings_cls() -> Any | None:
+    try:
+        module = importlib.import_module("langchain_openai")
+    except ImportError:  # pragma: no cover - optional dependency
+        return None
+    return getattr(module, "OpenAIEmbeddings", None)
+
+
+_OPENAI_EMBEDDINGS_CLS = _resolve_openai_embeddings_cls()
+
+
+_logger = logging.getLogger(__name__)
 
 
 _CACHE_NAMESPACE = "embedding"
@@ -72,18 +79,22 @@ async def generate_embedding(text: str) -> list[float]:
     if cached is not None:
         return cached
 
-    if not settings.OPENAI_API_KEY or OpenAIEmbeddings is None:
+    embeddings_cls = _OPENAI_EMBEDDINGS_CLS
+    if not settings.OPENAI_API_KEY or embeddings_cls is None:
         if not settings.DEBUG:
             raise RuntimeError(
                 "OpenAI embeddings unavailable; configure OPENAI_API_KEY before running in non-debug mode."
             )
         # Fall back to deterministic pseudo-embedding for local/dev testing only
+        _logger.warning(
+            "embeddings.fallback_vector_used",
+            extra={"reason": "openai_disabled", "text_hash": _hash_text(text)},
+        )
         vector = [float(int(b, 16)) / 255.0 for b in _hash_text(text)[:32]]
         await _store_vector(text, vector)
         return vector
 
-    assert OpenAIEmbeddings is not None  # for type checkers
-    embeddings = OpenAIEmbeddings(
+    embeddings = cast("OpenAIEmbeddingsType", embeddings_cls)(
         api_key=SecretStr(settings.OPENAI_API_KEY),
         model=settings.OPENAI_EMBEDDING_MODEL,
     )

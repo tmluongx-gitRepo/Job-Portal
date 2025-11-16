@@ -25,9 +25,18 @@ def configure_tracing() -> None:
 
 @contextmanager
 def tracing_context(operation: str) -> Iterator[None]:
-    """Context manager that activates LangSmith tracing when requested."""
+    """Context manager that activates LangSmith tracing when requested.
+
+    An empty ``operation`` name will disable tracing for the block and emit a
+    warning so misconfigurations are surfaced during development.
+    """
 
     if not settings.LANGCHAIN_TRACING_ENABLED:
+        yield
+        return
+
+    if not operation:
+        logger.warning("tracing.operation_missing", extra={"operation": operation})
         yield
         return
 
