@@ -16,9 +16,9 @@ from app.ai.chat.cache import RedisChatCache, get_chat_cache
 from app.config import settings
 
 if TYPE_CHECKING:  # pragma: no cover - type checking only
-    from langchain_openai import OpenAIEmbeddings as OpenAIEmbeddingsType
+    from langchain_openai import OpenAIEmbeddings as OpenAIEmbeddingsCallable
 else:  # pragma: no cover - runtime fallback typing
-    OpenAIEmbeddingsType = Any
+    OpenAIEmbeddingsCallable = Any
 
 
 def _resolve_openai_embeddings_cls() -> Any | None:
@@ -26,7 +26,10 @@ def _resolve_openai_embeddings_cls() -> Any | None:
         module = importlib.import_module("langchain_openai")
     except ImportError:  # pragma: no cover - optional dependency
         return None
-    return getattr(module, "OpenAIEmbeddings", None)
+    factory = getattr(module, "OpenAIEmbeddings", None)
+    if callable(factory):
+        return factory
+    return None
 
 
 _OPENAI_EMBEDDINGS_CLS = _resolve_openai_embeddings_cls()
@@ -94,7 +97,8 @@ async def generate_embedding(text: str) -> list[float]:
         await _store_vector(text, vector)
         return vector
 
-    embeddings = cast("OpenAIEmbeddingsType", embeddings_cls)(
+    embeddings_factory = cast("OpenAIEmbeddingsCallable", embeddings_cls)
+    embeddings = embeddings_factory(
         api_key=SecretStr(settings.OPENAI_API_KEY),
         model=settings.OPENAI_EMBEDDING_MODEL,
     )
