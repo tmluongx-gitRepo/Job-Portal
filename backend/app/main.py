@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.ai.chat.cache import shutdown_chat_cache
 from app.api.routes import (
     applications,
     chat,
@@ -86,6 +87,11 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
     # Shutdown
     print(f"Shutting down {settings.APP_NAME}")
+
+    try:
+        await shutdown_chat_cache()
+    except Exception as exc:  # pragma: no cover - shutdown logging only
+        print(f"⚠️  Redis chat cache shutdown error: {exc}")
 
     close_mongo_client()
 

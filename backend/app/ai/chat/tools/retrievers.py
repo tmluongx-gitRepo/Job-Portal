@@ -84,18 +84,49 @@ async def _query_chroma(
             where=where,
             n_results=limit,
         )
-        metadatas = result.get("metadatas", [[]])[0] or []
-        distances = result.get("distances", [[]])[0] or []
-        ids = result.get("ids", [[]])[0] or []
+
+        if not isinstance(result, dict):
+            logger.warning(
+                "chat.retriever.vector_malformed",
+                extra={"collection": collection_name, "detail": "non-dict result"},
+            )
+            return []
+
+        metadatas_raw = result.get("metadatas")
+        distances_raw = result.get("distances")
+        ids_raw = result.get("ids")
+
+        if not isinstance(metadatas_raw, list) or not metadatas_raw:
+            logger.warning(
+                "chat.retriever.vector_malformed",
+                extra={"collection": collection_name, "detail": "missing metadatas"},
+            )
+            return []
+
+        metadatas_seq = metadatas_raw[0] if metadatas_raw else []
+        if not isinstance(metadatas_seq, list):
+            logger.warning(
+                "chat.retriever.vector_malformed",
+                extra={"collection": collection_name, "detail": "metadatas not list"},
+            )
+            return []
+
+        distances_seq = (
+            distances_raw[0] if isinstance(distances_raw, list) and distances_raw else []
+        )
+        ids_seq = ids_raw[0] if isinstance(ids_raw, list) and ids_raw else []
 
         matches: list[dict[str, Any]] = []
-        for idx, metadata in enumerate(metadatas):
-            item = dict(metadata or {})
-            item.setdefault("id", ids[idx] if idx < len(ids) else None)
+        for idx, metadata in enumerate(metadatas_seq):
+            item: dict[str, Any] = dict(metadata) if isinstance(metadata, dict) else {}
+            item.setdefault("id", ids_seq[idx] if idx < len(ids_seq) else None)
             item.setdefault("source", "vector")
-            distance = distances[idx] if idx < len(distances) else None
+            distance = distances_seq[idx] if idx < len(distances_seq) else None
             if distance is not None:
-                item["match_score"] = max(0.0, 1 - float(distance))
+                try:
+                    item["match_score"] = max(0.0, 1 - float(distance))
+                except (TypeError, ValueError):
+                    item["match_score"] = 0.0
             matches.append(item)
         logger.info(
             "chat.retriever.vector_results",
@@ -117,7 +148,9 @@ async def fetch_job_matches_for_user(
 ) -> Sequence[dict[str, Any]]:
     """Fetch candidate job matches for a job seeker."""
 
-    resume_summary = user_context.get("resume_summary") or "job recommendations"
+    resume_summary = _sanitize_query_text(
+        user_context.get("resume_summary"), fallback="job recommendations"
+    )
     resume_features = _extract_resume_features(user_context)
 
     search_limit = max(limit * 2, limit)
@@ -161,7 +194,9 @@ async def fetch_candidate_matches_for_employer(
 ) -> Sequence[dict[str, Any]]:
     """Fetch candidate matches for an employer's current openings."""
 
-    job_summary = user_context.get("job_summary") or "candidate recommendations"
+    job_summary = _sanitize_query_text(
+        user_context.get("job_summary"), fallback="candidate recommendations"
+    )
     job_features = _extract_job_features(user_context)
 
     search_limit = max(limit * 2, limit)
@@ -230,15 +265,48 @@ def _extract_features(
                 if key not in source:
                     continue
                 candidate = source[key]
-                if candidate in (None, "", [], {}):
+                cleaned = _normalise_feature_value(candidate)
+                if cleaned is None:
                     continue
-                value = candidate
+                value = cleaned
                 break
             if value is not None:
                 break
         features[feature_name] = value
 
     return features
+
+
+def _sanitize_query_text(value: Any, *, fallback: str, max_length: int = 1024) -> str:
+    """Ensure query text is a safe, bounded string."""
+
+    if isinstance(value, str):
+        text = value.strip()
+        if text:
+            return text[:max_length]
+    return fallback
+
+
+def _normalise_feature_value(
+    value: Any, *, max_items: int = 20, max_length: int = 256
+) -> Any | None:
+    """Restrict feature values to safe primitives the scoring layer expects."""
+
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        return text[:max_length]
+    if isinstance(value, int | float | bool):
+        return value
+    if isinstance(value, Sequence) and not isinstance(value, str | bytes | bytearray):
+        cleaned_list: list[Any] = []
+        for item in value[:max_items]:
+            normalised = _normalise_feature_value(item, max_items=max_items, max_length=max_length)
+            if normalised is not None:
+                cleaned_list.append(normalised)
+        return cleaned_list if cleaned_list else None
+    return None
 
 
 async def _metadata_job_matches(*, features: Mapping[str, Any], limit: int) -> list[dict[str, Any]]:

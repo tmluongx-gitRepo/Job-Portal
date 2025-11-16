@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import time
+from collections import deque
+
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from app.ai.chat.constants import ChatEventType
@@ -29,6 +32,9 @@ async def chat_websocket(
     )
 
     orchestrator = get_chat_orchestrator()
+    message_timestamps: deque[float] = deque()
+    rate_limit_window = max(1, settings.CHAT_RATE_LIMIT_WINDOW_SECONDS)
+    rate_limit_max = max(1, settings.CHAT_RATE_LIMIT_MAX_MESSAGES)
 
     try:
         await websocket.send_json(
@@ -63,6 +69,21 @@ async def chat_websocket(
             message = payload.get("message")
             if not message:
                 continue
+
+            now = time.monotonic()
+            while message_timestamps and now - message_timestamps[0] > rate_limit_window:
+                message_timestamps.popleft()
+            if len(message_timestamps) >= rate_limit_max:
+                await websocket.send_json(
+                    {
+                        "type": ChatEventType.ERROR.value,
+                        "data": {
+                            "message": "Rate limit exceeded. Please slow down before sending another message.",
+                        },
+                    }
+                )
+                continue
+            message_timestamps.append(now)
 
             async for event in orchestrator.stream_response(
                 message=message,

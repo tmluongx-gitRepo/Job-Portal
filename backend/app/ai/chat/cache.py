@@ -12,6 +12,10 @@ class RedisChatCache:
 
     def __init__(self) -> None:
         self._client: aioredis.Redis | None = None
+        parts = [settings.REDIS_KEY_PREFIX, settings.APP_ENV]
+        self._namespace = ":".join(part.strip().lower().replace(" ", "-") for part in parts if part)
+        if not self._namespace:
+            self._namespace = "chat"
 
     async def client(self) -> aioredis.Redis:
         if self._client is None:
@@ -52,13 +56,11 @@ class RedisChatCache:
             await pipe.expire(key, settings.CHAT_SESSION_TTL_SECONDS)
             await pipe.execute()
 
-    @staticmethod
-    def _summary_key(session_id: str) -> str:
-        return f"chat:session:{session_id}:summary"
+    def _summary_key(self, session_id: str) -> str:
+        return f"{self._namespace}:chat:session:{session_id}:summary"
 
-    @staticmethod
-    def _recent_key(session_id: str) -> str:
-        return f"chat:session:{session_id}:recent"
+    def _recent_key(self, session_id: str) -> str:
+        return f"{self._namespace}:chat:session:{session_id}:recent"
 
 
 # Singleton convenience accessor
@@ -70,3 +72,15 @@ def get_chat_cache() -> RedisChatCache:
     if _chat_cache is None:
         _chat_cache = RedisChatCache()
     return _chat_cache
+
+
+async def shutdown_chat_cache() -> None:
+    """Close the shared Redis connection if it was created."""
+
+    global _chat_cache
+    if _chat_cache is None:
+        return
+    try:
+        await _chat_cache.close()
+    finally:
+        _chat_cache = None

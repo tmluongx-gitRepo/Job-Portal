@@ -89,4 +89,6 @@ async def test_push_recent_message_trims_history(monkeypatch: pytest.MonkeyPatch
 
     items = await cache.get_recent_messages(session_id="session1")
     assert items == ["3", "4", "5"]
-    assert fake_redis.expirations["chat:session:session1:recent"] > 0
+    namespace = cache._namespace
+    expected_key = f"{namespace}:chat:session:session1:recent"
+    assert fake_redis.expirations[expected_key] > 0
