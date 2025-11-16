@@ -22,53 +22,24 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { api, ApiError, ValidationError } from "../../lib/api";
-import { getCurrentUserId } from "../../lib/auth";
+import { getCurrentUserId, getCurrentUser } from "../../lib/auth";
 import type { JobSeekerProfile } from "../../lib/api";
 import type { z } from "zod";
 
-// TODO: Replace with API call to fetch user profile data
-const initialProfileData = {
-  firstName: "Alex",
-  lastName: "Johnson",
-  email: "alex.johnson@email.com",
-  phone: "(555) 123-4567",
-  location: "Phoenix, AZ",
-  title: "Marketing Professional",
-  summary:
-    "Passionate marketing professional with 3+ years of experience in digital marketing, content creation, and customer engagement. I believe in building authentic connections between brands and their communities.",
-  experience: [
-    {
-      company: "Digital Marketing Agency",
-      role: "Marketing Coordinator",
-      duration: "2022 - Present",
-      description:
-        "Managed social media campaigns, created content calendars, and increased client engagement by 40%.",
-    },
-  ],
-  projects: [
-    {
-      title: "Community Food Drive Website",
-      duration: "2023",
-      description:
-        "Built a website to coordinate local food donations, helping distribute over 500 meals to families in need.",
-      technologies: "HTML, CSS, JavaScript",
-    },
-  ],
-  education: [
-    {
-      school: "Arizona State University",
-      degree: "Bachelor of Arts in Communications",
-      year: "2022",
-    },
-  ],
-  skills: [
-    "Digital Marketing",
-    "Content Creation",
-    "Social Media Management",
-    "Google Analytics",
-    "Project Management",
-  ],
-};
+// Default empty profile data - will be populated from API or user input
+const getDefaultProfileData = (userEmail?: string) => ({
+  firstName: "",
+  lastName: "",
+  email: userEmail || "",
+  phone: "",
+  location: "",
+  title: "",
+  summary: "",
+  experience: [],
+  projects: [],
+  education: [],
+  skills: [],
+});
 
 const _completionItems = [
   {
@@ -105,8 +76,13 @@ const _completionItems = [
 ];
 
 export default function ProfilePage(): ReactElement {
+  const currentUser = getCurrentUser();
+  const userId = getCurrentUserId();
+  
   const [isEditing, setIsEditing] = useState(false);
-  const [profileData, setProfileData] = useState(initialProfileData);
+  const [profileData, setProfileData] = useState(
+    getDefaultProfileData(currentUser?.email)
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,13 +91,16 @@ export default function ProfilePage(): ReactElement {
   const [apiProfile, setApiProfile] = useState<JobSeekerProfile | null>(null);
   const [skillInputValue, setSkillInputValue] = useState("");
 
-  // ⚠️ TODO: Replace with actual user ID from auth context when authentication is implemented
-  // Get authenticated user ID
-  const userId = getCurrentUserId() || "507f1f77bcf86cd799439011"; // Fallback for testing
-
   // Fetch profile on mount
   useEffect(() => {
     const fetchProfile = async (): Promise<void> => {
+      // If no user ID, can't fetch profile
+      if (!userId) {
+        setLoading(false);
+        setProfileData(getDefaultProfileData(currentUser?.email));
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
@@ -156,11 +135,13 @@ export default function ProfilePage(): ReactElement {
         });
       } catch (err) {
         if (err instanceof ApiError && err.status === 404) {
-          // Profile doesn't exist yet - that's okay, user can create one
-          // This is expected behavior, not an error
+          // Profile doesn't exist yet - initialize with empty data
+          // If user just signed up, profile should have been created, but if not, user can create one
           console.info(
-            "[Profile] No profile found for user - user can create one"
+            "[Profile] No profile found for user - initializing with empty data"
           );
+          // Initialize with default empty data (email already set from currentUser)
+          setProfileData(getDefaultProfileData(currentUser?.email));
           // Don't set error state - this is normal for new users
         } else {
           console.error("Failed to fetch profile:", err);
@@ -172,7 +153,7 @@ export default function ProfilePage(): ReactElement {
     };
 
     void fetchProfile();
-  }, [userId]);
+  }, [userId, currentUser?.email]);
 
   // Dynamic completion tracking
   const completionItemsDynamic = [
