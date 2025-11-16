@@ -215,3 +215,33 @@ class InterviewDocument(TypedDict):
     rescheduled_from: NotRequired[datetime]  # Original date if rescheduled
     created_at: datetime
     updated_at: datetime
+
+
+class ChatSessionDocument(TypedDict):
+    """MongoDB chat session document structure."""
+
+    _id: ObjectId
+    session_id: str
+    user_id: ObjectId
+    role: str
+    status: str
+    summary: NotRequired[str | None]
+    last_interaction_at: datetime
+    created_at: datetime
+    updated_at: datetime
+
+
+class ChatMessageDocument(TypedDict):
+    """MongoDB chat message document structure."""
+
+    _id: ObjectId
+    session_id: str
+    role: str
+    payload_type: str
+    text: NotRequired[str | None]
+    structured: NotRequired[Any]
+    tokens_used: NotRequired[int | None]
+    created_at: datetime
+    # NOTE: We rely on ChatSessionDocument.user_id for provenance. If future
+    # auditing requires per-message user identifiers, add a redundant
+    # session_user_id field here and in persistence layer.

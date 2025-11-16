@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 
@@ -11,10 +13,12 @@ from app.crud import job as job_crud
 from app.database import get_applications_collection, get_interviews_collection
 from app.schemas.job import JobCreate, JobResponse, JobUpdate
 from app.schemas.stats import JobAnalyticsResponse
+from app.tasks.embedding_tasks import process_jobs, remove_jobs
 from app.type_definitions import JobDocument
 from app.utils.datetime_utils import ensure_utc_datetime
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _serialize_job(document: JobDocument) -> JobResponse:
@@ -78,6 +82,8 @@ async def create_job(job: JobCreate, employer: dict = Depends(require_employer))
 
     # Use authenticated user's ID as posted_by
     created_job = await job_crud.create_job(job_data, posted_by=employer["id"])
+
+    _schedule_job_embedding(str(created_job["_id"]))
 
     return _serialize_job(created_job)
 
@@ -236,6 +242,8 @@ async def update_job(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Job with id {job_id} not found"
         )
 
+    _schedule_job_embedding(job_id)
+
     return _serialize_job(updated_job)
 
 
@@ -267,6 +275,28 @@ async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Job with id {job_id} not found"
         )
+
+    _schedule_job_removal(job_id)
+
+
+def _schedule_job_embedding(job_id: str) -> None:
+    async def _runner() -> None:
+        try:
+            await process_jobs([job_id])
+        except Exception:  # pragma: no cover - background defensive logging
+            logger.exception("jobs.embedding_ingest_failed", extra={"job_id": job_id})
+
+    asyncio.create_task(_runner())  # noqa: RUF006
+
+
+def _schedule_job_removal(job_id: str) -> None:
+    async def _runner() -> None:
+        try:
+            await remove_jobs([job_id])
+        except Exception:  # pragma: no cover - background defensive logging
+            logger.exception("jobs.embedding_delete_failed", extra={"job_id": job_id})
+
+    asyncio.create_task(_runner())  # noqa: RUF006
 
 
 @router.get("/{job_id}/analytics", response_model=JobAnalyticsResponse)
