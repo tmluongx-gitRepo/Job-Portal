@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactElement } from "react";
+import { useState } from "react";
+import type React from "react";
 import Link from "next/link";
 import {
   Bell,
@@ -19,7 +20,7 @@ import {
   getChannelInfo,
 } from "../../../lib/notifications";
 
-export default function NotificationPreferencesPage(): ReactElement {
+export default function NotificationPreferencesPage(): React.ReactNode {
   const [preferences, setPreferences] = useState<NotificationPreference[]>(
     defaultJobSeekerPreferences
   );

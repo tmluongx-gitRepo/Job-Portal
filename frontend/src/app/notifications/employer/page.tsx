@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, type ReactElement } from "react";
+import { useState, useEffect } from "react";
+import type React from "react";
 import Link from "next/link";
 import {
   Bell,
@@ -220,7 +221,7 @@ const mockEmployerNotifications: EmployerNotification[] = [
 ];
 
 // Helper to render channel badge
-const ChannelBadge = ({ channel }: { channel: NotificationChannel }): React.ReactElement => {
+const ChannelBadge = ({ channel }: { channel: NotificationChannel }): React.ReactNode => {
   const channelConfig = {
     in_app: { icon: Bell, label: "App", color: "bg-green-100 text-green-700" },
     email: { icon: Mail, label: "Email", color: "bg-blue-100 text-blue-700" },
@@ -278,7 +279,7 @@ function formatTimestamp(date: Date | string): string {
   return dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export default function EmployerNotificationsPage(): ReactElement {
+export default function EmployerNotificationsPage(): React.ReactNode {
   const [notifications, setNotifications] = useState<EmployerNotification[]>(
     mockEmployerNotifications
   );

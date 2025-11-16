@@ -68,6 +68,7 @@ export const jobSeekerProfileApi = {
     return apiRequest(`/api/job-seeker-profiles/user/${userId}`, {
       method: "GET",
       responseSchema: JobSeekerProfileResponseSchema,
+      silentStatuses: [404],
     });
   },
 

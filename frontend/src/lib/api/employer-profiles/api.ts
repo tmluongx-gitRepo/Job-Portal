@@ -41,6 +41,7 @@ export const employerProfileApi = {
     return apiRequest(`/api/employer-profiles/user/${userId}`, {
       method: "GET",
       responseSchema: EmployerProfileResponseSchema,
+      silentStatuses: [404],
     });
   },
 
