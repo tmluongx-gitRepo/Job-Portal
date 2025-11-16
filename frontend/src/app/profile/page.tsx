@@ -316,14 +316,27 @@ export default function ProfilePage(): ReactElement {
     setError(null);
     setSuccess(false);
 
+    // Validate required fields
+    if (!profileData.firstName || !profileData.lastName) {
+      setError("First name and last name are required.");
+      setSaving(false);
+      return;
+    }
+
+    if (!userId) {
+      setError("Authentication required. Please log in to save your profile.");
+      setSaving(false);
+      return;
+    }
+
     try {
       const updateData = {
-        first_name: profileData.firstName,
-        last_name: profileData.lastName,
-        email: profileData.email,
-        phone: profileData.phone || null,
-        location: profileData.location || null,
-        bio: profileData.summary || null,
+        first_name: profileData.firstName.trim(),
+        last_name: profileData.lastName.trim(),
+        email: profileData.email.trim(),
+        phone: profileData.phone?.trim() || null,
+        location: profileData.location?.trim() || null,
+        bio: profileData.summary?.trim() || null,
         skills: profileData.skills,
         education_level:
           profileData.education.length > 0
