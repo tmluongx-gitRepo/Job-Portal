@@ -1,7 +1,6 @@
-"""
-Webhook service for triggering n8n workflows.
-"""
+"""Webhook service for triggering n8n workflows (fire-and-forget)."""
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import Any
@@ -16,7 +15,72 @@ from app.type_definitions import (
     JobSeekerProfileDocument,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("app.webhooks")
+
+
+async def _send_webhook(
+    event: str, payload: dict[str, Any], resource_id: str | None = None
+) -> None:
+    """Send payload to configured webhook endpoint with retries."""
+
+    headers: dict[str, str] | None = None
+    if settings.N8N_WEBHOOK_AUTH_HEADER_NAME and settings.N8N_WEBHOOK_AUTH_HEADER_VALUE:
+        headers = {settings.N8N_WEBHOOK_AUTH_HEADER_NAME: settings.N8N_WEBHOOK_AUTH_HEADER_VALUE}
+
+    attempts = max(1, settings.WEBHOOK_MAX_RETRIES)
+    min_delay = max(0.1, settings.WEBHOOK_RETRY_MIN_DELAY)
+    timeout = settings.WEBHOOK_TIMEOUT_SECONDS
+
+    for attempt in range(attempts):
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(
+                    settings.N8N_WEBHOOK_URL,
+                    json=payload,
+                    headers=headers,
+                )
+                response.raise_for_status()
+        except httpx.TimeoutException as exc:
+            logger.warning(
+                "webhook.timeout",
+                extra={
+                    "event": event,
+                    "resource_id": resource_id,
+                    "attempt": attempt + 1,
+                    "max_attempts": attempts,
+                    "error": str(exc),
+                },
+            )
+        except httpx.HTTPError as exc:
+            logger.warning(
+                "webhook.http_error",
+                extra={
+                    "event": event,
+                    "resource_id": resource_id,
+                    "attempt": attempt + 1,
+                    "max_attempts": attempts,
+                    "error": str(exc),
+                },
+            )
+        except Exception:
+            logger.exception(
+                "webhook.unexpected_error",
+                extra={"event": event, "resource_id": resource_id},
+            )
+            return
+        else:
+            logger.info(
+                "webhook.sent",
+                extra={"event": event, "resource_id": resource_id},
+            )
+            return
+
+        if attempt + 1 < attempts:
+            await asyncio.sleep(min_delay * (2**attempt))
+    logger.error(
+        "webhook.failed",
+        extra={"event": event, "resource_id": resource_id},
+    )
 
 
 def _serialize_datetime(value: Any) -> Any:
@@ -50,57 +114,37 @@ async def trigger_application_webhook(
         logger.debug("N8N webhook not enabled or URL not configured, skipping")
         return
 
-    try:
-        # Construct the webhook payload with essential fields
-        payload = {
-            "event": "application_created",
-            "application": {
-                "id": str(application["_id"]),
-                "status": application.get("status", "Application Submitted"),
-                "applied_date": _serialize_datetime(application.get("applied_date")),
-                "notes": application.get("notes"),
-            },
-            "job": {
-                "id": str(job["_id"]),
-                "title": job.get("title", ""),
-                "company": job.get("company", ""),
-                "location": job.get("location", ""),
-                "job_type": job.get("job_type", ""),
-                "description": job.get("description", ""),
-                "salary_min": job.get("salary_min"),
-                "salary_max": job.get("salary_max"),
-            },
-            "job_seeker": {
-                "id": str(job_seeker["_id"]),
-                "first_name": job_seeker.get("first_name", ""),
-                "last_name": job_seeker.get("last_name", ""),
-                "email": job_seeker.get("email", ""),
-                "phone": job_seeker.get("phone"),
-                "location": job_seeker.get("location"),
-                "skills": job_seeker.get("skills", []),
-                "experience_years": job_seeker.get("experience_years", 0),
-            },
-        }
+    payload = {
+        "event": "application_created",
+        "application": {
+            "id": str(application["_id"]),
+            "status": application.get("status", "Application Submitted"),
+            "applied_date": _serialize_datetime(application.get("applied_date")),
+            "notes": application.get("notes"),
+        },
+        "job": {
+            "id": str(job["_id"]),
+            "title": job.get("title", ""),
+            "company": job.get("company", ""),
+            "location": job.get("location", ""),
+            "job_type": job.get("job_type", ""),
+            "description": job.get("description", ""),
+            "salary_min": job.get("salary_min"),
+            "salary_max": job.get("salary_max"),
+        },
+        "job_seeker": {
+            "id": str(job_seeker["_id"]),
+            "first_name": job_seeker.get("first_name", ""),
+            "last_name": job_seeker.get("last_name", ""),
+            "email": job_seeker.get("email", ""),
+            "phone": job_seeker.get("phone"),
+            "location": job_seeker.get("location"),
+            "skills": job_seeker.get("skills", []),
+            "experience_years": job_seeker.get("experience_years", 0),
+        },
+    }
 
-        # Make async HTTP POST request (fire-and-forget)
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.post(
-                settings.N8N_WEBHOOK_URL,
-                json=payload,
-            )
-            response.raise_for_status()
-            logger.info(f"Successfully triggered n8n webhook for application {application['_id']}")
-
-    except httpx.TimeoutException:
-        logger.warning(f"Timeout while triggering n8n webhook for application {application['_id']}")
-    except httpx.HTTPError as e:
-        logger.warning(
-            f"HTTP error while triggering n8n webhook for application {application['_id']}: {e}"
-        )
-    except Exception:
-        logger.exception(
-            f"Unexpected error while triggering n8n webhook for application {application['_id']}"
-        )
+    await _send_webhook("application_created", payload, str(application["_id"]))
 
 
 async def trigger_interview_webhook(
@@ -129,61 +173,41 @@ async def trigger_interview_webhook(
         logger.debug("N8N webhook not enabled or URL not configured, skipping")
         return
 
-    try:
-        # Construct the webhook payload with essential fields
-        payload = {
-            "event": "interview_scheduled",
-            "interview": {
-                "id": str(interview["_id"]),
-                "interview_type": interview.get("interview_type", ""),
-                "scheduled_date": _serialize_datetime(interview.get("scheduled_date")),
-                "duration_minutes": interview.get("duration_minutes", 60),
-                "timezone": interview.get("timezone", ""),
-                "location": interview.get("location"),
-                "interviewer_name": interview.get("interviewer_name"),
-                "interviewer_email": interview.get("interviewer_email"),
-                "interviewer_phone": interview.get("interviewer_phone"),
-                "notes": interview.get("notes"),
-            },
-            "job": {
-                "id": str(job["_id"]),
-                "title": job.get("title", ""),
-                "company": job.get("company", ""),
-                "location": job.get("location", ""),
-                "job_type": job.get("job_type", ""),
-            },
-            "job_seeker": {
-                "id": str(job_seeker["_id"]),
-                "first_name": job_seeker.get("first_name", ""),
-                "last_name": job_seeker.get("last_name", ""),
-                "email": job_seeker.get("email", ""),
-                "phone": job_seeker.get("phone"),
-            },
-            "application": {
-                "id": str(application["_id"]),
-                "status": application.get("status", ""),
-            },
-        }
+    payload = {
+        "event": "interview_scheduled",
+        "interview": {
+            "id": str(interview["_id"]),
+            "interview_type": interview.get("interview_type", ""),
+            "scheduled_date": _serialize_datetime(interview.get("scheduled_date")),
+            "duration_minutes": interview.get("duration_minutes", 60),
+            "timezone": interview.get("timezone", ""),
+            "location": interview.get("location"),
+            "interviewer_name": interview.get("interviewer_name"),
+            "interviewer_email": interview.get("interviewer_email"),
+            "interviewer_phone": interview.get("interviewer_phone"),
+            "notes": interview.get("notes"),
+        },
+        "job": {
+            "id": str(job["_id"]),
+            "title": job.get("title", ""),
+            "company": job.get("company", ""),
+            "location": job.get("location", ""),
+            "job_type": job.get("job_type", ""),
+        },
+        "job_seeker": {
+            "id": str(job_seeker["_id"]),
+            "first_name": job_seeker.get("first_name", ""),
+            "last_name": job_seeker.get("last_name", ""),
+            "email": job_seeker.get("email", ""),
+            "phone": job_seeker.get("phone"),
+        },
+        "application": {
+            "id": str(application["_id"]),
+            "status": application.get("status", ""),
+        },
+    }
 
-        # Make async HTTP POST request (fire-and-forget)
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.post(
-                settings.N8N_WEBHOOK_URL,
-                json=payload,
-            )
-            response.raise_for_status()
-            logger.info(f"Successfully triggered n8n webhook for interview {interview['_id']}")
-
-    except httpx.TimeoutException:
-        logger.warning(f"Timeout while triggering n8n webhook for interview {interview['_id']}")
-    except httpx.HTTPError as e:
-        logger.warning(
-            f"HTTP error while triggering n8n webhook for interview {interview['_id']}: {e}"
-        )
-    except Exception:
-        logger.exception(
-            f"Unexpected error while triggering n8n webhook for interview {interview['_id']}"
-        )
+    await _send_webhook("interview_scheduled", payload, str(interview["_id"]))
 
 
 async def trigger_interview_updated_webhook(
@@ -214,68 +238,44 @@ async def trigger_interview_updated_webhook(
         logger.debug("N8N webhook not enabled or URL not configured, skipping")
         return
 
-    try:
-        # Construct the webhook payload with essential fields
-        payload = {
-            "event": "interview_updated",
-            "update_type": update_type,
-            "interview": {
-                "id": str(interview["_id"]),
-                "interview_type": interview.get("interview_type", ""),
-                "scheduled_date": _serialize_datetime(interview.get("scheduled_date")),
-                "duration_minutes": interview.get("duration_minutes", 60),
-                "timezone": interview.get("timezone", ""),
-                "location": interview.get("location"),
-                "interviewer_name": interview.get("interviewer_name"),
-                "interviewer_email": interview.get("interviewer_email"),
-                "interviewer_phone": interview.get("interviewer_phone"),
-                "notes": interview.get("notes"),
-                "status": interview.get("status", ""),
-                "rescheduled_from": _serialize_datetime(interview.get("rescheduled_from")),
-            },
-            "job": {
-                "id": str(job["_id"]),
-                "title": job.get("title", ""),
-                "company": job.get("company", ""),
-                "location": job.get("location", ""),
-                "job_type": job.get("job_type", ""),
-            },
-            "job_seeker": {
-                "id": str(job_seeker["_id"]),
-                "first_name": job_seeker.get("first_name", ""),
-                "last_name": job_seeker.get("last_name", ""),
-                "email": job_seeker.get("email", ""),
-                "phone": job_seeker.get("phone"),
-            },
-            "application": {
-                "id": str(application["_id"]),
-                "status": application.get("status", ""),
-            },
-        }
+    payload = {
+        "event": "interview_updated",
+        "update_type": update_type,
+        "interview": {
+            "id": str(interview["_id"]),
+            "interview_type": interview.get("interview_type", ""),
+            "scheduled_date": _serialize_datetime(interview.get("scheduled_date")),
+            "duration_minutes": interview.get("duration_minutes", 60),
+            "timezone": interview.get("timezone", ""),
+            "location": interview.get("location"),
+            "interviewer_name": interview.get("interviewer_name"),
+            "interviewer_email": interview.get("interviewer_email"),
+            "interviewer_phone": interview.get("interviewer_phone"),
+            "notes": interview.get("notes"),
+            "status": interview.get("status", ""),
+            "rescheduled_from": _serialize_datetime(interview.get("rescheduled_from")),
+        },
+        "job": {
+            "id": str(job["_id"]),
+            "title": job.get("title", ""),
+            "company": job.get("company", ""),
+            "location": job.get("location", ""),
+            "job_type": job.get("job_type", ""),
+        },
+        "job_seeker": {
+            "id": str(job_seeker["_id"]),
+            "first_name": job_seeker.get("first_name", ""),
+            "last_name": job_seeker.get("last_name", ""),
+            "email": job_seeker.get("email", ""),
+            "phone": job_seeker.get("phone"),
+        },
+        "application": {
+            "id": str(application["_id"]),
+            "status": application.get("status", ""),
+        },
+    }
 
-        # Make async HTTP POST request (fire-and-forget)
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.post(
-                settings.N8N_WEBHOOK_URL,
-                json=payload,
-            )
-            response.raise_for_status()
-            logger.info(
-                f"Successfully triggered n8n webhook for interview update {interview['_id']}"
-            )
-
-    except httpx.TimeoutException:
-        logger.warning(
-            f"Timeout while triggering n8n webhook for interview update {interview['_id']}"
-        )
-    except httpx.HTTPError as e:
-        logger.warning(
-            f"HTTP error while triggering n8n webhook for interview update {interview['_id']}: {e}"
-        )
-    except Exception:
-        logger.exception(
-            f"Unexpected error while triggering n8n webhook for interview update {interview['_id']}"
-        )
+    await _send_webhook("interview_updated", payload, str(interview["_id"]))
 
 
 async def trigger_application_status_changed_webhook(
@@ -306,56 +306,32 @@ async def trigger_application_status_changed_webhook(
         logger.debug("N8N webhook not enabled or URL not configured, skipping")
         return
 
-    try:
-        # Construct the webhook payload with essential fields
-        payload = {
-            "event": "application_status_changed",
-            "old_status": old_status,
-            "new_status": new_status,
-            "application": {
-                "id": str(application["_id"]),
-                "status": application.get("status", ""),
-                "applied_date": _serialize_datetime(application.get("applied_date")),
-                "notes": application.get("notes"),
-                "next_step": application.get("next_step"),
-                "rejection_reason": application.get("rejection_reason"),
-            },
-            "job": {
-                "id": str(job["_id"]),
-                "title": job.get("title", ""),
-                "company": job.get("company", ""),
-                "location": job.get("location", ""),
-                "job_type": job.get("job_type", ""),
-            },
-            "job_seeker": {
-                "id": str(job_seeker["_id"]),
-                "first_name": job_seeker.get("first_name", ""),
-                "last_name": job_seeker.get("last_name", ""),
-                "email": job_seeker.get("email", ""),
-                "phone": job_seeker.get("phone"),
-            },
-        }
+    payload = {
+        "event": "application_status_changed",
+        "old_status": old_status,
+        "new_status": new_status,
+        "application": {
+            "id": str(application["_id"]),
+            "status": application.get("status", ""),
+            "applied_date": _serialize_datetime(application.get("applied_date")),
+            "notes": application.get("notes"),
+            "next_step": application.get("next_step"),
+            "rejection_reason": application.get("rejection_reason"),
+        },
+        "job": {
+            "id": str(job["_id"]),
+            "title": job.get("title", ""),
+            "company": job.get("company", ""),
+            "location": job.get("location", ""),
+            "job_type": job.get("job_type", ""),
+        },
+        "job_seeker": {
+            "id": str(job_seeker["_id"]),
+            "first_name": job_seeker.get("first_name", ""),
+            "last_name": job_seeker.get("last_name", ""),
+            "email": job_seeker.get("email", ""),
+            "phone": job_seeker.get("phone"),
+        },
+    }
 
-        # Make async HTTP POST request (fire-and-forget)
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.post(
-                settings.N8N_WEBHOOK_URL,
-                json=payload,
-            )
-            response.raise_for_status()
-            logger.info(
-                f"Successfully triggered n8n webhook for application status change {application['_id']}"
-            )
-
-    except httpx.TimeoutException:
-        logger.warning(
-            f"Timeout while triggering n8n webhook for application status change {application['_id']}"
-        )
-    except httpx.HTTPError as e:
-        logger.warning(
-            f"HTTP error while triggering n8n webhook for application status change {application['_id']}: {e}"
-        )
-    except Exception:
-        logger.exception(
-            f"Unexpected error while triggering n8n webhook for application status change {application['_id']}"
-        )
+    await _send_webhook("application_status_changed", payload, str(application["_id"]))

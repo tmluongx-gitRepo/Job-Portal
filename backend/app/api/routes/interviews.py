@@ -417,6 +417,8 @@ async def update_interview(
             detail="You don't have permission to update this interview",
         )
 
+    original_scheduled_date = interview.get("scheduled_date")
+
     # Update the interview
     update_dict = update_data.model_dump(exclude_unset=True)
     updated_interview = await interview_crud.update_interview(interview_id, update_dict)
@@ -427,11 +429,15 @@ async def update_interview(
             detail=f"Interview {interview_id} not found",
         )
 
-    # Determine update type
-    update_type = "rescheduled" if "scheduled_date" in update_dict else "modified"
+    scheduled_changed = False
+    if "scheduled_date" in update_dict:
+        new_date = update_dict["scheduled_date"]
+        scheduled_changed = new_date != original_scheduled_date
+
+    update_type = "rescheduled" if scheduled_changed else "modified"
 
     # If rescheduled, update application
-    if "scheduled_date" in update_dict:
+    if scheduled_changed:
         await application_crud.update_application(
             interview["application_id"],
             {

@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -30,7 +31,7 @@ from app.database import (
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:  # noqa: PLR0915
     """Application lifespan events."""
     # Startup
     print(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
@@ -39,6 +40,12 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     except RuntimeError as exc:
         print(f"⚠️  Configuration validation failed: {exc}")
         raise
+
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        )
 
     # Initialize ChromaDB connection
     try:
