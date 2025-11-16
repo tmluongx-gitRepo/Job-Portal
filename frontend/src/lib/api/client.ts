@@ -76,7 +76,10 @@ export async function apiRequest<TResponse>(
     if (body) {
       console.log(`[API Client] Request body (before stringify):`, body);
       try {
-        console.log(`[API Client] Request body (JSON):`, JSON.stringify(body, null, 2));
+        console.log(
+          `[API Client] Request body (JSON):`,
+          JSON.stringify(body, null, 2)
+        );
       } catch (e) {
         console.log(`[API Client] Could not stringify body:`, e);
       }
@@ -202,25 +205,28 @@ export async function apiRequest<TResponse>(
       const is404 = response.status === 404;
       const logMethod = is404 ? console.info : console.error;
       const logPrefix = is404 ? "[API Info]" : "[API Error]";
-      
+
       logMethod(`${logPrefix} ${response.status} ${response.statusText}`);
       logMethod(`${logPrefix} URL: ${fullUrl}`);
       if (body) {
-        logMethod(`${logPrefix} Request Body Sent:`, JSON.stringify(body, null, 2));
+        logMethod(
+          `${logPrefix} Request Body Sent:`,
+          JSON.stringify(body, null, 2)
+        );
       }
-      
+
       // Extract and log the detail/message field explicitly - this is the key info
-      if (typeof errorData === 'object' && errorData !== null) {
+      if (typeof errorData === "object" && errorData !== null) {
         const errorObj = errorData as Record<string, unknown>;
         const detail = errorObj.detail;
         const message = errorObj.message;
         const errorMsg = String(detail || message || JSON.stringify(errorData));
-        
+
         logMethod(`${logPrefix} Backend Message:`, errorMsg);
         if (!is404) {
           // Only log full error object for non-404 errors
           logMethod(`${logPrefix} Full Error Object:`, errorData);
-          
+
           // Also try to stringify for easy reading
           try {
             const errorJson = JSON.stringify(errorData, null, 2);
@@ -300,7 +306,7 @@ export async function uploadFile<TResponse>(
 
   // Prepare headers for file upload
   const headers: Record<string, string> = {};
-  
+
   // Add Authorization header if token exists
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;

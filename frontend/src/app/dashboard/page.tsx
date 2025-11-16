@@ -78,7 +78,7 @@ export default function DashboardPage(): ReactElement {
         // The userId from getCurrentUserId() is the Supabase UUID, but backend expects MongoDB ObjectId
         const currentUserInfo = await api.auth.getCurrentUser();
         const mongoUserId = currentUserInfo.id; // This is the MongoDB ObjectId
-        
+
         // First, fetch profile to get job seeker profile ID
         let profileId: string | null = null;
         try {
@@ -248,7 +248,11 @@ export default function DashboardPage(): ReactElement {
           <>
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-green-900 mb-2 flex items-center">
-                Good morning, {profile?.first_name || currentUser?.email?.split("@")[0] || "there"}!
+                Good morning,{" "}
+                {profile?.first_name ||
+                  currentUser?.email?.split("@")[0] ||
+                  "there"}
+                !
                 <Leaf className="w-8 h-8 ml-3 text-green-600" />
               </h1>
               <p className="text-green-700">

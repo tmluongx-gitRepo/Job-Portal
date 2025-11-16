@@ -22,5 +22,3 @@ export type EmailConfirmationResponse = z.infer<
   typeof EmailConfirmationResponseSchema
 >;
 export type MessageResponse = z.infer<typeof MessageResponseSchema>;
-
-

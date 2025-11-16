@@ -9,7 +9,9 @@ export const UserSignUpSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   account_type: z.enum(["job_seeker", "employer"], {
-    errorMap: () => ({ message: "Account type must be 'job_seeker' or 'employer'" }),
+    errorMap: () => ({
+      message: "Account type must be 'job_seeker' or 'employer'",
+    }),
   }),
   full_name: z.string().nullable().optional(),
 });
@@ -62,5 +64,3 @@ export const EmailConfirmationResponseSchema = z.object({
 export const MessageResponseSchema = z.object({
   message: z.string(),
 });
-
-

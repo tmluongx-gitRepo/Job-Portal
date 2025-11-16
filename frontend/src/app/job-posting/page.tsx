@@ -357,13 +357,15 @@ export default function JobPostingPage(): ReactElement {
       // The userId from getCurrentUserId() is the Supabase UUID, but backend expects MongoDB ObjectId
       const currentUserInfo = await api.auth.getCurrentUser();
       const mongoUserId = currentUserInfo.id; // This is the MongoDB ObjectId
-      
+
       // Get or create employer profile
       let employerProfileId: string;
       try {
         // Try to get existing employer profile
         const existingProfile: EmployerProfile =
-          (await api.employerProfiles.getByUserId(mongoUserId)) as EmployerProfile;
+          (await api.employerProfiles.getByUserId(
+            mongoUserId
+          )) as EmployerProfile;
         employerProfileId = existingProfile.id;
       } catch (err) {
         // Profile doesn't exist, create one

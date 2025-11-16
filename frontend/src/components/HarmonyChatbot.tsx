@@ -233,53 +233,56 @@ const HarmonyChatbot = ({
     setIsTyping(true);
 
     // Simulate AI thinking time (replace with actual API call)
-    setTimeout(() => {
-      const response = getBotResponse(messageToSend);
+    setTimeout(
+      () => {
+        const response = getBotResponse(messageToSend);
 
-      // Check if this should trigger an action sequence
-      if (
-        typeof response === "object" &&
-        response !== null &&
-        "type" in response &&
-        response.type === "ACTION"
-      ) {
-        setIsWorking(true);
-        setIsTyping(false);
+        // Check if this should trigger an action sequence
+        if (
+          typeof response === "object" &&
+          response !== null &&
+          "type" in response &&
+          response.type === "ACTION"
+        ) {
+          setIsWorking(true);
+          setIsTyping(false);
 
-        // Simulate action taking time
-        setTimeout(() => {
-          // Add persistent action indicator
-          const actionIndicator: Message = {
+          // Simulate action taking time
+          setTimeout(() => {
+            // Add persistent action indicator
+            const actionIndicator: Message = {
+              id: messages.length + 2,
+              type: "action",
+              action: response.action,
+              timestamp: new Date(),
+            };
+
+            // Add Harmony's response message
+            const harmonyResponse: Message = {
+              id: messages.length + 3,
+              type: "bot",
+              content: response.response,
+              timestamp: new Date(),
+            };
+
+            setMessages((prev) => [...prev, actionIndicator, harmonyResponse]);
+            setIsWorking(false);
+          }, 3000); // 3 second action simulation
+        } else {
+          // Regular chat response
+          const botResponse: Message = {
             id: messages.length + 2,
-            type: "action",
-            action: response.action,
-            timestamp: new Date(),
-          };
-
-          // Add Harmony's response message
-          const harmonyResponse: Message = {
-            id: messages.length + 3,
             type: "bot",
-            content: response.response,
+            content: typeof response === "string" ? response : "",
             timestamp: new Date(),
           };
 
-          setMessages((prev) => [...prev, actionIndicator, harmonyResponse]);
-          setIsWorking(false);
-        }, 3000); // 3 second action simulation
-      } else {
-        // Regular chat response
-        const botResponse: Message = {
-          id: messages.length + 2,
-          type: "bot",
-          content: typeof response === "string" ? response : "",
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, botResponse]);
-        setIsTyping(false);
-      }
-    }, 1000 + Math.random() * 2000);
+          setMessages((prev) => [...prev, botResponse]);
+          setIsTyping(false);
+        }
+      },
+      1000 + Math.random() * 2000
+    );
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>): void => {
@@ -313,7 +316,9 @@ const HarmonyChatbot = ({
               </div>
               <div>
                 <h3 className="font-semibold">Harmony</h3>
-                <p className="text-xs text-green-50">Your AI career companion</p>
+                <p className="text-xs text-green-50">
+                  Your AI career companion
+                </p>
               </div>
             </div>
             <button
@@ -490,4 +495,3 @@ const HarmonyChatbot = ({
 };
 
 export default HarmonyChatbot;
-
