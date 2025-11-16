@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import inspect
+import logging
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any, cast
@@ -22,11 +24,18 @@ class ChatHistoryService:
     def __init__(self) -> None:
         self._sessions = get_chat_sessions_collection()
         self._messages = get_chat_messages_collection()
+        self._logger = logging.getLogger(__name__)
 
     async def get_latest_session(self, *, user_id: str) -> ChatSessionDocument | None:
         """Return the most recent active session for the user, if any."""
 
-        user_object_id = ObjectId(user_id)
+        user_object_id = self._coerce_object_id(user_id)
+        if user_object_id is None:
+            self._logger.warning(
+                "chat_history.invalid_user_id",
+                extra={"user_id": user_id, "operation": "get_latest_session"},
+            )
+            return None
         doc = await self._sessions.find_one(
             {"user_id": user_object_id, "status": "active"},
             sort=[("last_interaction_at", -1)],
@@ -36,7 +45,9 @@ class ChatHistoryService:
     async def ensure_session(self, *, user_id: str, role: str) -> ChatSessionDocument:
         """Return an active session for the user, creating one if necessary."""
 
-        user_object_id = ObjectId(user_id)
+        user_object_id = self._coerce_object_id(user_id)
+        if user_object_id is None:
+            raise ValueError("user_id must be a valid ObjectId-compatible string")
         existing = await self._sessions.find_one(
             {"user_id": user_object_id, "status": "active"},
             sort=[("last_interaction_at", -1)],
@@ -87,7 +98,14 @@ class ChatHistoryService:
         """Return the latest `limit` chat messages for the session."""
 
         cursor = self._messages.find({"session_id": session_id}).sort("created_at", -1).limit(limit)
-        results = await cursor.to_list(length=limit)
+        try:
+            results = await cursor.to_list(length=limit)
+        finally:
+            close_method = getattr(cursor, "close", None)
+            if close_method is not None:
+                maybe_coroutine = close_method()
+                if inspect.isawaitable(maybe_coroutine):
+                    await maybe_coroutine
         return list(reversed(results))
 
     async def upsert_summary(self, *, session_id: str, summary: str) -> None:
@@ -98,3 +116,13 @@ class ChatHistoryService:
             {"session_id": session_id},
             {"$set": {"summary": summary, "updated_at": now}},
         )
+
+    @staticmethod
+    def _coerce_object_id(value: Any) -> ObjectId | None:
+        """Return an ObjectId if the input can be safely coerced."""
+
+        if isinstance(value, ObjectId):
+            return value
+        if isinstance(value, str) and ObjectId.is_valid(value):
+            return ObjectId(value)
+        return None

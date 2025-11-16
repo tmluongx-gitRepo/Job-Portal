@@ -2,16 +2,26 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any, Optional, cast
+
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda
+from pydantic import SecretStr
 
 from app.config import settings
 
+if TYPE_CHECKING:  # pragma: no cover - type checking only
+    from langchain_openai import ChatOpenAI as ChatOpenAIType
+else:  # pragma: no cover - runtime fallback typing
+    ChatOpenAIType = Any
+
 try:
-    from langchain_openai import ChatOpenAI
+    from langchain_openai import ChatOpenAI as _ChatOpenAI
 except ImportError:  # pragma: no cover - optional dependency
-    ChatOpenAI = None  # type: ignore[assignment]
+    _ChatOpenAI = None
+
+ChatOpenAI: ChatOpenAIType | None = cast(Optional["ChatOpenAIType"], _ChatOpenAI)
 
 
 SUMMARY_PROMPT = ChatPromptTemplate.from_messages(
@@ -47,8 +57,9 @@ async def summarise_conversation(
         ).strip()
         return truncated[-settings.CHAT_SUMMARY_MAX_TOKENS * 5 :]
 
+    assert ChatOpenAI is not None  # for type checkers
     llm = ChatOpenAI(
-        api_key=settings.OPENAI_API_KEY,
+        api_key=SecretStr(settings.OPENAI_API_KEY),
         model=settings.OPENAI_SUMMARY_MODEL or settings.OPENAI_CHAT_MODEL,
         temperature=0,
         streaming=False,

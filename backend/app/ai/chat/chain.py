@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Callable, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnableParallel
+from pydantic import SecretStr
 
 from app.ai.chat.instrumentation import logger, tracing_context
 from app.ai.chat.tools.retrievers import (
@@ -17,10 +18,17 @@ from app.ai.chat.tools.retrievers import (
 from app.ai.chat.utils import AUDIENCE_EMPLOYER, AUDIENCE_JOB_SEEKER, prepare_matches
 from app.config import settings
 
+if TYPE_CHECKING:  # pragma: no cover - type checking only
+    from langchain_openai import ChatOpenAI as ChatOpenAIType
+else:  # pragma: no cover - runtime fallback typing
+    ChatOpenAIType = Any
+
 try:
-    from langchain_openai import ChatOpenAI
+    from langchain_openai import ChatOpenAI as _ChatOpenAI
 except ImportError:  # pragma: no cover - optional dependency
-    ChatOpenAI = None  # type: ignore[assignment]
+    _ChatOpenAI = None
+
+ChatOpenAI: ChatOpenAIType | None = cast(Optional["ChatOpenAIType"], _ChatOpenAI)
 
 
 JOB_SEEKER_PROMPT = ChatPromptTemplate.from_messages(
@@ -72,8 +80,9 @@ async def job_seeker_stream(
         return matches, summary, lambda: _fallback_stream(fallback_text)
 
     def factory() -> AsyncIterator[str]:
+        assert ChatOpenAI is not None  # for type checkers
         llm = ChatOpenAI(
-            api_key=settings.OPENAI_API_KEY,
+            api_key=SecretStr(settings.OPENAI_API_KEY),
             model=settings.OPENAI_JOB_SEEKER_MODEL or settings.OPENAI_CHAT_MODEL,
             temperature=0,
             streaming=True,
@@ -120,8 +129,9 @@ async def employer_stream(
         return matches, summary, lambda: _fallback_stream(fallback_text)
 
     def factory() -> AsyncIterator[str]:
+        assert ChatOpenAI is not None  # for type checkers
         llm = ChatOpenAI(
-            api_key=settings.OPENAI_API_KEY,
+            api_key=SecretStr(settings.OPENAI_API_KEY),
             model=settings.OPENAI_EMPLOYER_MODEL or settings.OPENAI_CHAT_MODEL,
             temperature=0,
             streaming=True,

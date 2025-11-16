@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "Job Portal API"
     APP_VERSION: str = "0.1.0"
+    APP_ENV: str = "development"
     DEBUG: bool = True
 
     # ChromaDB Vector Database
@@ -27,6 +28,7 @@ class Settings(BaseSettings):
 
     # Redis
     REDIS_URL: str = "redis://redis:6379/0"
+    REDIS_KEY_PREFIX: str = "job-portal"
 
     # Security
     # Must be set via environment variable - never use default in production!
@@ -61,6 +63,8 @@ class Settings(BaseSettings):
     CHAT_SESSION_TTL_SECONDS: int = 60 * 60 * 48  # 48 hours
     CHAT_RECENT_MESSAGE_LIMIT: int = 20
     CHAT_SUMMARY_MAX_TOKENS: int = 750
+    CHAT_RATE_LIMIT_MAX_MESSAGES: int = 30
+    CHAT_RATE_LIMIT_WINDOW_SECONDS: int = 60
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://frontend:3000"]
