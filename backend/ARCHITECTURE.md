@@ -12,7 +12,7 @@ This document captures the current architecture of the Job Portal backend so new
 - **Caching / coordination:** Redis is provisioned and pinged on startup. It is currently used for health checking but can be promoted to caching or queueing without code changes.
 - **Vector search preparation:** ChromaDB is initialised at startup so recommendation work can move to vector search. For now, recommendation endpoints operate entirely on Mongo data.
 - **File storage:** Dropbox holds Job Seeker resumes. Uploads replace `/resumes/{user_id}.pdf`, and downloads stream content back to clients.
-- **Automation:** `docker-compose.yml` provisions an n8n instance for workflow automation. No runtime hooks call it yet, but it is part of the local/dev footprint.
+- **Automation:** n8n integration is supported via outbound webhooks (see `backend/app/services/webhook_service.py`). Local Docker provisioning has been removed; point `N8N_WEBHOOK_URL` at your managed n8n instance if needed.
 - **Domain scope:** REST APIs cover authentication, user management, job seeker and employer profiles, job postings, applications, interviews, saved jobs, resumes, recommendations, and analytics/insights across those resources.
 
 Typical call stack:
@@ -106,7 +106,7 @@ Routers are then registered with CORS enabled via settings (`settings.CORS_ORIGI
 
 ### Docker Compose Footprint
 - `backend` service runs the FastAPI app with live reload.
-- `chromadb`, `redis`, and `n8n` are provisioned for local development.
+- `chromadb` and `redis` are provisioned for local development.
 - `devcontainer` is the recommended way to run the Next.js frontend alongside the backend.
 - **MongoDB is deliberately excluded**; provide `MONGO_URI` pointing to an Atlas cluster or local instance.
 
