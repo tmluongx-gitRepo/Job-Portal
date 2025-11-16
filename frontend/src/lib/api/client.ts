@@ -3,6 +3,7 @@
  * Shared across all API modules
  */
 import { z } from "zod";
+import { getAccessToken } from "../auth";
 
 // Get API URL from environment variable
 export const API_URL =
@@ -74,14 +75,25 @@ export async function apiRequest<TResponse>(
     console.log(`[API Client] Full URL: ${fullUrl}`);
   }
 
+  // Get access token for authenticated requests
+  const accessToken = getAccessToken();
+
+  // Prepare headers
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...fetchOptions.headers,
+  };
+
+  // Add Authorization header if token exists
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
   let response: Response;
   try {
     response = await fetch(fullUrl, {
       ...fetchOptions,
-      headers: {
-        "Content-Type": "application/json",
-        ...fetchOptions.headers,
-      },
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (fetchError) {
@@ -226,10 +238,23 @@ export async function uploadFile<TResponse>(
     });
   }
 
+  // Get access token for authenticated requests
+  const accessToken = getAccessToken();
+
+  // Prepare headers for file upload
+  const headers: HeadersInit = {};
+  
+  // Add Authorization header if token exists
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+  // Don't set Content-Type header - browser will set it with boundary
+
   let response: Response;
   try {
     response = await fetch(fullUrl, {
       method: "POST",
+      headers,
       body: formData,
       // Don't set Content-Type header - browser will set it with boundary
     });

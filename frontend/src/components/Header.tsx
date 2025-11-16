@@ -8,15 +8,12 @@ import {
   isAuthenticated,
   getCurrentUser,
   clearAuth,
+  type AuthUser,
 } from "@/lib/auth";
 
 export default function Header(): ReactElement {
   const [authenticated, setAuthenticated] = useState(false);
-  const [user, setUser] = useState<{
-    id: string;
-    email: string;
-    account_type?: string;
-  } | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const pathname = usePathname();
 
   // Check authentication status

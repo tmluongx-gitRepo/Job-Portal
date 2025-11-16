@@ -21,8 +21,8 @@ import {
   ArrowLeft,
   Check,
 } from "lucide-react";
-import { authApi } from "@/lib/api/auth/api";
-import type { ApiError } from "@/lib/api";
+import { authApi, type ApiError } from "@/lib/api";
+import type { EmailConfirmationResponse } from "@/lib/api";
 
 interface FormErrors {
   firstName?: string;
@@ -213,15 +213,30 @@ export default function SignupPage(): ReactElement {
 
       const response = await authApi.register(registrationData);
 
-      // TODO: If employer, save company profile data after registration
-      // This would require a separate API call to create/update company profile
+      // Check if email confirmation is required
+      if ("email_confirmation_required" in response && response.email_confirmation_required) {
+        // Show email confirmation message
+        setErrors({
+          email: "Please check your email to confirm your account before logging in.",
+        });
+        setShowErrorToast(true);
+        setTimeout(() => setShowErrorToast(false), 6000);
+        setIsSubmitting(false);
+        return;
+      }
 
-      // Redirect immediately to appropriate dashboard
-      const redirectPath =
-        formData.accountType === "employer"
-          ? "/employer-dashboard"
-          : "/dashboard";
-      router.push(redirectPath);
+      // If we got tokens, user is logged in - redirect to dashboard
+      if ("access_token" in response) {
+        // TODO: If employer, save company profile data after registration
+        // This would require a separate API call to create/update company profile
+
+        // Redirect immediately to appropriate dashboard
+        const redirectPath =
+          formData.accountType === "employer"
+            ? "/employer-dashboard"
+            : "/dashboard";
+        router.push(redirectPath);
+      }
     } catch (error) {
       console.error("Registration error:", error);
       const apiError = error as ApiError;
