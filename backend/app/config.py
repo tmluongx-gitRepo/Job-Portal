@@ -29,17 +29,18 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://redis:6379/0"
 
     # Security
+    # Must be set via environment variable - never use default in production!
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # Supabase Authentication
-    # TEMPORARY: Hardcoded until backend config fix is applied (see BACKEND_CONFIG_FIX.md)
-    # TODO: Remove hardcoded values after backend devs fix environment variable loading
-    SUPABASE_URL: str = "https://zoqyyuootjvzjlkrbqtp.supabase.co"
-    SUPABASE_ANON_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvcXl5dW9vdGp2empsa3JicXRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2OTg5ODMsImV4cCI6MjA3ODI3NDk4M30.9wcmfi3a4VsfhOTeGSVZrDzbmCUAmbVtwxXgdR0Rxm0"
-    SUPABASE_SERVICE_ROLE_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvcXl5dW9vdGp2empsa3JicXRwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjY5ODk4MywiZXhwIjoyMDc4Mjc0OTgzfQ.rgPWo_-v9OCmbl1qAXcc9NR9bcbVwSdar9I9mDGPhZw"  # For testing/admin operations
-    SUPABASE_JWT_SECRET: str = "2wZBIFtSb0bAbIUrTaz3KRIreWPkTOEjTWlLFmpzE3sg7xKT//M1H3cTQ5lQa904tkZ7XdCNIiZktlUzdeTWZw=="  # For JWT signature verification
+    # These must be set via environment variables (.env file)
+    # Never commit secrets to version control!
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""  # For testing/admin operations - NEVER commit this!
+    SUPABASE_JWT_SECRET: str = ""  # For JWT signature verification - NEVER commit this!
 
     # Dropbox File Storage
     DROPBOX_APP_KEY: str = ""

@@ -19,7 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { api, ApiError } from "../../lib/api";
-import { getCurrentUserId, getCurrentUser, isAuthenticated, clearAuth } from "../../lib/auth";
+import { getCurrentUser, isAuthenticated, clearAuth } from "../../lib/auth";
 import { useRouter } from "next/navigation";
 import type {
   Application,
@@ -41,7 +41,6 @@ const healthyReminders = [
 export default function DashboardPage(): ReactElement {
   const router = useRouter();
   const currentUser = getCurrentUser();
-  const userId = getCurrentUserId();
 
   const [currentReminder, setCurrentReminder] = useState(healthyReminders[0]);
   const [loading, setLoading] = useState(true);
