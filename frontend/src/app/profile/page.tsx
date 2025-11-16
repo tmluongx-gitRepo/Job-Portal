@@ -109,9 +109,14 @@ export default function ProfilePage(): ReactElement {
       setError(null);
 
       try {
-        // Try to get profile by user ID
+        // Get MongoDB ObjectId from /api/auth/me (backend converts Supabase UUID to MongoDB ObjectId)
+        // The userId from getCurrentUserId() is the Supabase UUID, but backend expects MongoDB ObjectId
+        const currentUserInfo = await api.auth.getCurrentUser();
+        const mongoUserId = currentUserInfo.id; // This is the MongoDB ObjectId
+        
+        // Try to get profile by MongoDB user ID
         const profile: JobSeekerProfile =
-          (await api.jobSeekerProfiles.getByUserId(userId)) as JobSeekerProfile;
+          (await api.jobSeekerProfiles.getByUserId(mongoUserId)) as JobSeekerProfile;
         setApiProfile(profile);
         setProfileId(profile.id);
 
@@ -476,6 +481,32 @@ export default function ProfilePage(): ReactElement {
           setError(
             "Authentication required to save profile. Please log in to save your changes."
           );
+        } else if (err.status === 400 && errorMessage.includes("already have a job seeker profile")) {
+          // Profile exists but we didn't have the profileId - fetch it and retry as update
+          try {
+            console.info("[Profile] Profile already exists, fetching profile to update...");
+            const currentUserInfo = await api.auth.getCurrentUser();
+            const mongoUserId = currentUserInfo.id;
+            const existingProfile: JobSeekerProfile =
+              (await api.jobSeekerProfiles.getByUserId(mongoUserId)) as JobSeekerProfile;
+            
+            // Set profileId and retry as update
+            setProfileId(existingProfile.id);
+            
+            // Retry the save as an update
+            const updated = await api.jobSeekerProfiles.update(
+              existingProfile.id,
+              updateData
+            );
+            setApiProfile(updated);
+            setSuccess(true);
+            setIsEditing(false);
+            setTimeout(() => setSuccess(false), 3000);
+            return; // Success - exit early
+          } catch (retryErr) {
+            console.error("Failed to fetch and update existing profile:", retryErr);
+            setError(`Profile exists but could not be updated: ${retryErr instanceof ApiError ? retryErr.message : "Unknown error"}`);
+          }
         } else if (err.status === 400) {
           setError(`Failed to save profile: ${errorMessage}. Please check that you're logged in as a job seeker and that all required fields are filled.`);
         } else if (err.status === 401) {
