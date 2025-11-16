@@ -172,7 +172,7 @@ const mockNotifications: Notification[] = [
 ];
 
 // Helper to render channel badge
-const ChannelBadge = ({ channel }: { channel: NotificationChannel }): JSX.Element => {
+const ChannelBadge = ({ channel }: { channel: NotificationChannel }): React.ReactElement => {
   const channelConfig = {
     in_app: { icon: Bell, label: "App", color: "bg-green-100 text-green-700" },
     email: { icon: Mail, label: "Email", color: "bg-blue-100 text-blue-700" },
