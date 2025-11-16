@@ -16,7 +16,9 @@ from app.ai.chat.cache import RedisChatCache, get_chat_cache
 from app.config import settings
 
 if TYPE_CHECKING:  # pragma: no cover - type checking only
-    from langchain_openai import OpenAIEmbeddings as OpenAIEmbeddingsCallable
+    from langchain_openai import OpenAIEmbeddings
+
+    OpenAIEmbeddingsCallable = type[OpenAIEmbeddings]
 else:  # pragma: no cover - runtime fallback typing
     OpenAIEmbeddingsCallable = Any
 
