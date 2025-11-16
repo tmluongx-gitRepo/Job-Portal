@@ -312,6 +312,13 @@ export default function JobPostingPage(): ReactElement {
     setSubmitSuccess(false);
     setFieldErrors({});
 
+    // Check authentication
+    if (!userId) {
+      setSubmitError("You must be logged in to post a job.");
+      setIsSubmitting(false);
+      return;
+    }
+
     // Validate each field individually
     const errors: Record<string, string> = {};
 
