@@ -170,7 +170,9 @@ export default function Header(): ReactElement {
                   </span>
                 </Link>
                 <button
-                  onClick={() => { void handleLogout(); }}
+                  onClick={() => {
+                    void handleLogout();
+                  }}
                   className="text-green-700 hover:text-green-800 font-medium transition-colors"
                 >
                   Logout
