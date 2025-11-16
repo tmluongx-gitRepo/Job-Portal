@@ -2,7 +2,6 @@
 
 import {
   useState,
-  type FormEvent,
   type ChangeEvent,
   type ReactElement,
 } from "react";
@@ -22,7 +21,6 @@ import {
   Check,
 } from "lucide-react";
 import { authApi, api, type ApiError } from "@/lib/api";
-import type { EmailConfirmationResponse } from "@/lib/api";
 
 interface FormErrors {
   accountType?: string;
@@ -192,7 +190,7 @@ export default function SignupPage(): ReactElement {
         if (formData.accountType === "employer") {
           setCurrentStep(2);
         } else {
-          handleSubmit();
+          void handleSubmit();
         }
       } else {
         setShowErrorToast(true);
@@ -200,7 +198,7 @@ export default function SignupPage(): ReactElement {
       }
     } else if (currentStep === 2) {
       if (validateStep2()) {
-        handleSubmit();
+        void handleSubmit();
       } else {
         setShowErrorToast(true);
         setTimeout(() => setShowErrorToast(false), 4000);
@@ -447,7 +445,7 @@ export default function SignupPage(): ReactElement {
                   if (currentStep === 1) {
                     handleNextStep();
                   } else {
-                    handleSubmit(e);
+                    void handleSubmit(e);
                   }
                 }}
                 className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-green-200 p-8"

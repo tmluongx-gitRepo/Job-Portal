@@ -40,7 +40,7 @@ export default function Header(): ReactElement {
   }, [pathname]);
 
   // Determine navigation items based on account type
-  const getNavigationItems = () => {
+  const getNavigationItems = (): Array<{ label: string; href: string }> => {
     if (!authenticated || !user) return [];
 
     const accountType = user.account_type;
@@ -170,7 +170,7 @@ export default function Header(): ReactElement {
                   </span>
                 </Link>
                 <button
-                  onClick={handleLogout}
+                  onClick={() => { void handleLogout(); }}
                   className="text-green-700 hover:text-green-800 font-medium transition-colors"
                 >
                   Logout

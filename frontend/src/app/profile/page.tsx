@@ -27,7 +27,20 @@ import type { JobSeekerProfile } from "../../lib/api";
 import type { z } from "zod";
 
 // Default empty profile data - will be populated from API or user input
-const getDefaultProfileData = (userEmail?: string) => ({
+const getDefaultProfileData = (userEmail?: string): {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  location: string;
+  title: string;
+  summary: string;
+  experience: Array<{ company: string; role: string; duration: string; description: string }>;
+  projects: Array<{ name: string; description: string; link: string }>;
+  education: Array<{ school: string; degree: string; year: string }>;
+  skills: string[];
+  experienceYears: number;
+} => ({
   firstName: "",
   lastName: "",
   email: userEmail || "",

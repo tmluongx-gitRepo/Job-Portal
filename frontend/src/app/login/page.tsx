@@ -97,7 +97,7 @@ export default function LoginPage(): ReactElement {
                 <p className="text-sm text-red-800">{error}</p>
               </div>
             )}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={(e) => { e.preventDefault(); void handleSubmit(e); }} className="space-y-6">
               {/* Email */}
               <div>
                 <label className="block text-sm font-medium text-green-800 mb-2">
