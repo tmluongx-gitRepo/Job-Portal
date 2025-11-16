@@ -307,7 +307,6 @@ export async function uploadFile<TResponse>(
     });
   }
 
-<<<<<<< HEAD
   // Get access token for authenticated requests
   const accessToken = getAccessToken();
 
@@ -319,17 +318,6 @@ export async function uploadFile<TResponse>(
     headers.Authorization = `Bearer ${accessToken}`;
   }
   // Don't set Content-Type header - browser will set it with boundary
-=======
-  // Get authentication token if available
-  const token = getAccessToken();
-  const headers: Record<string, string> = {};
-  // Don't set Content-Type header - browser will set it with boundary for FormData
-
-  // Add Bearer token if available
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
->>>>>>> feat-jess-frontend-auth-chatbot-integration
 
   let response: Response;
   try {
