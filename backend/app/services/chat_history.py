@@ -18,6 +18,10 @@ from app.database import (
 from app.type_definitions import ChatMessageDocument, ChatSessionDocument
 
 
+class InvalidUserIdError(ValueError):
+    """Raised when a provided user identifier cannot be coerced into an ObjectId."""
+
+
 class ChatHistoryService:
     """High-level abstraction for storing and retrieving chat transcripts."""
 
@@ -47,7 +51,7 @@ class ChatHistoryService:
 
         user_object_id = self._coerce_object_id(user_id)
         if user_object_id is None:
-            raise ValueError("user_id must be a valid ObjectId-compatible string")
+            raise InvalidUserIdError("user_id must be a valid ObjectId-compatible string")
         existing = await self._sessions.find_one(
             {"user_id": user_object_id, "status": "active"},
             sort=[("last_interaction_at", -1)],

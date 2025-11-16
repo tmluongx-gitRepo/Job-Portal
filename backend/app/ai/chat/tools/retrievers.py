@@ -75,7 +75,16 @@ async def _query_chroma(
 ) -> list[dict[str, Any]]:
     try:
         collection = get_collection(collection_name)
-    except Exception:  # pragma: no cover - rely on fallback
+    except Exception as exc:  # pragma: no cover - rely on fallback
+        log_payload = {
+            "collection": collection_name,
+            "operation": "get_collection",
+        }
+        if settings.DEBUG:
+            logger.exception("chat.retriever.collection_failure", extra=log_payload)
+        else:
+            log_payload["error"] = str(exc)
+            logger.warning("chat.retriever.collection_failure", extra=log_payload)
         return []
 
     def _query() -> list[dict[str, Any]]:
@@ -139,7 +148,16 @@ async def _query_chroma(
 
     try:
         return await asyncio.to_thread(_query)
-    except Exception:  # pragma: no cover - rely on fallback
+    except Exception as exc:  # pragma: no cover - rely on fallback
+        log_payload = {
+            "collection": collection_name,
+            "operation": "query",
+        }
+        if settings.DEBUG:
+            logger.exception("chat.retriever.query_failure", extra=log_payload)
+        else:
+            log_payload["error"] = str(exc)
+            logger.warning("chat.retriever.query_failure", extra=log_payload)
         return []
 
 
@@ -243,7 +261,7 @@ def _extract_job_features(user_context: Mapping[str, Any]) -> dict[str, Any]:
     return _extract_features(user_context, _EMPLOYER_FEATURE_KEYS)
 
 
-def _extract_features(
+def _extract_features(  # noqa: PLR0912
     user_context: Mapping[str, Any], keys_map: Mapping[str, Sequence[str]]
 ) -> dict[str, Any]:
     features: dict[str, Any] = {}
@@ -272,7 +290,12 @@ def _extract_features(
                 break
             if value is not None:
                 break
-        features[feature_name] = value
+        if isinstance(value, list):
+            features[feature_name] = value
+        elif value is None:
+            features[feature_name] = []
+        else:
+            features[feature_name] = value
 
     return features
 

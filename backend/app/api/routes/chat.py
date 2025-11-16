@@ -40,8 +40,10 @@ async def chat_websocket(
         await websocket.send_json(
             {
                 "type": ChatEventType.INFO.value,
-                "message": "Chat connection established",
-                "session_id": session.session_id,
+                "data": {
+                    "message": "Chat connection established",
+                    "session_id": session.session_id,
+                },
             }
         )
 
