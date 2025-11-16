@@ -89,21 +89,17 @@ async def trigger_application_webhook(
                 json=payload,
             )
             response.raise_for_status()
-            logger.info(
-                f"Successfully triggered n8n webhook for application {application['_id']}"
-            )
+            logger.info(f"Successfully triggered n8n webhook for application {application['_id']}")
 
     except httpx.TimeoutException:
-        logger.warning(
-            f"Timeout while triggering n8n webhook for application {application['_id']}"
-        )
+        logger.warning(f"Timeout while triggering n8n webhook for application {application['_id']}")
     except httpx.HTTPError as e:
         logger.warning(
             f"HTTP error while triggering n8n webhook for application {application['_id']}: {e}"
         )
-    except Exception as e:
-        logger.error(
-            f"Unexpected error while triggering n8n webhook for application {application['_id']}: {e}"
+    except Exception:
+        logger.exception(
+            f"Unexpected error while triggering n8n webhook for application {application['_id']}"
         )
 
 
@@ -176,21 +172,17 @@ async def trigger_interview_webhook(
                 json=payload,
             )
             response.raise_for_status()
-            logger.info(
-                f"Successfully triggered n8n webhook for interview {interview['_id']}"
-            )
+            logger.info(f"Successfully triggered n8n webhook for interview {interview['_id']}")
 
     except httpx.TimeoutException:
-        logger.warning(
-            f"Timeout while triggering n8n webhook for interview {interview['_id']}"
-        )
+        logger.warning(f"Timeout while triggering n8n webhook for interview {interview['_id']}")
     except httpx.HTTPError as e:
         logger.warning(
             f"HTTP error while triggering n8n webhook for interview {interview['_id']}: {e}"
         )
-    except Exception as e:
-        logger.error(
-            f"Unexpected error while triggering n8n webhook for interview {interview['_id']}: {e}"
+    except Exception:
+        logger.exception(
+            f"Unexpected error while triggering n8n webhook for interview {interview['_id']}"
         )
 
 
@@ -280,9 +272,9 @@ async def trigger_interview_updated_webhook(
         logger.warning(
             f"HTTP error while triggering n8n webhook for interview update {interview['_id']}: {e}"
         )
-    except Exception as e:
-        logger.error(
-            f"Unexpected error while triggering n8n webhook for interview update {interview['_id']}: {e}"
+    except Exception:
+        logger.exception(
+            f"Unexpected error while triggering n8n webhook for interview update {interview['_id']}"
         )
 
 
@@ -363,8 +355,7 @@ async def trigger_application_status_changed_webhook(
         logger.warning(
             f"HTTP error while triggering n8n webhook for application status change {application['_id']}: {e}"
         )
-    except Exception as e:
-        logger.error(
-            f"Unexpected error while triggering n8n webhook for application status change {application['_id']}: {e}"
+    except Exception:
+        logger.exception(
+            f"Unexpected error while triggering n8n webhook for application status change {application['_id']}"
         )
-

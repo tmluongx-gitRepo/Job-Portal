@@ -21,7 +21,10 @@ from app.schemas.interview import (
     InterviewResponse,
     InterviewUpdate,
 )
-from app.services.webhook_service import trigger_interview_webhook, trigger_interview_updated_webhook
+from app.services.webhook_service import (
+    trigger_interview_updated_webhook,
+    trigger_interview_webhook,
+)
 
 router = APIRouter(tags=["Interviews"])
 
@@ -239,7 +242,7 @@ async def schedule_interview(
     # Trigger n8n webhook asynchronously (fire-and-forget)
     # We have job, application already; just fetched job_seeker_profile
     if job_seeker_profile:
-        asyncio.create_task(
+        _task = asyncio.create_task(  # noqa: RUF006
             trigger_interview_webhook(interview, job, job_seeker_profile, application)
         )
 
@@ -446,7 +449,7 @@ async def update_interview(
 
     # Trigger n8n webhook asynchronously (fire-and-forget)
     if job and application and job_seeker_profile:
-        asyncio.create_task(
+        _task = asyncio.create_task(  # noqa: RUF006
             trigger_interview_updated_webhook(
                 updated_interview, job, job_seeker_profile, application, update_type
             )

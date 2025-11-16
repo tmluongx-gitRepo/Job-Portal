@@ -16,7 +16,10 @@ from app.schemas.application import (
     ApplicationUpdate,
     StatusHistoryEntrySchema,
 )
-from app.services.webhook_service import trigger_application_webhook, trigger_application_status_changed_webhook
+from app.services.webhook_service import (
+    trigger_application_status_changed_webhook,
+    trigger_application_webhook,
+)
 from app.type_definitions import ApplicationDocument
 
 router = APIRouter()
@@ -127,7 +130,7 @@ async def create_application(
 
     # Trigger n8n webhook asynchronously (fire-and-forget)
     # We already have job and profile data from validation above
-    asyncio.create_task(trigger_application_webhook(created_application, job, profile))
+    _task = asyncio.create_task(trigger_application_webhook(created_application, job, profile))  # noqa: RUF006
 
     return _serialize_application(created_application)
 
@@ -291,7 +294,7 @@ async def get_application(
 
 
 @router.put("/{application_id}", response_model=ApplicationResponse)
-async def update_application(
+async def update_application(  # noqa: PLR0912
     application_id: str,
     application_update: ApplicationUpdate,
     current_user: dict = Depends(get_current_user),
@@ -397,9 +400,7 @@ async def update_application(
         await application_crud.cancel_all_interviews_for_application(application_id)
 
     # Trigger webhook if status changed and user is employer/admin
-    if new_status and new_status != existing_application.get("status"):
-        from app.auth.auth_utils import is_admin, is_employer
-        
+    if new_status and new_status != existing_application.get("status"):  # noqa: SIM102
         # Only trigger if employer or admin changed the status (not job seeker)
         if is_employer(current_user) or is_admin(current_user):
             # Fetch related data for webhook
@@ -407,11 +408,11 @@ async def update_application(
             job_seeker_profile = await profile_crud.get_profile_by_id(
                 str(existing_application.get("job_seeker_id"))
             )
-            
+
             # Trigger webhook asynchronously
             if job and job_seeker_profile:
                 old_status = existing_application.get("status", "")
-                asyncio.create_task(
+                _task = asyncio.create_task(  # noqa: RUF006
                     trigger_application_status_changed_webhook(
                         updated_application, job, job_seeker_profile, old_status, new_status
                     )
