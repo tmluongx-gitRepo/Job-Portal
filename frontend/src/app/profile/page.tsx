@@ -809,11 +809,11 @@ export default function ProfilePage(): ReactElement {
                       <input
                         type="number"
                         min="0"
-                        value={profileData.experienceYears}
+                        value={profileData.experienceYears || 0}
                         onChange={(e) =>
                           handleInputChange(
                             "experienceYears",
-                            e.target.value
+                            e.target.value === "" ? 0 : Number(e.target.value)
                           )
                         }
                         className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
