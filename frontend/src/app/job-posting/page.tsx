@@ -17,10 +17,8 @@ import {
   Users,
 } from "lucide-react";
 import { api, ApiError, ValidationError } from "../../lib/api";
+import { getCurrentUserId } from "../../lib/auth";
 import type { JobCreate, EmployerProfile } from "../../lib/api";
-
-// ⚠️ TODO: Replace with actual user data from auth context when authentication is implemented
-const userId = "507f1f77bcf86cd799439011"; // PLACEHOLDER - Valid ObjectId format for testing
 
 // TODO: Replace with API call to fetch employer info
 const employerInfo = {
@@ -152,6 +150,7 @@ interface JobData {
 
 export default function JobPostingPage(): ReactElement {
   const router = useRouter();
+  const userId = getCurrentUserId();
   const [selectedCompany, setSelectedCompany] = useState("");
   const [jobData, setJobData] = useState<JobData>({
     title: "",

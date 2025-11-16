@@ -109,7 +109,7 @@ function formatSalary(
 }
 
 export default function EmployerDashboard(): ReactElement {
-  const userId = getCurrentUserId() || "507f1f77bcf86cd799439011"; // Fallback for testing
+  const userId = getCurrentUserId();
   const [selectedCompany, setSelectedCompany] = useState("all");
   const [currentReminder, setCurrentReminder] = useState(healthyReminders[0]);
 

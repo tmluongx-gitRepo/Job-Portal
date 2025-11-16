@@ -39,7 +39,7 @@ const healthyReminders = [
 
 export default function DashboardPage(): ReactElement {
   const currentUser = getCurrentUser();
-  const userId = getCurrentUserId() || "507f1f77bcf86cd799439011"; // Fallback for testing
+  const userId = getCurrentUserId();
 
   const [currentReminder, setCurrentReminder] = useState(healthyReminders[0]);
   const [loading, setLoading] = useState(true);
