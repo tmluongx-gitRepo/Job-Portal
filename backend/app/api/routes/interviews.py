@@ -2,6 +2,8 @@
 API routes for interview scheduling.
 """
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.auth.auth_utils import is_admin, is_employer, is_job_seeker
@@ -19,6 +21,7 @@ from app.schemas.interview import (
     InterviewResponse,
     InterviewUpdate,
 )
+from app.services.webhook_service import trigger_interview_webhook, trigger_interview_updated_webhook
 
 router = APIRouter(tags=["Interviews"])
 
@@ -228,6 +231,18 @@ async def schedule_interview(
         },
     )
 
+    # Fetch job seeker profile for webhook
+    job_seeker_profile = await job_seeker_profile_crud.get_profile_by_id(
+        str(application["job_seeker_id"])
+    )
+
+    # Trigger n8n webhook asynchronously (fire-and-forget)
+    # We have job, application already; just fetched job_seeker_profile
+    if job_seeker_profile:
+        asyncio.create_task(
+            trigger_interview_webhook(interview, job, job_seeker_profile, application)
+        )
+
     # Populate details and return
     interview_dict = dict(interview)
     interview_dict = await _populate_interview_details(interview_dict)
@@ -409,6 +424,9 @@ async def update_interview(
             detail=f"Interview {interview_id} not found",
         )
 
+    # Determine update type
+    update_type = "rescheduled" if "scheduled_date" in update_dict else "modified"
+
     # If rescheduled, update application
     if "scheduled_date" in update_dict:
         await application_crud.update_application(
@@ -417,6 +435,21 @@ async def update_interview(
                 "interview_scheduled_date": update_dict["scheduled_date"],
                 "next_step": "Interview rescheduled",
             },
+        )
+
+    # Fetch related data for webhook
+    job = await job_crud.get_job_by_id(updated_interview["job_id"])
+    application = await application_crud.get_application_by_id(updated_interview["application_id"])
+    job_seeker_profile = await job_seeker_profile_crud.get_profile_by_id(
+        updated_interview["job_seeker_id"]
+    )
+
+    # Trigger n8n webhook asynchronously (fire-and-forget)
+    if job and application and job_seeker_profile:
+        asyncio.create_task(
+            trigger_interview_updated_webhook(
+                updated_interview, job, job_seeker_profile, application, update_type
+            )
         )
 
     # Populate details and return
