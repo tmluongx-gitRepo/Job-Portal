@@ -21,7 +21,6 @@ export { jobSeekerProfileApi } from "./job-seeker-profiles";
 export { employerProfileApi } from "./employer-profiles";
 export { recommendationApi } from "./recommendations";
 export { statsApi } from "./stats";
-export { authApi } from "./auth/api";
 
 // Export all TypeScript types
 export type * from "./auth/types";
@@ -55,7 +54,6 @@ import { jobSeekerProfileApi } from "./job-seeker-profiles";
 import { employerProfileApi } from "./employer-profiles";
 import { recommendationApi } from "./recommendations";
 import { statsApi } from "./stats";
-import { authApi } from "./auth/api";
 
 export const api = {
   auth: authApi,
@@ -67,5 +65,4 @@ export const api = {
   employerProfiles: employerProfileApi,
   recommendations: recommendationApi,
   stats: statsApi,
-  auth: authApi,
 };

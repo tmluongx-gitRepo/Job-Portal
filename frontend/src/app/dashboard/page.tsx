@@ -19,7 +19,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { api, ApiError } from "../../lib/api";
-import { getCurrentUserId, getCurrentUser } from "../../lib/auth";
+import { getCurrentUserId, getCurrentUser, isAuthenticated, clearAuth } from "../../lib/auth";
+import { useRouter } from "next/navigation";
 import type {
   Application,
   JobSeekerProfile,
@@ -38,6 +39,7 @@ const healthyReminders = [
 ];
 
 export default function DashboardPage(): ReactElement {
+  const router = useRouter();
   const currentUser = getCurrentUser();
   const userId = getCurrentUserId();
 
@@ -61,6 +63,14 @@ export default function DashboardPage(): ReactElement {
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async (): Promise<void> => {
+      // Check authentication before making API calls
+      if (!isAuthenticated()) {
+        setError("Please log in to view your dashboard");
+        setLoading(false);
+        router.push("/login");
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
@@ -110,6 +120,12 @@ export default function DashboardPage(): ReactElement {
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
         if (err instanceof ApiError) {
+          // If unauthorized, clear auth and redirect to login
+          if (err.status === 401) {
+            clearAuth();
+            router.push("/login");
+            return;
+          }
           setError(`Failed to load dashboard: ${err.message}`);
         } else {
           setError("An unexpected error occurred. Please try again.");
@@ -120,7 +136,7 @@ export default function DashboardPage(): ReactElement {
     };
 
     void fetchDashboardData();
-  }, [userId]);
+  }, [router]);
 
   // Calculate stats from fetched data
   const calculateStats = (): {

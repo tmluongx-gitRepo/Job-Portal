@@ -95,18 +95,6 @@ export async function apiRequest<TResponse>(
   // Add Authorization header if token exists
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
-  }
-
-  // Get authentication token if available
-  const token = getAccessToken();
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...fetchOptions.headers,
-  };
-
-  // Add Bearer token if available
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
     // Debug logging in development
     if (
       typeof window !== "undefined" &&
