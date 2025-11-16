@@ -8,9 +8,12 @@ import {
 } from "react";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, Heart } from "lucide-react";
+import { authApi, type ApiError } from "@/lib/api";
 
 export default function LoginPage(): ReactElement {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -18,6 +21,8 @@ export default function LoginPage(): ReactElement {
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value, type, checked } = e.target;
@@ -25,13 +30,43 @@ export default function LoginPage(): ReactElement {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+    // Clear error when user starts typing
+    if (error) setError(null);
   };
 
-  const handleSubmit = (e: FormEvent): void => {
+  const handleSubmit = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
-    // TODO: Implement login functionality
-    console.log("Login submitted:", formData);
-    alert("Welcome back to Career Harmony! 🌱");
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const response = await authApi.login({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      // Redirect based on account type
+      const accountType = response.user.account_type;
+      const redirectPath =
+        accountType === "employer" ? "/employer-dashboard" : "/dashboard";
+      router.push(redirectPath);
+    } catch (err) {
+      console.error("Login error:", err);
+      const apiError = err as ApiError;
+
+      // Handle specific error cases
+      if (apiError.status === 401) {
+        setError("Invalid email or password. Please try again.");
+      } else if (apiError.status === 503) {
+        setError(
+          "Authentication service is temporarily unavailable. Please try again later."
+        );
+      } else {
+        setError(apiError.message || "Login failed. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -57,7 +92,18 @@ export default function LoginPage(): ReactElement {
 
           {/* Login Form */}
           <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-green-200 p-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+            )}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleSubmit(e);
+              }}
+              className="space-y-6"
+            >
               {/* Email */}
               <div>
                 <label className="block text-sm font-medium text-green-800 mb-2">
@@ -135,10 +181,11 @@ export default function LoginPage(): ReactElement {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-4 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 transition-all flex items-center justify-center"
+                disabled={isSubmitting}
+                className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-4 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Heart className="w-5 h-5 mr-2" />
-                Sign In
+                {isSubmitting ? "Signing in..." : "Sign In"}
               </button>
             </form>
 

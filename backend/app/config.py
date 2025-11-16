@@ -29,15 +29,18 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://redis:6379/0"
 
     # Security
+    # Must be set via environment variable - never use default in production!
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # Supabase Authentication
+    # These must be set via environment variables (.env file)
+    # Never commit secrets to version control!
     SUPABASE_URL: str = ""
     SUPABASE_ANON_KEY: str = ""
-    SUPABASE_SERVICE_ROLE_KEY: str = ""  # For testing/admin operations
-    SUPABASE_JWT_SECRET: str = ""  # For JWT signature verification
+    SUPABASE_SERVICE_ROLE_KEY: str = ""  # For testing/admin operations - NEVER commit this!
+    SUPABASE_JWT_SECRET: str = ""  # For JWT signature verification - NEVER commit this!
 
     # Dropbox File Storage
     DROPBOX_APP_KEY: str = ""

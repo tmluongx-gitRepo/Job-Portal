@@ -3,6 +3,7 @@
  * Shared across all API modules
  */
 import { z } from "zod";
+import { getAccessToken } from "../auth";
 
 // Get API URL from environment variable
 export const API_URL =
@@ -68,20 +69,59 @@ export async function apiRequest<TResponse>(
   const fullUrl = `${API_URL}${apiEndpoint}`;
 
   // Log the request for debugging (only in browser)
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
     console.log(`[API Client] Original endpoint: ${endpoint}`);
     console.log(`[API Client] API endpoint: ${apiEndpoint}`);
     console.log(`[API Client] Full URL: ${fullUrl}`);
+    if (body) {
+      console.log(`[API Client] Request body (before stringify):`, body);
+      try {
+        console.log(
+          `[API Client] Request body (JSON):`,
+          JSON.stringify(body, null, 2)
+        );
+      } catch (e) {
+        console.log(`[API Client] Could not stringify body:`, e);
+      }
+    }
+  }
+
+  // Get access token for authenticated requests
+  const accessToken = getAccessToken();
+
+  // Prepare headers
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(fetchOptions.headers as Record<string, string>),
+  };
+
+  // Add Authorization header if token exists
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+    // Debug logging in development
+    if (
+      typeof window !== "undefined" &&
+      process.env.NODE_ENV === "development"
+    ) {
+      console.log("[API Client] Token found, adding Authorization header");
+    }
+  } else {
+    // Debug logging in development
+    if (
+      typeof window !== "undefined" &&
+      process.env.NODE_ENV === "development"
+    ) {
+      console.warn(
+        "[API Client] No token found - request will be unauthenticated"
+      );
+    }
   }
 
   let response: Response;
   try {
     response = await fetch(fullUrl, {
       ...fetchOptions,
-      headers: {
-        "Content-Type": "application/json",
-        ...fetchOptions.headers,
-      },
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (fetchError) {
@@ -160,10 +200,45 @@ export async function apiRequest<TResponse>(
       typeof window !== "undefined" &&
       process.env.NODE_ENV === "development"
     ) {
-      console.error(`[API Error] ${response.status} ${response.statusText}`, {
-        url: fullUrl,
-        errorData,
-      });
+      // 404 errors are often expected (e.g., checking if profile exists)
+      // Log them as info instead of error to reduce noise
+      const is404 = response.status === 404;
+      const logMethod = is404 ? console.info : console.error;
+      const logPrefix = is404 ? "[API Info]" : "[API Error]";
+
+      logMethod(`${logPrefix} ${response.status} ${response.statusText}`);
+      logMethod(`${logPrefix} URL: ${fullUrl}`);
+      if (body) {
+        logMethod(
+          `${logPrefix} Request Body Sent:`,
+          JSON.stringify(body, null, 2)
+        );
+      }
+
+      // Extract and log the detail/message field explicitly - this is the key info
+      if (typeof errorData === "object" && errorData !== null) {
+        const errorObj = errorData as Record<string, unknown>;
+        const detail = errorObj.detail;
+        const message = errorObj.message;
+        const errorMsg = String(detail || message || JSON.stringify(errorData));
+
+        logMethod(`${logPrefix} Backend Message:`, errorMsg);
+        if (!is404) {
+          // Only log full error object for non-404 errors
+          logMethod(`${logPrefix} Full Error Object:`, errorData);
+
+          // Also try to stringify for easy reading
+          try {
+            const errorJson = JSON.stringify(errorData, null, 2);
+            logMethod(`${logPrefix} Full Error (JSON):`, errorJson);
+          } catch {
+            // If stringify fails, just log the object
+            logMethod(`${logPrefix} Full Error:`, errorData);
+          }
+        }
+      } else {
+        logMethod(`${logPrefix} Error Text:`, String(errorData));
+      }
     }
 
     throw new ApiError(
@@ -226,10 +301,23 @@ export async function uploadFile<TResponse>(
     });
   }
 
+  // Get access token for authenticated requests
+  const accessToken = getAccessToken();
+
+  // Prepare headers for file upload
+  const headers: Record<string, string> = {};
+
+  // Add Authorization header if token exists
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+  // Don't set Content-Type header - browser will set it with boundary
+
   let response: Response;
   try {
     response = await fetch(fullUrl, {
       method: "POST",
+      headers,
       body: formData,
       // Don't set Content-Type header - browser will set it with boundary
     });

@@ -19,9 +19,6 @@ import {
 import { api, ApiError } from "../../lib/api";
 import type { Job, Application, EmployerProfile } from "../../lib/api";
 
-// ⚠️ TODO: Replace with actual user data from auth context when authentication is implemented
-const userId = "507f1f77bcf86cd799439011"; // PLACEHOLDER - Valid ObjectId format for testing
-
 // Employer-focused healthy reminders
 const healthyReminders = [
   "Remember: Great hires take time. Focus on finding the right cultural fit, not just filling positions quickly.",
@@ -143,11 +140,16 @@ export default function EmployerDashboard(): ReactElement {
       setError(null);
 
       try {
+        // Get MongoDB ObjectId from /api/auth/me (backend converts Supabase UUID to MongoDB ObjectId)
+        // The userId from getCurrentUserId() is the Supabase UUID, but backend expects MongoDB ObjectId
+        const currentUserInfo = await api.auth.getCurrentUser();
+        const mongoUserId = currentUserInfo.id; // This is the MongoDB ObjectId
+
         // Fetch employer profile
         let profile: EmployerProfile | null = null;
         let employerProfileId: string | null = null;
         try {
-          profile = await api.employerProfiles.getByUserId(userId);
+          profile = await api.employerProfiles.getByUserId(mongoUserId);
           setEmployerProfile(profile);
           employerProfileId = profile.id;
         } catch (_err) {
@@ -395,7 +397,7 @@ export default function EmployerDashboard(): ReactElement {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-green-900 mb-2 flex items-center">
-                Good morning, {employerProfile?.name || "Employer"}!
+                Good morning, {employerProfile?.company_name || "Employer"}!
                 <Building2 className="w-8 h-8 ml-3 text-green-600" />
               </h1>
               <p className="text-green-700">

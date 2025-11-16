@@ -19,6 +19,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { api, ApiError } from "../../lib/api";
+import { getCurrentUser, isAuthenticated, clearAuth } from "../../lib/auth";
+import { useRouter } from "next/navigation";
 import type {
   Application,
   JobSeekerProfile,
@@ -37,9 +39,8 @@ const healthyReminders = [
 ];
 
 export default function DashboardPage(): ReactElement {
-  // ⚠️ TODO: Replace with actual user data from auth context when authentication is implemented
-  const userName = "Alex";
-  const userId = "507f1f77bcf86cd799439011"; // PLACEHOLDER - Valid ObjectId format for testing
+  const router = useRouter();
+  const currentUser = getCurrentUser();
 
   const [currentReminder, setCurrentReminder] = useState(healthyReminders[0]);
   const [loading, setLoading] = useState(true);
@@ -61,15 +62,28 @@ export default function DashboardPage(): ReactElement {
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async (): Promise<void> => {
+      // Check authentication before making API calls
+      if (!isAuthenticated()) {
+        setError("Please log in to view your dashboard");
+        setLoading(false);
+        router.push("/login");
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
       try {
+        // Get MongoDB ObjectId from /api/auth/me (backend converts Supabase UUID to MongoDB ObjectId)
+        // The userId from getCurrentUserId() is the Supabase UUID, but backend expects MongoDB ObjectId
+        const currentUserInfo = await api.auth.getCurrentUser();
+        const mongoUserId = currentUserInfo.id; // This is the MongoDB ObjectId
+
         // First, fetch profile to get job seeker profile ID
         let profileId: string | null = null;
         try {
           const userProfile = (await api.jobSeekerProfiles.getByUserId(
-            userId
+            mongoUserId
           )) as JobSeekerProfile;
           setProfile(userProfile);
           profileId = userProfile.id;
@@ -105,6 +119,12 @@ export default function DashboardPage(): ReactElement {
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
         if (err instanceof ApiError) {
+          // If unauthorized, clear auth and redirect to login
+          if (err.status === 401) {
+            clearAuth();
+            router.push("/login");
+            return;
+          }
           setError(`Failed to load dashboard: ${err.message}`);
         } else {
           setError("An unexpected error occurred. Please try again.");
@@ -115,7 +135,7 @@ export default function DashboardPage(): ReactElement {
     };
 
     void fetchDashboardData();
-  }, [userId]);
+  }, [router]);
 
   // Calculate stats from fetched data
   const calculateStats = (): {
@@ -228,7 +248,11 @@ export default function DashboardPage(): ReactElement {
           <>
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-green-900 mb-2 flex items-center">
-                Good morning, {userName}!
+                Good morning,{" "}
+                {profile?.first_name ||
+                  currentUser?.email?.split("@")[0] ||
+                  "there"}
+                !
                 <Leaf className="w-8 h-8 ml-3 text-green-600" />
               </h1>
               <p className="text-green-700">

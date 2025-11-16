@@ -23,50 +23,12 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { api, ApiError, uploadFile } from "../../../lib/api";
+import { isAuthenticated } from "../../../lib/auth";
 import type {
   Job,
   JobSeekerProfile,
   ApplicationCreate,
 } from "../../../lib/api";
-
-/**
- * Get the current authenticated user ID
- *
- * ⚠️ CRITICAL SECURITY WARNING: This is a placeholder function that MUST be replaced
- * with actual authentication before production deployment.
- *
- * TODO: Replace with actual auth context when authentication is implemented
- * Example: const { user, isAuthenticated } = useAuth();
- *          if (!isAuthenticated || !user?.id) throw new Error("Not authenticated");
- *          return user.id;
- *
- * Current behavior: Blocks all application submissions by returning null.
- * This prevents security issues from hardcoded user IDs but means the feature
- * is non-functional until real authentication is implemented.
- *
- * DO NOT bypass this check or hardcode user IDs in production!
- */
-function getCurrentUserId(): string | null {
-  // TODO: CRITICAL - Implement real authentication before production
-  // const { user, isAuthenticated } = useAuth();
-  // if (!isAuthenticated || !user?.id) {
-  //   console.error("[SECURITY] Authentication required but not implemented");
-  //   return null;
-  // }
-  // return user.id;
-
-  // TEMPORARY: Return null to block submissions until auth is implemented
-  // This prevents security issues from hardcoded user IDs
-  if (process.env.NODE_ENV === "development") {
-    console.warn(
-      "[SECURITY] getCurrentUserId() is a placeholder. Real authentication must be implemented before production."
-    );
-  }
-  return null;
-
-  // For development/testing only - remove before production:
-  // return "507f1f77bcf86cd799439011";
-}
 
 interface ApplicationFormData {
   // Page 1: Basic Profile Information
@@ -168,8 +130,7 @@ export default function JobApplicationPage(): ReactElement | null {
 
   // Check authentication and redirect if not authenticated
   useEffect(() => {
-    const currentUserId = getCurrentUserId();
-    if (!currentUserId) {
+    if (!isAuthenticated()) {
       // Redirect to login page if not authenticated
       router.push(`/login?redirect=/apply/${jobId}`);
       return;
@@ -211,8 +172,7 @@ export default function JobApplicationPage(): ReactElement | null {
         return;
       }
 
-      const currentUserId = getCurrentUserId();
-      if (!currentUserId) {
+      if (!isAuthenticated()) {
         // Don't fetch data if not authenticated
         setError("Authentication required to apply for jobs. Please log in.");
         setLoading(false);
@@ -259,10 +219,15 @@ export default function JobApplicationPage(): ReactElement | null {
           });
         }
 
+        // Get MongoDB ObjectId from /api/auth/me (backend converts Supabase UUID to MongoDB ObjectId)
+        // The userId from getCurrentUserId() is the Supabase UUID, but backend expects MongoDB ObjectId
+        const currentUserInfo = await api.auth.getCurrentUser();
+        const mongoUserId = currentUserInfo.id; // This is the MongoDB ObjectId
+
         // Try to fetch user's job seeker profile
         try {
           const userProfile = (await api.jobSeekerProfiles.getByUserId(
-            currentUserId
+            mongoUserId
           )) as JobSeekerProfile;
           setProfile(userProfile);
           setJobSeekerProfileId(userProfile.id);
@@ -517,8 +482,7 @@ export default function JobApplicationPage(): ReactElement | null {
 
   const handleSubmit = async (): Promise<void> => {
     // Check authentication first
-    const currentUserId = getCurrentUserId();
-    if (!currentUserId) {
+    if (!isAuthenticated()) {
       setError(
         "Authentication required to submit application. Please log in to apply for this job."
       );

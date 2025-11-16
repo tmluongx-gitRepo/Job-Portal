@@ -17,10 +17,8 @@ import {
   Users,
 } from "lucide-react";
 import { api, ApiError, ValidationError } from "../../lib/api";
+import { getCurrentUserId } from "../../lib/auth";
 import type { JobCreate, EmployerProfile } from "../../lib/api";
-
-// ⚠️ TODO: Replace with actual user data from auth context when authentication is implemented
-const userId = "507f1f77bcf86cd799439011"; // PLACEHOLDER - Valid ObjectId format for testing
 
 // TODO: Replace with API call to fetch employer info
 const employerInfo = {
@@ -152,6 +150,7 @@ interface JobData {
 
 export default function JobPostingPage(): ReactElement {
   const router = useRouter();
+  const userId = getCurrentUserId();
   const [selectedCompany, setSelectedCompany] = useState("");
   const [jobData, setJobData] = useState<JobData>({
     title: "",
@@ -313,6 +312,13 @@ export default function JobPostingPage(): ReactElement {
     setSubmitSuccess(false);
     setFieldErrors({});
 
+    // Check authentication
+    if (!userId) {
+      setSubmitError("You must be logged in to post a job.");
+      setIsSubmitting(false);
+      return;
+    }
+
     // Validate each field individually
     const errors: Record<string, string> = {};
 
@@ -347,12 +353,19 @@ export default function JobPostingPage(): ReactElement {
     }
 
     try {
+      // Get MongoDB ObjectId from /api/auth/me (backend converts Supabase UUID to MongoDB ObjectId)
+      // The userId from getCurrentUserId() is the Supabase UUID, but backend expects MongoDB ObjectId
+      const currentUserInfo = await api.auth.getCurrentUser();
+      const mongoUserId = currentUserInfo.id; // This is the MongoDB ObjectId
+
       // Get or create employer profile
       let employerProfileId: string;
       try {
         // Try to get existing employer profile
         const existingProfile: EmployerProfile =
-          (await api.employerProfiles.getByUserId(userId)) as EmployerProfile;
+          (await api.employerProfiles.getByUserId(
+            mongoUserId
+          )) as EmployerProfile;
         employerProfileId = existingProfile.id;
       } catch (err) {
         // Profile doesn't exist, create one
@@ -370,7 +383,7 @@ export default function JobPostingPage(): ReactElement {
 
           const newProfile: EmployerProfile =
             (await api.employerProfiles.create({
-              user_id: userId,
+              user_id: mongoUserId,
               company_name: companyName,
             })) as EmployerProfile;
           employerProfileId = newProfile.id;

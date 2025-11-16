@@ -22,52 +22,50 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { api, ApiError, ValidationError } from "../../lib/api";
+import { getCurrentUserId, getCurrentUser } from "../../lib/auth";
 import type { JobSeekerProfile } from "../../lib/api";
 import type { z } from "zod";
 
-// TODO: Replace with API call to fetch user profile data
-const initialProfileData = {
-  firstName: "Alex",
-  lastName: "Johnson",
-  email: "alex.johnson@email.com",
-  phone: "(555) 123-4567",
-  location: "Phoenix, AZ",
-  title: "Marketing Professional",
-  summary:
-    "Passionate marketing professional with 3+ years of experience in digital marketing, content creation, and customer engagement. I believe in building authentic connections between brands and their communities.",
-  experience: [
-    {
-      company: "Digital Marketing Agency",
-      role: "Marketing Coordinator",
-      duration: "2022 - Present",
-      description:
-        "Managed social media campaigns, created content calendars, and increased client engagement by 40%.",
-    },
-  ],
-  projects: [
-    {
-      title: "Community Food Drive Website",
-      duration: "2023",
-      description:
-        "Built a website to coordinate local food donations, helping distribute over 500 meals to families in need.",
-      technologies: "HTML, CSS, JavaScript",
-    },
-  ],
-  education: [
-    {
-      school: "Arizona State University",
-      degree: "Bachelor of Arts in Communications",
-      year: "2022",
-    },
-  ],
-  skills: [
-    "Digital Marketing",
-    "Content Creation",
-    "Social Media Management",
-    "Google Analytics",
-    "Project Management",
-  ],
-};
+// Default empty profile data - will be populated from API or user input
+const getDefaultProfileData = (
+  userEmail?: string
+): {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  location: string;
+  title: string;
+  summary: string;
+  experience: Array<{
+    company: string;
+    role: string;
+    duration: string;
+    description: string;
+  }>;
+  projects: Array<{
+    title: string;
+    duration: string;
+    description: string;
+    technologies: string;
+  }>;
+  education: Array<{ school: string; degree: string; year: string }>;
+  skills: string[];
+  experienceYears: number;
+} => ({
+  firstName: "",
+  lastName: "",
+  email: userEmail || "",
+  phone: "",
+  location: "",
+  title: "",
+  summary: "",
+  experience: [],
+  projects: [],
+  education: [],
+  skills: [],
+  experienceYears: 0,
+});
 
 const _completionItems = [
   {
@@ -104,8 +102,16 @@ const _completionItems = [
 ];
 
 export default function ProfilePage(): ReactElement {
+  const currentUser = getCurrentUser();
+  const userId = getCurrentUserId();
+
+  // Check if user is a job seeker
+  const isJobSeeker = currentUser?.account_type === "job_seeker";
+
   const [isEditing, setIsEditing] = useState(false);
-  const [profileData, setProfileData] = useState(initialProfileData);
+  const [profileData, setProfileData] = useState(
+    getDefaultProfileData(currentUser?.email)
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -114,23 +120,30 @@ export default function ProfilePage(): ReactElement {
   const [apiProfile, setApiProfile] = useState<JobSeekerProfile | null>(null);
   const [skillInputValue, setSkillInputValue] = useState("");
 
-  // ⚠️ TODO: Replace with actual user ID from auth context when authentication is implemented
-  // This should come from: useAuth() hook, session, or auth context
-  // Example: const { user } = useAuth(); const userId = user?.id;
-  // Note: Backend expects MongoDB ObjectId format (24 hex characters)
-  // For testing, you can create a user via the API and use that user's ID
-  const userId = "507f1f77bcf86cd799439011"; // PLACEHOLDER - Valid ObjectId format for testing
-
   // Fetch profile on mount
   useEffect(() => {
     const fetchProfile = async (): Promise<void> => {
+      // If no user ID, can't fetch profile
+      if (!userId) {
+        setLoading(false);
+        setProfileData(getDefaultProfileData(currentUser?.email));
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
       try {
-        // Try to get profile by user ID
+        // Get MongoDB ObjectId from /api/auth/me (backend converts Supabase UUID to MongoDB ObjectId)
+        // The userId from getCurrentUserId() is the Supabase UUID, but backend expects MongoDB ObjectId
+        const currentUserInfo = await api.auth.getCurrentUser();
+        const mongoUserId = currentUserInfo.id; // This is the MongoDB ObjectId
+
+        // Try to get profile by MongoDB user ID
         const profile: JobSeekerProfile =
-          (await api.jobSeekerProfiles.getByUserId(userId)) as JobSeekerProfile;
+          (await api.jobSeekerProfiles.getByUserId(
+            mongoUserId
+          )) as JobSeekerProfile;
         setApiProfile(profile);
         setProfileId(profile.id);
 
@@ -155,14 +168,17 @@ export default function ProfilePage(): ReactElement {
               ]
             : [],
           skills: profile.skills || [],
+          experienceYears: profile.experience_years || 0,
         });
       } catch (err) {
         if (err instanceof ApiError && err.status === 404) {
-          // Profile doesn't exist yet - that's okay, user can create one
-          // This is expected behavior, not an error
+          // Profile doesn't exist yet - initialize with empty data
+          // If user just signed up, profile should have been created, but if not, user can create one
           console.info(
-            "[Profile] No profile found for user - user can create one"
+            "[Profile] No profile found for user - initializing with empty data"
           );
+          // Initialize with default empty data (email already set from currentUser)
+          setProfileData(getDefaultProfileData(currentUser?.email));
           // Don't set error state - this is normal for new users
         } else {
           console.error("Failed to fetch profile:", err);
@@ -174,7 +190,7 @@ export default function ProfilePage(): ReactElement {
     };
 
     void fetchProfile();
-  }, [userId]);
+  }, [userId, currentUser?.email]);
 
   // Dynamic completion tracking
   const completionItemsDynamic = [
@@ -226,7 +242,7 @@ export default function ProfilePage(): ReactElement {
     ? apiProfile.profile_completion_percentage
     : Math.round((completedCount / completionItemsDynamic.length) * 100);
 
-  const handleInputChange = (field: string, value: string): void => {
+  const handleInputChange = (field: string, value: string | number): void => {
     setProfileData((prev) => ({
       ...prev,
       [field]: value,
@@ -261,6 +277,50 @@ export default function ProfilePage(): ReactElement {
       ...prev,
       experience: prev.experience.filter((_, i) => i !== index),
     }));
+    // Recalculate experience years after removing an entry
+    calculateExperienceYears();
+  };
+
+  // Calculate total years of experience from experience entries
+  const calculateExperienceYears = (): void => {
+    setProfileData((prev) => {
+      let totalYears = 0;
+
+      prev.experience.forEach((exp) => {
+        if (exp.duration) {
+          // Try to parse duration like "2020 - 2024" or "2020 - Present"
+          const duration = exp.duration.trim();
+          const yearMatch = duration.match(/(\d{4})/g);
+
+          if (yearMatch && yearMatch.length >= 1) {
+            const startYear = parseInt(yearMatch[0], 10);
+            const endYear = yearMatch[1]
+              ? parseInt(yearMatch[1], 10)
+              : new Date().getFullYear(); // Use current year if "Present"
+
+            if (!isNaN(startYear) && !isNaN(endYear) && endYear >= startYear) {
+              totalYears += endYear - startYear;
+            }
+          }
+        }
+      });
+
+      return {
+        ...prev,
+        experienceYears: totalYears,
+      };
+    });
+  };
+
+  // Update experience and recalculate years
+  const updateExperienceWithCalculation = (
+    index: number,
+    field: string,
+    value: string
+  ): void => {
+    updateExperience(index, field, value);
+    // Recalculate after a short delay to ensure state is updated
+    setTimeout(() => calculateExperienceYears(), 100);
   };
 
   const addEducation = (): void => {
@@ -337,23 +397,62 @@ export default function ProfilePage(): ReactElement {
     setError(null);
     setSuccess(false);
 
-    try {
-      const updateData = {
-        first_name: profileData.firstName,
-        last_name: profileData.lastName,
-        email: profileData.email,
-        phone: profileData.phone || null,
-        location: profileData.location || null,
-        bio: profileData.summary || null,
-        skills: profileData.skills,
-        education_level:
-          profileData.education.length > 0
-            ? profileData.education[0].degree
-            : null,
-        // Note: experience, projects not in API schema yet
-        // Could store in bio or add to schema later
-      };
+    // Validate required fields
+    const trimmedFirstName = profileData.firstName?.trim() || "";
+    const trimmedLastName = profileData.lastName?.trim() || "";
+    const trimmedEmail = profileData.email?.trim() || "";
 
+    if (!trimmedFirstName || !trimmedLastName) {
+      setError("First name and last name are required.");
+      setSaving(false);
+      return;
+    }
+
+    if (!trimmedEmail) {
+      setError("Email is required.");
+      setSaving(false);
+      return;
+    }
+
+    if (!userId) {
+      setError("Authentication required. Please log in to save your profile.");
+      setSaving(false);
+      return;
+    }
+
+    if (!isJobSeeker) {
+      setError(
+        "This profile page is for job seekers only. If you're an employer, please use the employer dashboard."
+      );
+      setSaving(false);
+      return;
+    }
+
+    // Use experienceYears from form (calculated from experience entries but editable)
+    const experienceYears = Math.max(
+      0,
+      Math.floor(Number(profileData.experienceYears) || 0)
+    );
+
+    const updateData = {
+      first_name: trimmedFirstName,
+      last_name: trimmedLastName,
+      email: trimmedEmail,
+      phone: profileData.phone?.trim() || null,
+      location: profileData.location?.trim() || null,
+      bio: profileData.summary?.trim() || null,
+      skills: profileData.skills || [],
+      experience_years: experienceYears,
+      education_level:
+        profileData.education.length > 0
+          ? profileData.education[0].degree
+          : null,
+      // Note: experience array, projects array not in API schema yet
+      // These are stored in the form but not sent to backend
+      // Could store in bio or add to schema later
+    };
+
+    try {
       if (profileId) {
         // Update existing profile
         const updated = await api.jobSeekerProfiles.update(
@@ -364,10 +463,23 @@ export default function ProfilePage(): ReactElement {
         setSuccess(true);
       } else {
         // Create new profile
-        const created: JobSeekerProfile = (await api.jobSeekerProfiles.create({
+        // Note: Backend uses authenticated user's ID, so user_id is included but backend will use the auth token
+        const createData = {
           ...updateData,
-          user_id: userId,
-        })) as JobSeekerProfile;
+          user_id: userId, // Backend will use authenticated user's ID, but we include it for schema validation
+        };
+
+        // Log create data for debugging
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Profile] Creating profile with data:", {
+            ...createData,
+            skills: createData.skills.length,
+          });
+        }
+
+        const created: JobSeekerProfile = (await api.jobSeekerProfiles.create(
+          createData
+        )) as JobSeekerProfile;
         setApiProfile(created);
         setProfileId(created.id);
         setSuccess(true);
@@ -386,12 +498,67 @@ export default function ProfilePage(): ReactElement {
         });
         setError(`Validation error: ${errorMessages.join(", ")}`);
       } else if (err instanceof ApiError) {
+        // Extract detailed error message from backend
+        let errorMessage = err.message;
+        if (err.data && typeof err.data === "object") {
+          const errorData = err.data as Record<string, unknown>;
+          if (errorData.detail) {
+            errorMessage = String(errorData.detail);
+          } else if (errorData.message) {
+            errorMessage = String(errorData.message);
+          }
+        }
+
         if (err.status === 403) {
           setError(
             "Authentication required to save profile. Please log in to save your changes."
           );
+        } else if (
+          err.status === 400 &&
+          errorMessage.includes("already have a job seeker profile")
+        ) {
+          // Profile exists but we didn't have the profileId - fetch it and retry as update
+          try {
+            console.info(
+              "[Profile] Profile already exists, fetching profile to update..."
+            );
+            const currentUserInfo = await api.auth.getCurrentUser();
+            const mongoUserId = currentUserInfo.id;
+            const existingProfile: JobSeekerProfile =
+              (await api.jobSeekerProfiles.getByUserId(
+                mongoUserId
+              )) as JobSeekerProfile;
+
+            // Set profileId and retry as update
+            setProfileId(existingProfile.id);
+
+            // Retry the save as an update
+            const updated = await api.jobSeekerProfiles.update(
+              existingProfile.id,
+              updateData
+            );
+            setApiProfile(updated);
+            setSuccess(true);
+            setIsEditing(false);
+            setTimeout(() => setSuccess(false), 3000);
+            return; // Success - exit early
+          } catch (retryErr) {
+            console.error(
+              "Failed to fetch and update existing profile:",
+              retryErr
+            );
+            setError(
+              `Profile exists but could not be updated: ${retryErr instanceof ApiError ? retryErr.message : "Unknown error"}`
+            );
+          }
+        } else if (err.status === 400) {
+          setError(
+            `Failed to save profile: ${errorMessage}. Please check that you're logged in as a job seeker and that all required fields are filled.`
+          );
+        } else if (err.status === 401) {
+          setError("Your session has expired. Please log in again.");
         } else {
-          setError(`Failed to save profile: ${err.message}`);
+          setError(`Failed to save profile: ${errorMessage}`);
         }
       } else {
         setError("An unexpected error occurred. Please try again.");
@@ -704,6 +871,47 @@ export default function ProfilePage(): ReactElement {
                 </div>
               </div>
 
+              {/* Years of Experience */}
+              <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
+                <h3 className="text-xl font-bold text-green-900 mb-4 flex items-center">
+                  <Briefcase className="w-6 h-6 mr-2" />
+                  Years of Experience
+                </h3>
+                <div>
+                  <label className="block text-sm font-medium text-green-800 mb-2">
+                    Total years of professional experience
+                  </label>
+                  {isEditing ? (
+                    <div className="space-y-2">
+                      <input
+                        type="number"
+                        min="0"
+                        value={profileData.experienceYears || 0}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "experienceYears",
+                            e.target.value === "" ? 0 : Number(e.target.value)
+                          )
+                        }
+                        className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-green-600">
+                        <span className="font-medium">Tip:</span> This is
+                        automatically calculated from your work experience
+                        entries, but you can edit it if needed (e.g., for
+                        experience not listed above).
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-green-900">
+                      {profileData.experienceYears}{" "}
+                      {profileData.experienceYears === 1 ? "year" : "years"}
+                    </p>
+                  )}
+                </div>
+              </div>
+
               {/* Professional Summary */}
               <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
                 <h3 className="text-xl font-bold text-green-900 mb-4 flex items-center">
@@ -791,7 +999,7 @@ export default function ProfilePage(): ReactElement {
                             type="text"
                             value={exp.duration}
                             onChange={(e) =>
-                              updateExperience(
+                              updateExperienceWithCalculation(
                                 index,
                                 "duration",
                                 e.target.value
