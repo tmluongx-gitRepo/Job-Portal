@@ -180,11 +180,16 @@ export async function apiRequest<TResponse>(
       typeof window !== "undefined" &&
       process.env.NODE_ENV === "development"
     ) {
-      // Always log these separately so they're visible
-      console.error(`[API Error] ${response.status} ${response.statusText}`);
-      console.error(`[API Error] URL: ${fullUrl}`);
+      // 404 errors are often expected (e.g., checking if profile exists)
+      // Log them as info instead of error to reduce noise
+      const is404 = response.status === 404;
+      const logMethod = is404 ? console.info : console.error;
+      const logPrefix = is404 ? "[API Info]" : "[API Error]";
+      
+      logMethod(`${logPrefix} ${response.status} ${response.statusText}`);
+      logMethod(`${logPrefix} URL: ${fullUrl}`);
       if (body) {
-        console.error(`[API Error] Request Body Sent:`, JSON.stringify(body, null, 2));
+        logMethod(`${logPrefix} Request Body Sent:`, JSON.stringify(body, null, 2));
       }
       
       // Extract and log the detail/message field explicitly - this is the key info
@@ -194,19 +199,22 @@ export async function apiRequest<TResponse>(
         const message = errorObj.message;
         const errorMsg = String(detail || message || JSON.stringify(errorData));
         
-        console.error(`[API Error] Backend Error Message:`, errorMsg);
-        console.error(`[API Error] Full Error Object:`, errorData);
-        
-        // Also try to stringify for easy reading
-        try {
-          const errorJson = JSON.stringify(errorData, null, 2);
-          console.error(`[API Error] Full Error (JSON):`, errorJson);
-        } catch {
-          // If stringify fails, just log the object
-          console.error(`[API Error] Full Error:`, errorData);
+        logMethod(`${logPrefix} Backend Message:`, errorMsg);
+        if (!is404) {
+          // Only log full error object for non-404 errors
+          logMethod(`${logPrefix} Full Error Object:`, errorData);
+          
+          // Also try to stringify for easy reading
+          try {
+            const errorJson = JSON.stringify(errorData, null, 2);
+            logMethod(`${logPrefix} Full Error (JSON):`, errorJson);
+          } catch {
+            // If stringify fails, just log the object
+            logMethod(`${logPrefix} Full Error:`, errorData);
+          }
         }
       } else {
-        console.error(`[API Error] Error Text:`, String(errorData));
+        logMethod(`${logPrefix} Error Text:`, String(errorData));
       }
     }
 
