@@ -44,8 +44,18 @@ class Settings(BaseSettings):
     DROPBOX_APP_SECRET: str = ""
     DROPBOX_ACCESS_TOKEN: str = ""
 
+    # N8N Webhook Integration
+    N8N_WEBHOOK_URL: str = ""
+    N8N_WEBHOOK_ENABLED: bool = False
+
     # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://frontend:3000"]
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://frontend:3000",
+        "http://n8n:5678",
+        "http://localhost:5678",
+        "http://host.docker.internal:5678",
+    ]
 
     model_config = SettingsConfigDict(env_file=str(ENV_FILE), case_sensitive=True, extra="ignore")
 
