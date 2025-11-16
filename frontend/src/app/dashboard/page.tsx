@@ -65,11 +65,16 @@ export default function DashboardPage(): ReactElement {
       setError(null);
 
       try {
+        // Get MongoDB ObjectId from /api/auth/me (backend converts Supabase UUID to MongoDB ObjectId)
+        // The userId from getCurrentUserId() is the Supabase UUID, but backend expects MongoDB ObjectId
+        const currentUserInfo = await api.auth.getCurrentUser();
+        const mongoUserId = currentUserInfo.id; // This is the MongoDB ObjectId
+        
         // First, fetch profile to get job seeker profile ID
         let profileId: string | null = null;
         try {
           const userProfile = (await api.jobSeekerProfiles.getByUserId(
-            userId
+            mongoUserId
           )) as JobSeekerProfile;
           setProfile(userProfile);
           profileId = userProfile.id;

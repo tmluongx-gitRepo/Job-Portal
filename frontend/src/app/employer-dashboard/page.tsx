@@ -142,11 +142,16 @@ export default function EmployerDashboard(): ReactElement {
       setError(null);
 
       try {
+        // Get MongoDB ObjectId from /api/auth/me (backend converts Supabase UUID to MongoDB ObjectId)
+        // The userId from getCurrentUserId() is the Supabase UUID, but backend expects MongoDB ObjectId
+        const currentUserInfo = await api.auth.getCurrentUser();
+        const mongoUserId = currentUserInfo.id; // This is the MongoDB ObjectId
+        
         // Fetch employer profile
         let profile: EmployerProfile | null = null;
         let employerProfileId: string | null = null;
         try {
-          profile = await api.employerProfiles.getByUserId(userId);
+          profile = await api.employerProfiles.getByUserId(mongoUserId);
           setEmployerProfile(profile);
           employerProfileId = profile.id;
         } catch (_err) {
