@@ -17,10 +17,8 @@ import {
   Star,
 } from "lucide-react";
 import { api, ApiError } from "../../lib/api";
+import { getCurrentUserId } from "../../lib/auth";
 import type { Job, Application, EmployerProfile } from "../../lib/api";
-
-// ⚠️ TODO: Replace with actual user data from auth context when authentication is implemented
-const userId = "507f1f77bcf86cd799439011"; // PLACEHOLDER - Valid ObjectId format for testing
 
 // Employer-focused healthy reminders
 const healthyReminders = [
@@ -111,6 +109,7 @@ function formatSalary(
 }
 
 export default function EmployerDashboard(): ReactElement {
+  const userId = getCurrentUserId() || "507f1f77bcf86cd799439011"; // Fallback for testing
   const [selectedCompany, setSelectedCompany] = useState("all");
   const [currentReminder, setCurrentReminder] = useState(healthyReminders[0]);
 
@@ -395,7 +394,7 @@ export default function EmployerDashboard(): ReactElement {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-green-900 mb-2 flex items-center">
-                Good morning, {employerProfile?.name || "Employer"}!
+                Good morning, {employerProfile?.company_name || "Employer"}!
                 <Building2 className="w-8 h-8 ml-3 text-green-600" />
               </h1>
               <p className="text-green-700">

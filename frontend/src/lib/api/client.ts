@@ -69,10 +69,18 @@ export async function apiRequest<TResponse>(
   const fullUrl = `${API_URL}${apiEndpoint}`;
 
   // Log the request for debugging (only in browser)
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
     console.log(`[API Client] Original endpoint: ${endpoint}`);
     console.log(`[API Client] API endpoint: ${apiEndpoint}`);
     console.log(`[API Client] Full URL: ${fullUrl}`);
+    if (body) {
+      console.log(`[API Client] Request body (before stringify):`, body);
+      try {
+        console.log(`[API Client] Request body (JSON):`, JSON.stringify(body, null, 2));
+      } catch (e) {
+        console.log(`[API Client] Could not stringify body:`, e);
+      }
+    }
   }
 
   // Get access token for authenticated requests
@@ -172,10 +180,34 @@ export async function apiRequest<TResponse>(
       typeof window !== "undefined" &&
       process.env.NODE_ENV === "development"
     ) {
-      console.error(`[API Error] ${response.status} ${response.statusText}`, {
-        url: fullUrl,
-        errorData,
-      });
+      // Always log these separately so they're visible
+      console.error(`[API Error] ${response.status} ${response.statusText}`);
+      console.error(`[API Error] URL: ${fullUrl}`);
+      if (body) {
+        console.error(`[API Error] Request Body Sent:`, JSON.stringify(body, null, 2));
+      }
+      
+      // Extract and log the detail/message field explicitly - this is the key info
+      if (typeof errorData === 'object' && errorData !== null) {
+        const errorObj = errorData as Record<string, unknown>;
+        const detail = errorObj.detail;
+        const message = errorObj.message;
+        const errorMsg = String(detail || message || JSON.stringify(errorData));
+        
+        console.error(`[API Error] Backend Error Message:`, errorMsg);
+        console.error(`[API Error] Full Error Object:`, errorData);
+        
+        // Also try to stringify for easy reading
+        try {
+          const errorJson = JSON.stringify(errorData, null, 2);
+          console.error(`[API Error] Full Error (JSON):`, errorJson);
+        } catch {
+          // If stringify fails, just log the object
+          console.error(`[API Error] Full Error:`, errorData);
+        }
+      } else {
+        console.error(`[API Error] Error Text:`, String(errorData));
+      }
     }
 
     throw new ApiError(

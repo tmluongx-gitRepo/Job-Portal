@@ -22,6 +22,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { api, ApiError, ValidationError } from "../../lib/api";
+import { getCurrentUserId } from "../../lib/auth";
 import type { JobSeekerProfile } from "../../lib/api";
 import type { z } from "zod";
 
@@ -115,11 +116,8 @@ export default function ProfilePage(): ReactElement {
   const [skillInputValue, setSkillInputValue] = useState("");
 
   // ⚠️ TODO: Replace with actual user ID from auth context when authentication is implemented
-  // This should come from: useAuth() hook, session, or auth context
-  // Example: const { user } = useAuth(); const userId = user?.id;
-  // Note: Backend expects MongoDB ObjectId format (24 hex characters)
-  // For testing, you can create a user via the API and use that user's ID
-  const userId = "507f1f77bcf86cd799439011"; // PLACEHOLDER - Valid ObjectId format for testing
+  // Get authenticated user ID
+  const userId = getCurrentUserId() || "507f1f77bcf86cd799439011"; // Fallback for testing
 
   // Fetch profile on mount
   useEffect(() => {

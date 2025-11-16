@@ -21,10 +21,11 @@ import {
   ArrowLeft,
   Check,
 } from "lucide-react";
-import { authApi, type ApiError } from "@/lib/api";
+import { authApi, api, type ApiError } from "@/lib/api";
 import type { EmailConfirmationResponse } from "@/lib/api";
 
 interface FormErrors {
+  accountType?: string;
   firstName?: string;
   lastName?: string;
   email?: string;
@@ -120,6 +121,11 @@ export default function SignupPage(): ReactElement {
   const validateStep1 = (): boolean => {
     const newErrors: FormErrors = {};
 
+    // Account type defaults to "jobseeker", so validation is only needed if it's somehow invalid
+    // This should never happen in normal use, but we check for safety
+    if (formData.accountType !== "jobseeker" && formData.accountType !== "employer") {
+      newErrors.accountType = "Please select an account type";
+    }
     if (!formData.firstName.trim()) {
       newErrors.firstName = "First name is required";
     }
@@ -128,8 +134,13 @@ export default function SignupPage(): ReactElement {
     }
     if (!formData.email.trim()) {
       newErrors.email = "Email address is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+    } else {
+      // More strict email validation to match backend EmailStr validation
+      // EmailStr uses email-validator which is stricter than basic regex
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        newErrors.email = "Please enter a valid email address";
+      }
     }
     if (!formData.password) {
       newErrors.password = "Password is required";
@@ -197,7 +208,24 @@ export default function SignupPage(): ReactElement {
     }
   };
 
-  const handleSubmit = async (): Promise<void> => {
+  const handleSubmit = async (e?: React.FormEvent): Promise<void> => {
+    // Prevent default form submission
+    if (e) {
+    e.preventDefault();
+    }
+    
+    // Validate before submitting
+    if (currentStep === 1 && !validateStep1()) {
+      setShowErrorToast(true);
+      setTimeout(() => setShowErrorToast(false), 4000);
+      return;
+    }
+    if (currentStep === 2 && !validateStep2()) {
+      setShowErrorToast(true);
+      setTimeout(() => setShowErrorToast(false), 4000);
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
@@ -205,30 +233,71 @@ export default function SignupPage(): ReactElement {
         formData.accountType === "jobseeker" ? "job_seeker" : "employer";
 
       const registrationData = {
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
         account_type: accountType as "job_seeker" | "employer",
         full_name: fullName || null,
       };
 
+      // Log registration data for debugging
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Signup] Registration data:", {
+          ...registrationData,
+          password: "***hidden***",
+        });
+      }
+
       const response = await authApi.register(registrationData);
 
       // Check if email confirmation is required
       if ("email_confirmation_required" in response && response.email_confirmation_required) {
-        // Show email confirmation message
-        setErrors({
-          email: "Please check your email to confirm your account before logging in.",
-        });
+        // Show success message - email confirmation is required, not an error
+        // Clear any field errors since registration was successful
+        setErrors({});
+        // Show info toast (we'll use the error toast styling but with a success message)
+        // TODO: Create a separate success toast component for better UX
         setShowErrorToast(true);
-        setTimeout(() => setShowErrorToast(false), 6000);
+        setTimeout(() => {
+          setShowErrorToast(false);
+          // Redirect to login page after showing message
+          router.push("/login?message=Please check your email to confirm your account before logging in.");
+        }, 6000);
         setIsSubmitting(false);
         return;
       }
 
-      // If we got tokens, user is logged in - redirect to dashboard
+      // If we got tokens, user is logged in - create profile and redirect
       if ("access_token" in response) {
-        // TODO: If employer, save company profile data after registration
-        // This would require a separate API call to create/update company profile
+        const user = response.user;
+        const userId = user.id;
+
+        try {
+          // Create profile based on account type
+          if (formData.accountType === "employer") {
+            // Create employer profile with company information
+            await api.employerProfiles.create({
+              user_id: userId,
+              company_name: companyProfile.company_name,
+              description: companyProfile.description || null,
+              location: companyProfile.location || null,
+              industry: companyProfile.industry || null,
+              company_size: companyProfile.company_size || null,
+              contact_email: formData.email,
+            });
+          } else {
+            // Create job seeker profile with name
+            await api.jobSeekerProfiles.create({
+              user_id: userId,
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              email: formData.email,
+            });
+          }
+        } catch (profileError) {
+          // Log error but don't block redirect - profile can be created later
+          console.error("Failed to create profile:", profileError);
+          // Continue with redirect - user can complete profile later
+        }
 
         // Redirect immediately to appropriate dashboard
         const redirectPath =
@@ -240,8 +309,46 @@ export default function SignupPage(): ReactElement {
     } catch (error) {
       console.error("Registration error:", error);
       const apiError = error as ApiError;
+      
+      // Log detailed error information
+      if (process.env.NODE_ENV === "development") {
+        console.error("[Signup] API Error details:", {
+          status: apiError.status,
+          message: apiError.message,
+          data: apiError.data,
+        });
+      }
+      
+      // Show user-friendly error message
+      let errorMessage = "Registration failed. Please try again.";
+      if (apiError.status === 400) {
+        const errorDetail = apiError.data?.detail || apiError.message || "";
+        const errorLower = errorDetail.toLowerCase();
+        
+        // Check if it's a rate limit error
+        if (errorLower.includes("rate limit") || errorLower.includes("rate_limit")) {
+          errorMessage = "Too many signup attempts. Please wait a few minutes and try again, or use a different email address.";
+        }
+        // Check if it's an email already exists error
+        else if (errorLower.includes("already") || errorLower.includes("registered")) {
+          errorMessage = "This email is already registered. Please use a different email or try logging in.";
+        } 
+        // Check if it's an email validation error
+        else if (errorLower.includes("email") && (errorLower.includes("invalid") || errorLower.includes("value error"))) {
+          errorMessage = "Please enter a valid email address. Some email formats (like aliases with +) may not be supported.";
+        } 
+        // Check if it's a password validation error
+        else if (errorLower.includes("password") || errorLower.includes("length")) {
+          errorMessage = "Password must be at least 8 characters long.";
+        }
+        // Use the backend error message if available
+        else {
+          errorMessage = errorDetail || apiError.message || errorMessage;
+        }
+      }
+      
       setErrors({
-        email: apiError.message || "Registration failed. Please try again.",
+        email: errorMessage,
       });
       setShowErrorToast(true);
       setTimeout(() => setShowErrorToast(false), 4000);
@@ -256,19 +363,30 @@ export default function SignupPage(): ReactElement {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-green-100">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-green-200/20 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-amber-200/20 rounded-full blur-3xl"></div>
-      </div>
+        {/* Background decorative elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-green-200/20 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-amber-200/20 rounded-full blur-3xl"></div>
+        </div>
 
       {/* Error Toast Notification */}
-      {showErrorToast && (
+      {showErrorToast && Object.keys(errors).length > 0 && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-slide-down">
           <div className="bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg">
             <span className="font-medium">
               Please fix {Object.keys(errors).length} issue
               {Object.keys(errors).length > 1 ? "s" : ""} above
+            </span>
+          </div>
+        </div>
+      )}
+      
+      {/* Success/Info Toast Notification (for email confirmation) */}
+      {showErrorToast && Object.keys(errors).length === 0 && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-slide-down">
+          <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg">
+            <span className="font-medium">
+              Registration successful! Please check your email to confirm your account before logging in.
             </span>
           </div>
         </div>
@@ -309,277 +427,293 @@ export default function SignupPage(): ReactElement {
               )}
 
               {/* Page Header */}
-              <div className="text-center">
+          <div className="text-center">
                 <h2 className="text-2xl font-bold text-green-900 mb-2">
                   {currentStep === 1
                     ? "Join Our Community"
                     : "Tell Us About Your Company"}
-                </h2>
-                <p className="text-green-700 mb-8">
+            </h2>
+            <p className="text-green-700 mb-8">
                   {currentStep === 1
                     ? "Start cultivating a career that honors your whole self"
                     : "Help job seekers understand your culture and values"}
-                </p>
-              </div>
+            </p>
+          </div>
 
               {/* Form Card */}
-              <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-green-200 p-8">
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (currentStep === 1) {
+                    handleNextStep();
+                  } else {
+                    handleSubmit(e);
+                  }
+                }}
+                className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-green-200 p-8"
+              >
                 {/* Step 1: Basic Registration */}
                 {currentStep === 1 && (
                   <div className="space-y-6">
-                    {/* Account Type Selection */}
-                    <div>
-                      <label className="block text-sm font-medium text-green-800 mb-3">
-                        I&apos;m looking to...
-                      </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <label
-                          className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                            formData.accountType === "jobseeker"
-                              ? "border-green-500 bg-gradient-to-br from-green-50 to-amber-50"
-                              : "border-green-200 bg-white/50"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="accountType"
-                            value="jobseeker"
-                            checked={formData.accountType === "jobseeker"}
-                            onChange={handleInputChange}
-                            className="sr-only"
-                          />
+              {/* Account Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-green-800 mb-3">
+                        I&apos;m looking to... <span className="text-red-500">*</span>
+                </label>
+                      {errors.accountType && (
+                        <p className="mb-2 text-sm text-red-600">
+                          {errors.accountType}
+                        </p>
+                      )}
+                <div className="grid grid-cols-2 gap-3">
+                  <label
+                    className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      formData.accountType === "jobseeker"
+                        ? "border-green-500 bg-gradient-to-br from-green-50 to-amber-50"
+                        : "border-green-200 bg-white/50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="accountType"
+                      value="jobseeker"
+                      checked={formData.accountType === "jobseeker"}
+                      onChange={handleInputChange}
+                      className="sr-only"
+                    />
                           <div className="flex flex-col items-center text-center">
-                            <User className="w-6 h-6 text-green-600 mb-2" />
-                            <span className="font-medium text-green-800">
-                              Find Work
-                            </span>
+                      <User className="w-6 h-6 text-green-600 mb-2" />
+                      <span className="font-medium text-green-800">
+                        Find Work
+                      </span>
                             <span className="text-xs text-green-600">
                               Job Seeker
                             </span>
-                          </div>
-                        </label>
-                        <label
-                          className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                            formData.accountType === "employer"
-                              ? "border-green-500 bg-gradient-to-br from-green-50 to-amber-50"
-                              : "border-green-200 bg-white/50"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="accountType"
-                            value="employer"
-                            checked={formData.accountType === "employer"}
-                            onChange={handleInputChange}
-                            className="sr-only"
-                          />
+                    </div>
+                  </label>
+                  <label
+                    className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      formData.accountType === "employer"
+                        ? "border-green-500 bg-gradient-to-br from-green-50 to-amber-50"
+                        : "border-green-200 bg-white/50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="accountType"
+                      value="employer"
+                      checked={formData.accountType === "employer"}
+                      onChange={handleInputChange}
+                      className="sr-only"
+                    />
                           <div className="flex flex-col items-center text-center">
-                            <Users className="w-6 h-6 text-green-600 mb-2" />
-                            <span className="font-medium text-green-800">
-                              Hire Talent
-                            </span>
+                      <Users className="w-6 h-6 text-green-600 mb-2" />
+                      <span className="font-medium text-green-800">
+                        Hire Talent
+                      </span>
                             <span className="text-xs text-green-600">
                               Employer
                             </span>
-                          </div>
-                        </label>
-                      </div>
                     </div>
+                  </label>
+                </div>
+              </div>
 
-                    {/* Name Fields */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-green-800 mb-2">
-                          First Name
-                        </label>
-                        <input
-                          name="firstName"
-                          type="text"
-                          value={formData.firstName}
-                          onChange={handleInputChange}
+              {/* Name Fields */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-green-800 mb-2">
+                          First Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    name="firstName"
+                    type="text"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
                           className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all ${
                             errors.firstName
                               ? "border-red-500"
                               : "border-green-300"
                           }`}
-                          placeholder="Your first name"
-                          required
-                        />
+                    placeholder="Your first name"
+                    required
+                  />
                         {errors.firstName && (
                           <p className="mt-1 text-sm text-red-600">
                             {errors.firstName}
                           </p>
                         )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-green-800 mb-2">
-                          Last Name
-                        </label>
-                        <input
-                          name="lastName"
-                          type="text"
-                          value={formData.lastName}
-                          onChange={handleInputChange}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-green-800 mb-2">
+                          Last Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    name="lastName"
+                    type="text"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
                           className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all ${
                             errors.lastName
                               ? "border-red-500"
                               : "border-green-300"
                           }`}
-                          placeholder="Your last name"
-                          required
-                        />
+                    placeholder="Your last name"
+                    required
+                  />
                         {errors.lastName && (
                           <p className="mt-1 text-sm text-red-600">
                             {errors.lastName}
                           </p>
                         )}
-                      </div>
-                    </div>
+                </div>
+              </div>
 
-                    {/* Email */}
-                    <div>
-                      <label className="block text-sm font-medium text-green-800 mb-2">
-                        Email Address
-                      </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-green-800 mb-2">
+                        Email Address <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                           <Mail className="h-5 w-5 text-green-400" />
-                        </div>
-                        <input
-                          name="email"
-                          type="email"
-                          value={formData.email}
-                          onChange={handleInputChange}
+                  </div>
+                  <input
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
                           className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all ${
                             errors.email
                               ? "border-red-500"
                               : "border-green-300"
                           }`}
                           placeholder="your.email@example.com"
-                          required
-                        />
-                      </div>
+                    required
+                  />
+                </div>
                       {errors.email && (
                         <p className="mt-1 text-sm text-red-600">
                           {errors.email}
                         </p>
                       )}
-                    </div>
+              </div>
 
-                    {/* Password */}
-                    <div>
-                      <label className="block text-sm font-medium text-green-800 mb-2">
-                        Password
-                      </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              {/* Password */}
+              <div>
+                <label className="block text-sm font-medium text-green-800 mb-2">
+                        Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                           <Lock className="h-5 w-5 text-green-400" />
-                        </div>
-                        <input
-                          name="password"
-                          type={showPassword ? "text" : "password"}
-                          value={formData.password}
-                          onChange={handleInputChange}
+                  </div>
+                  <input
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleInputChange}
                           className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all ${
                             errors.password
                               ? "border-red-500"
                               : "border-green-300"
                           }`}
                           placeholder="At least 8 characters"
-                          required
-                        />
-                        <button
-                          type="button"
+                    required
+                  />
+                  <button
+                    type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                        >
-                          {showPassword ? (
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showPassword ? (
                             <EyeOff className="h-5 w-5 text-green-500" />
-                          ) : (
+                    ) : (
                             <Eye className="h-5 w-5 text-green-500" />
-                          )}
-                        </button>
-                      </div>
+                    )}
+                  </button>
+                </div>
                       {errors.password && (
                         <p className="mt-1 text-sm text-red-600">
                           {errors.password}
                         </p>
                       )}
-                    </div>
+              </div>
 
-                    {/* Confirm Password */}
-                    <div>
-                      <label className="block text-sm font-medium text-green-800 mb-2">
-                        Confirm Password
-                      </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              {/* Confirm Password */}
+              <div>
+                <label className="block text-sm font-medium text-green-800 mb-2">
+                        Confirm Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                           <Lock className="h-5 w-5 text-green-400" />
-                        </div>
-                        <input
-                          name="confirmPassword"
-                          type={showConfirmPassword ? "text" : "password"}
-                          value={formData.confirmPassword}
-                          onChange={handleInputChange}
+                  </div>
+                  <input
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
                           className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all ${
                             errors.confirmPassword
                               ? "border-red-500"
                               : "border-green-300"
                           }`}
-                          placeholder="Confirm your password"
-                          required
-                        />
-                        <button
-                          type="button"
+                    placeholder="Confirm your password"
+                    required
+                  />
+                  <button
+                    type="button"
                           onClick={() =>
                             setShowConfirmPassword(!showConfirmPassword)
                           }
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                        >
-                          {showConfirmPassword ? (
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showConfirmPassword ? (
                             <EyeOff className="h-5 w-5 text-green-500" />
-                          ) : (
+                    ) : (
                             <Eye className="h-5 w-5 text-green-500" />
-                          )}
-                        </button>
-                      </div>
+                    )}
+                  </button>
+                </div>
                       {errors.confirmPassword && (
                         <p className="mt-1 text-sm text-red-600">
                           {errors.confirmPassword}
                         </p>
                       )}
-                    </div>
+              </div>
 
                     {/* Terms Checkbox */}
                     <div>
-                      <label className="flex items-start space-x-3">
-                        <input
-                          type="checkbox"
-                          name="agreeToTerms"
-                          checked={formData.agreeToTerms}
-                          onChange={handleInputChange}
+                <label className="flex items-start space-x-3">
+                  <input
+                    type="checkbox"
+                    name="agreeToTerms"
+                    checked={formData.agreeToTerms}
+                    onChange={handleInputChange}
                           className={`mt-1 w-4 h-4 text-green-600 rounded focus:ring-green-400 ${
                             errors.agreeToTerms
                               ? "border-red-500"
                               : "border-green-300"
                           }`}
-                          required
-                        />
-                        <span className="text-sm text-green-700">
-                          I agree to the{" "}
+                    required
+                  />
+                  <span className="text-sm text-green-700">
+                    I agree to the{" "}
                           <button
                             type="button"
-                            className="text-green-800 underline hover:text-green-900"
-                          >
-                            Terms of Service
+                      className="text-green-800 underline hover:text-green-900"
+                    >
+                      Terms of Service
                           </button>{" "}
-                          and{" "}
+                    and{" "}
                           <button
                             type="button"
-                            className="text-green-800 underline hover:text-green-900"
-                          >
-                            Privacy Policy
-                          </button>
+                      className="text-green-800 underline hover:text-green-900"
+                    >
+                      Privacy Policy
+                          </button>{" "}
+                          <span className="text-red-500">*</span>
                         </span>
                       </label>
                       {errors.agreeToTerms && (
@@ -625,7 +759,7 @@ export default function SignupPage(): ReactElement {
 
                     <div>
                       <label className="block text-sm font-medium text-green-800 mb-2">
-                        Company Description
+                        Company Description <span className="text-red-500">*</span>
                       </label>
                       <textarea
                         value={companyProfile.description}
@@ -653,7 +787,7 @@ export default function SignupPage(): ReactElement {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-green-800 mb-2">
-                          Industry
+                          Industry <span className="text-red-500">*</span>
                         </label>
                         <select
                           value={companyProfile.industry}
@@ -688,7 +822,7 @@ export default function SignupPage(): ReactElement {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-green-800 mb-2">
-                          Company Size
+                          Company Size <span className="text-red-500">*</span>
                         </label>
                         <select
                           value={companyProfile.company_size}
@@ -723,7 +857,7 @@ export default function SignupPage(): ReactElement {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-green-800 mb-2">
-                          Location
+                          Location <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -770,7 +904,7 @@ export default function SignupPage(): ReactElement {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-green-800 mb-2">
-                          Your Job Title
+                          Your Job Title <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -843,8 +977,8 @@ export default function SignupPage(): ReactElement {
                             />
                             <span className="text-sm text-green-700 capitalize">
                               {env}
-                            </span>
-                          </label>
+                  </span>
+                </label>
                         ))}
                       </div>
                     </div>
@@ -913,8 +1047,8 @@ export default function SignupPage(): ReactElement {
                             key={benefit.value}
                             className="flex items-center space-x-2"
                           >
-                            <input
-                              type="checkbox"
+                  <input
+                    type="checkbox"
                               checked={companyProfile.benefits.includes(
                                 benefit.value
                               )}
@@ -926,15 +1060,15 @@ export default function SignupPage(): ReactElement {
                                 )
                               }
                               className="w-4 h-4 text-green-600 border-green-300 rounded focus:ring-green-400"
-                            />
-                            <span className="text-sm text-green-700">
+                  />
+                  <span className="text-sm text-green-700">
                               {benefit.label}
-                            </span>
-                          </label>
+                  </span>
+                </label>
                         ))}
                       </div>
                     </div>
-                  </div>
+              </div>
                 )}
 
                 {/* Navigation Buttons */}
@@ -951,15 +1085,14 @@ export default function SignupPage(): ReactElement {
                       </button>
                     )}
 
-                    <button
-                      type="button"
-                      onClick={handleNextStep}
+              <button
+                type="submit"
                       disabled={isSubmitting}
                       className={`flex items-center px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-lg hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                         currentStep === 1 ? "ml-auto" : ""
                       }`}
-                    >
-                      <Heart className="w-5 h-5 mr-2" />
+              >
+                <Heart className="w-5 h-5 mr-2" />
                       {currentStep === 1 && formData.accountType === "employer"
                         ? "Continue"
                         : "Join Career Harmony"}
@@ -967,23 +1100,23 @@ export default function SignupPage(): ReactElement {
                         formData.accountType === "employer" && (
                           <ArrowRight className="w-4 h-4 ml-2" />
                         )}
-                    </button>
+              </button>
                   </div>
                 </div>
-              </div>
+            </form>
 
-              {/* Sign-in link */}
+            {/* Sign-in link */}
               <div className="text-center">
-                <p className="text-sm text-green-700">
-                  Already have an account?{" "}
-                  <Link
-                    href="/login"
+              <p className="text-sm text-green-700">
+                Already have an account?{" "}
+                <Link
+                  href="/login"
                     className="text-green-800 underline hover:text-green-900 font-semibold"
-                  >
-                    Sign in here
-                  </Link>
-                </p>
-              </div>
+                >
+                  Sign in here
+                </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>
