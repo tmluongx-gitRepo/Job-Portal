@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, cast
 
-from pydantic import SecretStr
+from pydantic.v1 import SecretStr
 
 from app.ai.chat.cache import RedisChatCache, get_chat_cache
 from app.config import settings
