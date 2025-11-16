@@ -87,9 +87,9 @@ export async function apiRequest<TResponse>(
   const accessToken = getAccessToken();
 
   // Prepare headers
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...fetchOptions.headers,
+    ...(fetchOptions.headers as Record<string, string>),
   };
 
   // Add Authorization header if token exists
@@ -282,7 +282,7 @@ export async function uploadFile<TResponse>(
   const accessToken = getAccessToken();
 
   // Prepare headers for file upload
-  const headers: HeadersInit = {};
+  const headers: Record<string, string> = {};
   
   // Add Authorization header if token exists
   if (accessToken) {

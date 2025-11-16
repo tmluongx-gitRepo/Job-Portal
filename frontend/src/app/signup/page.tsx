@@ -320,7 +320,8 @@ export default function SignupPage(): ReactElement {
       // Show user-friendly error message
       let errorMessage = "Registration failed. Please try again.";
       if (apiError.status === 400) {
-        const errorDetail = apiError.data?.detail || apiError.message || "";
+        const errorData = apiError.data as Record<string, unknown> | undefined;
+        const errorDetail = (errorData?.detail ? String(errorData.detail) : apiError.message) || "";
         const errorLower = errorDetail.toLowerCase();
         
         // Check if it's a rate limit error

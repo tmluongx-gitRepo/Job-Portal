@@ -36,7 +36,7 @@ const getDefaultProfileData = (userEmail?: string): {
   title: string;
   summary: string;
   experience: Array<{ company: string; role: string; duration: string; description: string }>;
-  projects: Array<{ name: string; description: string; link: string }>;
+  projects: Array<{ title: string; duration: string; description: string; technologies: string }>;
   education: Array<{ school: string; degree: string; year: string }>;
   skills: string[];
   experienceYears: number;
@@ -228,7 +228,7 @@ export default function ProfilePage(): ReactElement {
     ? apiProfile.profile_completion_percentage
     : Math.round((completedCount / completionItemsDynamic.length) * 100);
 
-  const handleInputChange = (field: string, value: string): void => {
+  const handleInputChange = (field: string, value: string | number): void => {
     setProfileData((prev) => ({
       ...prev,
       [field]: value,
@@ -412,27 +412,28 @@ export default function ProfilePage(): ReactElement {
       return;
     }
 
-    try {
-      // Use experienceYears from form (calculated from experience entries but editable)
-      const experienceYears = Math.max(0, Math.floor(Number(profileData.experienceYears) || 0));
+    // Use experienceYears from form (calculated from experience entries but editable)
+    const experienceYears = Math.max(0, Math.floor(Number(profileData.experienceYears) || 0));
 
-      const updateData = {
-        first_name: trimmedFirstName,
-        last_name: trimmedLastName,
-        email: trimmedEmail,
-        phone: profileData.phone?.trim() || null,
-        location: profileData.location?.trim() || null,
-        bio: profileData.summary?.trim() || null,
-        skills: profileData.skills || [],
-        experience_years: experienceYears,
-        education_level:
-          profileData.education.length > 0
-            ? profileData.education[0].degree
-            : null,
-        // Note: experience array, projects array not in API schema yet
-        // These are stored in the form but not sent to backend
-        // Could store in bio or add to schema later
-      };
+    const updateData = {
+      first_name: trimmedFirstName,
+      last_name: trimmedLastName,
+      email: trimmedEmail,
+      phone: profileData.phone?.trim() || null,
+      location: profileData.location?.trim() || null,
+      bio: profileData.summary?.trim() || null,
+      skills: profileData.skills || [],
+      experience_years: experienceYears,
+      education_level:
+        profileData.education.length > 0
+          ? profileData.education[0].degree
+          : null,
+      // Note: experience array, projects array not in API schema yet
+      // These are stored in the form but not sent to backend
+      // Could store in bio or add to schema later
+    };
+
+    try {
 
       if (profileId) {
         // Update existing profile
