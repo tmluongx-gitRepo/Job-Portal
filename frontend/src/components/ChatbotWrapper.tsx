@@ -3,7 +3,7 @@
 import { useState, useEffect, type ReactElement } from "react";
 import { usePathname } from "next/navigation";
 import HarmonyChatbot from "./HarmonyChatbot";
-import { getCurrentUserId } from "../lib/auth";
+import { isAuthenticated as checkAuthStatus } from "../lib/auth";
 
 /**
  * Wrapper component that conditionally renders the Harmony chatbot
@@ -20,8 +20,7 @@ export default function ChatbotWrapper(): ReactElement | null {
   // Check authentication status
   useEffect(() => {
     const checkAuth = (): void => {
-      const userId = getCurrentUserId();
-      setIsAuthenticated(!!userId);
+      setIsAuthenticated(checkAuthStatus());
     };
 
     // Check immediately and whenever pathname changes
