@@ -17,7 +17,6 @@ import {
   Star,
 } from "lucide-react";
 import { api, ApiError } from "../../lib/api";
-import { getCurrentUserId } from "../../lib/auth";
 import type { Job, Application, EmployerProfile } from "../../lib/api";
 
 // Employer-focused healthy reminders
