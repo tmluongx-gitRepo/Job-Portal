@@ -39,6 +39,7 @@ const getDefaultProfileData = (userEmail?: string) => ({
   projects: [],
   education: [],
   skills: [],
+  experienceYears: 0,
 });
 
 const _completionItems = [
@@ -135,6 +136,7 @@ export default function ProfilePage(): ReactElement {
               ]
             : [],
           skills: profile.skills || [],
+          experienceYears: profile.experience_years || 0,
         });
       } catch (err) {
         if (err instanceof ApiError && err.status === 404) {
@@ -243,6 +245,50 @@ export default function ProfilePage(): ReactElement {
       ...prev,
       experience: prev.experience.filter((_, i) => i !== index),
     }));
+    // Recalculate experience years after removing an entry
+    calculateExperienceYears();
+  };
+
+  // Calculate total years of experience from experience entries
+  const calculateExperienceYears = (): void => {
+    setProfileData((prev) => {
+      let totalYears = 0;
+      
+      prev.experience.forEach((exp) => {
+        if (exp.duration) {
+          // Try to parse duration like "2020 - 2024" or "2020 - Present"
+          const duration = exp.duration.trim();
+          const yearMatch = duration.match(/(\d{4})/g);
+          
+          if (yearMatch && yearMatch.length >= 1) {
+            const startYear = parseInt(yearMatch[0], 10);
+            const endYear = yearMatch[1] 
+              ? parseInt(yearMatch[1], 10)
+              : new Date().getFullYear(); // Use current year if "Present"
+            
+            if (!isNaN(startYear) && !isNaN(endYear) && endYear >= startYear) {
+              totalYears += endYear - startYear;
+            }
+          }
+        }
+      });
+      
+      return {
+        ...prev,
+        experienceYears: totalYears,
+      };
+    });
+  };
+
+  // Update experience and recalculate years
+  const updateExperienceWithCalculation = (
+    index: number,
+    field: string,
+    value: string
+  ): void => {
+    updateExperience(index, field, value);
+    // Recalculate after a short delay to ensure state is updated
+    setTimeout(() => calculateExperienceYears(), 100);
   };
 
   const addEducation = (): void => {
@@ -349,10 +395,8 @@ export default function ProfilePage(): ReactElement {
     }
 
     try {
-      // Calculate experience_years from experience entries if possible
-      // For now, default to 0 since the form doesn't have a direct field for this
-      // TODO: Could calculate from experience duration fields in the future
-      const experienceYears = 0;
+      // Use experienceYears from form (calculated from experience entries but editable)
+      const experienceYears = Math.max(0, Math.floor(Number(profileData.experienceYears) || 0));
 
       const updateData = {
         first_name: trimmedFirstName,
@@ -362,7 +406,7 @@ export default function ProfilePage(): ReactElement {
         location: profileData.location?.trim() || null,
         bio: profileData.summary?.trim() || null,
         skills: profileData.skills || [],
-        experience_years: experienceYears, // Required by backend schema (not a form field)
+        experience_years: experienceYears,
         education_level:
           profileData.education.length > 0
             ? profileData.education[0].degree
@@ -750,6 +794,43 @@ export default function ProfilePage(): ReactElement {
                 </div>
               </div>
 
+              {/* Years of Experience */}
+              <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
+                <h3 className="text-xl font-bold text-green-900 mb-4 flex items-center">
+                  <Briefcase className="w-6 h-6 mr-2" />
+                  Years of Experience
+                </h3>
+                <div>
+                  <label className="block text-sm font-medium text-green-800 mb-2">
+                    Total years of professional experience
+                  </label>
+                  {isEditing ? (
+                    <div className="space-y-2">
+                      <input
+                        type="number"
+                        min="0"
+                        value={profileData.experienceYears}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "experienceYears",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-green-600">
+                        <span className="font-medium">Tip:</span> This is automatically calculated from your work experience entries, but you can edit it if needed (e.g., for experience not listed above).
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-green-900">
+                      {profileData.experienceYears} {profileData.experienceYears === 1 ? "year" : "years"}
+                    </p>
+                  )}
+                </div>
+              </div>
+
               {/* Professional Summary */}
               <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
                 <h3 className="text-xl font-bold text-green-900 mb-4 flex items-center">
@@ -837,7 +918,7 @@ export default function ProfilePage(): ReactElement {
                             type="text"
                             value={exp.duration}
                             onChange={(e) =>
-                              updateExperience(
+                              updateExperienceWithCalculation(
                                 index,
                                 "duration",
                                 e.target.value
