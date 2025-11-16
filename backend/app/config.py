@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "Job Portal API"
     APP_VERSION: str = "0.1.0"
+    APP_ENV: str = "development"
     DEBUG: bool = True
 
     # ChromaDB Vector Database
@@ -27,6 +28,7 @@ class Settings(BaseSettings):
 
     # Redis
     REDIS_URL: str = "redis://redis:6379/0"
+    REDIS_KEY_PREFIX: str = "job-portal"
 
     # Security
     # Must be set via environment variable - never use default in production!
@@ -47,6 +49,27 @@ class Settings(BaseSettings):
     DROPBOX_APP_SECRET: str = ""
     DROPBOX_ACCESS_TOKEN: str = ""
 
+    # OpenAI / LangChain
+    OPENAI_API_KEY: str = ""
+    OPENAI_CHAT_MODEL: str = "gpt-4o-mini"
+    OPENAI_JOB_SEEKER_MODEL: str | None = None  # Defaults to OPENAI_CHAT_MODEL when unset
+    OPENAI_EMPLOYER_MODEL: str | None = None  # Defaults to OPENAI_CHAT_MODEL when unset
+    OPENAI_SUMMARY_MODEL: str | None = None  # Defaults to OPENAI_CHAT_MODEL when unset
+    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-large"
+    LANGCHAIN_TRACING_ENABLED: bool = False
+    LANGCHAIN_PROJECT: str | None = None
+
+    # Conversational agent settings
+    CHAT_SESSION_TTL_SECONDS: int = 60 * 60 * 48  # 48 hours
+    CHAT_RECENT_MESSAGE_LIMIT: int = 20
+    CHAT_SUMMARY_MAX_TOKENS: int = 750
+    CHAT_RATE_LIMIT_MAX_MESSAGES: int = 30
+    CHAT_RATE_LIMIT_WINDOW_SECONDS: int = 60
+    CHAT_STREAM_MAX_RETRIES: int = 3
+    CHAT_STREAM_RETRY_MIN_DELAY: float = 0.5
+    CHAT_SUMMARY_MAX_RETRIES: int = 3
+    CHAT_SUMMARY_RETRY_MIN_DELAY: float = 0.5
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://frontend:3000"]
 
@@ -54,3 +77,19 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def validate_runtime_configuration() -> None:
+    """Raise a runtime error if mandatory configuration is missing."""
+
+    if settings.DEBUG or settings.APP_ENV.lower() in {"development", "test"}:
+        return
+
+    missing: list[str] = []
+
+    if not settings.OPENAI_API_KEY:
+        missing.append("OPENAI_API_KEY")
+
+    if missing:
+        joined = ", ".join(missing)
+        raise RuntimeError(f"Missing required configuration value(s) for production: {joined}.")

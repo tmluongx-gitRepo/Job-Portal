@@ -4,8 +4,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.ai.chat.cache import shutdown_chat_cache
 from app.api.routes import (
     applications,
+    chat,
     employer_profiles,
     health,
     interviews,
@@ -17,7 +19,7 @@ from app.api.routes import (
     users,
 )
 from app.auth import routes as auth_routes
-from app.config import settings
+from app.config import settings, validate_runtime_configuration
 from app.database import (
     close_mongo_client,
     get_chroma_client,
@@ -32,6 +34,11 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan events."""
     # Startup
     print(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+    try:
+        validate_runtime_configuration()
+    except RuntimeError as exc:
+        print(f"⚠️  Configuration validation failed: {exc}")
+        raise
 
     # Initialize ChromaDB connection
     try:
@@ -86,6 +93,11 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # Shutdown
     print(f"Shutting down {settings.APP_NAME}")
 
+    try:
+        await shutdown_chat_cache()
+    except Exception as exc:  # pragma: no cover - shutdown logging only
+        print(f"⚠️  Redis chat cache shutdown error: {exc}")
+
     close_mongo_client()
 
 
@@ -122,6 +134,7 @@ app.include_router(interviews.router, prefix="/api/interviews", tags=["Interview
 app.include_router(saved_jobs.router, prefix="/api/saved-jobs", tags=["Saved Jobs"])
 app.include_router(resumes.router, prefix="/api/resumes", tags=["Resumes"])
 app.include_router(recommendations.router, prefix="/api/recommendations", tags=["Recommendations"])
+app.include_router(chat.router, tags=["Chat"])
 
 
 @app.get("/")

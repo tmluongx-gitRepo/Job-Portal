@@ -937,4 +937,4 @@ class TestJobsRBAC:
         analytics_response = await client.get(
             f"/api/jobs/{fake_job_id}/analytics", headers=emp_headers
         )
-        assert analytics_response.status_code == 404  # noqa: PLR2004
+        assert analytics_response.status_code == 404
