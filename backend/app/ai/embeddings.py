@@ -97,7 +97,7 @@ async def generate_embedding(text: str) -> list[float]:
         await _store_vector(text, vector)
         return vector
 
-    embeddings_factory = cast("OpenAIEmbeddingsCallable", embeddings_cls)
+    embeddings_factory = cast(OpenAIEmbeddingsCallable, embeddings_cls)
     embeddings = embeddings_factory(
         api_key=SecretStr(settings.OPENAI_API_KEY),
         model=settings.OPENAI_EMBEDDING_MODEL,
