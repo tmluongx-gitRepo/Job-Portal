@@ -349,6 +349,11 @@ export default function ProfilePage(): ReactElement {
     }
 
     try {
+      // Calculate experience_years from experience entries if possible
+      // For now, default to 0 since the form doesn't have a direct field for this
+      // TODO: Could calculate from experience duration fields in the future
+      const experienceYears = 0;
+
       const updateData = {
         first_name: trimmedFirstName,
         last_name: trimmedLastName,
@@ -357,12 +362,13 @@ export default function ProfilePage(): ReactElement {
         location: profileData.location?.trim() || null,
         bio: profileData.summary?.trim() || null,
         skills: profileData.skills || [],
-        experience_years: 0, // Required by schema, default to 0
+        experience_years: experienceYears, // Required by backend schema (not a form field)
         education_level:
           profileData.education.length > 0
             ? profileData.education[0].degree
             : null,
-        // Note: experience, projects not in API schema yet
+        // Note: experience array, projects array not in API schema yet
+        // These are stored in the form but not sent to backend
         // Could store in bio or add to schema later
       };
 
