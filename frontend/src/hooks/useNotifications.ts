@@ -13,7 +13,9 @@ export interface Notification {
  * Custom hook to manage notification count
  * Currently uses mock data, but can be easily updated to use API
  */
-export function useNotifications(userType: "job_seeker" | "employer" = "job_seeker"): {
+export function useNotifications(
+  userType: "job_seeker" | "employer" = "job_seeker"
+): {
   unreadCount: number;
   loading: boolean;
 } {
@@ -25,17 +27,18 @@ export function useNotifications(userType: "job_seeker" | "employer" = "job_seek
     // For now, simulate fetching from localStorage or mock data
     const fetchUnreadCount = async (): Promise<void> => {
       setLoading(true);
-      
+
       try {
         // Try to get from localStorage first (if notifications page has saved state)
-        const storageKey = userType === "employer" 
-          ? "employer_notifications" 
-          : "job_seeker_notifications";
-        
+        const storageKey =
+          userType === "employer"
+            ? "employer_notifications"
+            : "job_seeker_notifications";
+
         const stored = localStorage.getItem(storageKey);
         if (stored) {
           const notifications = JSON.parse(stored) as Notification[];
-          const count = notifications.filter(n => !n.read).length;
+          const count = notifications.filter((n) => !n.read).length;
           setUnreadCount(count);
         } else {
           // Default mock counts if no stored data
@@ -55,14 +58,15 @@ export function useNotifications(userType: "job_seeker" | "employer" = "job_seek
 
     // Listen for changes from the notifications page
     const handleStorageChange = (e: StorageEvent): void => {
-      const storageKey = userType === "employer" 
-        ? "employer_notifications" 
-        : "job_seeker_notifications";
-      
+      const storageKey =
+        userType === "employer"
+          ? "employer_notifications"
+          : "job_seeker_notifications";
+
       if (e.key === storageKey && e.newValue) {
         try {
           const notifications = JSON.parse(e.newValue) as Notification[];
-          const count = notifications.filter(n => !n.read).length;
+          const count = notifications.filter((n) => !n.read).length;
           setUnreadCount(count);
         } catch (error) {
           console.error("Error parsing notification storage change:", error);
@@ -82,13 +86,12 @@ export function useNotifications(userType: "job_seeker" | "employer" = "job_seek
 
     return () => {
       window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("notificationsUpdated", handleNotificationUpdate);
+      window.removeEventListener(
+        "notificationsUpdated",
+        handleNotificationUpdate
+      );
     };
   }, [userType]);
 
   return { unreadCount, loading };
 }
-
-
-
-

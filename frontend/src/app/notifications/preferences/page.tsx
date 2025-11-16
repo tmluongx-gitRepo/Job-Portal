@@ -27,16 +27,16 @@ export default function NotificationPreferencesPage(): React.ReactNode {
   const [saved, setSaved] = useState(false);
   const [userEmail] = useState("user@example.com"); // TODO: Get from auth context
 
-  const toggleChannel = (
-    type: string,
-    channel: NotificationChannel
-  ): void => {
+  const toggleChannel = (type: string, channel: NotificationChannel): void => {
     setPreferences((prev) =>
       prev.map((pref) =>
         pref.type === type
           ? {
               ...pref,
-              channels: { ...pref.channels, [channel]: !pref.channels[channel] },
+              channels: {
+                ...pref.channels,
+                [channel]: !pref.channels[channel],
+              },
             }
           : pref
       )
@@ -142,7 +142,8 @@ export default function NotificationPreferencesPage(): React.ReactNode {
             <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm text-blue-900 font-medium">
-                Email notifications will be sent to: <span className="font-bold">{userEmail}</span>
+                Email notifications will be sent to:{" "}
+                <span className="font-bold">{userEmail}</span>
               </p>
               <p className="text-xs text-blue-700 mt-1">
                 Update your email address in your profile settings
@@ -194,9 +195,7 @@ export default function NotificationPreferencesPage(): React.ReactNode {
                 <div
                   className={`p-4 border-b ${categoryInfo.border} ${categoryInfo.bg}`}
                 >
-                  <h3
-                    className={`font-semibold ${categoryInfo.color} text-lg`}
-                  >
+                  <h3 className={`font-semibold ${categoryInfo.color} text-lg`}>
                     {categoryInfo.label}
                   </h3>
                   <p className="text-sm text-green-700">
@@ -294,17 +293,21 @@ export default function NotificationPreferencesPage(): React.ReactNode {
               <p className="font-medium mb-2">About Notification Channels:</p>
               <ul className="space-y-1 text-amber-800">
                 <li>
-                  • <strong>In-App:</strong> Notifications appear within Career Harmony when you&apos;re logged in
+                  • <strong>In-App:</strong> Notifications appear within Career
+                  Harmony when you&apos;re logged in
                 </li>
                 <li>
-                  • <strong>Email:</strong> Notifications are sent to your registered email address
+                  • <strong>Email:</strong> Notifications are sent to your
+                  registered email address
                 </li>
                 <li>
-                  • <strong>Push:</strong> Receive instant notifications on your mobile device (requires mobile app)
+                  • <strong>Push:</strong> Receive instant notifications on your
+                  mobile device (requires mobile app)
                 </li>
               </ul>
               <p className="mt-3 text-xs text-amber-700">
-                You can change these preferences at any time. Some critical notifications may be sent regardless of your preferences.
+                You can change these preferences at any time. Some critical
+                notifications may be sent regardless of your preferences.
               </p>
             </div>
           </div>
@@ -313,9 +316,3 @@ export default function NotificationPreferencesPage(): React.ReactNode {
     </div>
   );
 }
-
-
-
-
-
-

@@ -191,7 +191,8 @@ const mockEmployerNotifications: EmployerNotification[] = [
     id: "9",
     type: "message",
     title: "New Message from Candidate",
-    description: "You have a new message from candidate Jane Smith regarding the interview schedule",
+    description:
+      "You have a new message from candidate Jane Smith regarding the interview schedule",
     timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
     read: true,
     actionUrl: "#",
@@ -221,7 +222,11 @@ const mockEmployerNotifications: EmployerNotification[] = [
 ];
 
 // Helper to render channel badge
-const ChannelBadge = ({ channel }: { channel: NotificationChannel }): React.ReactNode => {
+const ChannelBadge = ({
+  channel,
+}: {
+  channel: NotificationChannel;
+}): React.ReactNode => {
   const channelConfig = {
     in_app: { icon: Bell, label: "App", color: "bg-green-100 text-green-700" },
     email: { icon: Mail, label: "Email", color: "bg-blue-100 text-blue-700" },
@@ -248,8 +253,8 @@ const ChannelBadge = ({ channel }: { channel: NotificationChannel }): React.Reac
 function formatTimestamp(date: Date | string): string {
   // Convert to Date object if it's a string
   let dateObj: Date;
-  
-  if (typeof date === 'string') {
+
+  if (typeof date === "string") {
     dateObj = new Date(date);
   } else if (date instanceof Date) {
     dateObj = date;
@@ -257,7 +262,7 @@ function formatTimestamp(date: Date | string): string {
     console.warn("Invalid date passed to formatTimestamp:", date);
     return "Invalid date";
   }
-  
+
   // Check if the resulting date is valid
   if (isNaN(dateObj.getTime())) {
     console.warn("Invalid date passed to formatTimestamp:", date);
@@ -276,7 +281,10 @@ function formatTimestamp(date: Date | string): string {
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
   if (diffWeeks < 4) return `${diffWeeks}w ago`;
-  return dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return dateObj.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 export default function EmployerNotificationsPage(): React.ReactNode {
@@ -325,8 +333,11 @@ export default function EmployerNotificationsPage(): React.ReactNode {
 
   // Save to localStorage and dispatch event when notifications change
   useEffect(() => {
-    localStorage.setItem("employer_notifications", JSON.stringify(notifications));
-    
+    localStorage.setItem(
+      "employer_notifications",
+      JSON.stringify(notifications)
+    );
+
     // Dispatch custom event for dashboard to listen
     const unreadCount = notifications.filter((n) => !n.read).length;
     window.dispatchEvent(
@@ -337,9 +348,7 @@ export default function EmployerNotificationsPage(): React.ReactNode {
   }, [notifications]);
 
   const filteredNotifications =
-    filter === "unread"
-      ? notifications.filter((n) => !n.read)
-      : notifications;
+    filter === "unread" ? notifications.filter((n) => !n.read) : notifications;
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -484,7 +493,9 @@ export default function EmployerNotificationsPage(): React.ReactNode {
                               <div className="w-2 h-2 bg-green-600 rounded-full"></div>
                             )}
                             <button
-                              onClick={() => deleteNotification(notification.id)}
+                              onClick={() =>
+                                deleteNotification(notification.id)
+                              }
                               className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-green-600 hover:bg-green-100 transition-all"
                             >
                               <X className="w-4 h-4" />
@@ -501,7 +512,9 @@ export default function EmployerNotificationsPage(): React.ReactNode {
 
                         {/* Delivery Channels */}
                         <div className="flex items-center space-x-2 mb-3">
-                          <span className="text-xs text-green-600">Sent via:</span>
+                          <span className="text-xs text-green-600">
+                            Sent via:
+                          </span>
                           {notification.channels.map((channel) => (
                             <ChannelBadge key={channel} channel={channel} />
                           ))}
@@ -511,7 +524,9 @@ export default function EmployerNotificationsPage(): React.ReactNode {
                           <div className="flex items-center space-x-3 text-xs text-green-600">
                             <span className="flex items-center space-x-1">
                               <Clock className="w-3 h-3" />
-                              <span>{formatTimestamp(notification.timestamp)}</span>
+                              <span>
+                                {formatTimestamp(notification.timestamp)}
+                              </span>
                             </span>
                           </div>
 
@@ -570,7 +585,8 @@ export default function EmployerNotificationsPage(): React.ReactNode {
           <div className="mt-8 text-center">
             <p className="text-sm text-green-600">
               Showing {filteredNotifications.length} notification
-              {filteredNotifications.length !== 1 ? "s" : ""} in chronological order
+              {filteredNotifications.length !== 1 ? "s" : ""} in chronological
+              order
             </p>
           </div>
         )}
@@ -578,5 +594,3 @@ export default function EmployerNotificationsPage(): React.ReactNode {
     </div>
   );
 }
-
-
