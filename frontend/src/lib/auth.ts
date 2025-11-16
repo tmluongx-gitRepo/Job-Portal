@@ -133,5 +133,3 @@ export function decodeToken(token: string): Record<string, unknown> | null {
     return null;
   }
 }
-
-

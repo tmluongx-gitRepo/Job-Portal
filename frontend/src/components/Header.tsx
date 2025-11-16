@@ -3,6 +3,7 @@
 import { useState, useEffect, type ReactElement } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+<<<<<<< HEAD
 import { Leaf, Bell, Settings, User as UserIcon } from "lucide-react";
 import {
   isAuthenticated,
@@ -14,6 +15,14 @@ import {
 export default function Header(): ReactElement {
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
+=======
+import { Leaf, Bell, Settings, User } from "lucide-react";
+import { getCurrentUser, isAuthenticated } from "../lib/auth";
+
+export default function Header(): ReactElement {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [user, setUser] = useState<{ id: string; email: string; account_type?: string } | null>(null);
+>>>>>>> feat-jess-frontend-auth-chatbot-integration
   const pathname = usePathname();
 
   // Check authentication status
@@ -40,7 +49,11 @@ export default function Header(): ReactElement {
   }, [pathname]);
 
   // Determine navigation items based on account type
+<<<<<<< HEAD
   const getNavigationItems = (): Array<{ label: string; href: string }> => {
+=======
+  const getNavigationItems = () => {
+>>>>>>> feat-jess-frontend-auth-chatbot-integration
     if (!authenticated || !user) return [];
 
     const accountType = user.account_type;
@@ -63,6 +76,7 @@ export default function Header(): ReactElement {
   };
 
   const navigationItems = getNavigationItems();
+<<<<<<< HEAD
   const isDashboardActive =
     pathname === "/dashboard" || pathname === "/employer-dashboard";
 
@@ -77,6 +91,9 @@ export default function Header(): ReactElement {
       window.location.href = "/";
     }
   };
+=======
+  const isDashboardActive = pathname === "/dashboard" || pathname === "/employer-dashboard";
+>>>>>>> feat-jess-frontend-auth-chatbot-integration
 
   return (
     <header className="bg-white/80 backdrop-blur-sm border-b border-green-200 shadow-sm sticky top-0 z-50">
@@ -100,9 +117,13 @@ export default function Header(): ReactElement {
           {authenticated && navigationItems.length > 0 ? (
             <nav className="hidden md:flex items-center space-x-8">
               {navigationItems.map((item) => {
+<<<<<<< HEAD
                 const isActive =
                   pathname === item.href ||
                   (item.href.includes("dashboard") && isDashboardActive);
+=======
+                const isActive = pathname === item.href || (item.href.includes("dashboard") && isDashboardActive);
+>>>>>>> feat-jess-frontend-auth-chatbot-integration
                 return (
                   <Link
                     key={item.href}
@@ -141,6 +162,7 @@ export default function Header(): ReactElement {
             </nav>
           )}
 
+<<<<<<< HEAD
           <div className="flex items-center space-x-4">
             {authenticated && user ? (
               <>
@@ -204,6 +226,53 @@ export default function Header(): ReactElement {
               </>
             )}
           </div>
+=======
+          {/* Right side - Different content for authenticated vs unauthenticated */}
+          {authenticated ? (
+            <div className="flex items-center space-x-4">
+              <button
+                className="text-green-700 hover:text-green-800 transition-colors"
+                aria-label="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+              </button>
+              <Link
+                href="/profile"
+                className="text-green-700 hover:text-green-800 transition-colors"
+                aria-label="Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </Link>
+              <Link
+                href="/profile"
+                className="w-8 h-8 bg-gradient-to-r from-green-100 to-amber-100 rounded-full flex items-center justify-center hover:shadow-md transition-shadow"
+                aria-label="User profile"
+              >
+                <User className="w-5 h-5 text-green-700" />
+              </Link>
+              <div className="bg-gradient-to-r from-amber-100 to-green-100 text-green-800 px-4 py-2 rounded-full font-medium border border-green-200 shadow-sm">
+                {user?.account_type === "employer"
+                  ? "✨ Build great teams!"
+                  : "✨ Find your path!"}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-4">
+              <Link
+                href="/login"
+                className="text-green-700 hover:text-green-800 font-medium transition-colors"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/signup"
+                className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-2 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-sm"
+              >
+                Join Our Community
+              </Link>
+            </div>
+          )}
+>>>>>>> feat-jess-frontend-auth-chatbot-integration
         </div>
       </div>
     </header>
