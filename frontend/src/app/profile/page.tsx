@@ -79,6 +79,9 @@ export default function ProfilePage(): ReactElement {
   const currentUser = getCurrentUser();
   const userId = getCurrentUserId();
   
+  // Check if user is a job seeker
+  const isJobSeeker = currentUser?.account_type === "job_seeker";
+  
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState(
     getDefaultProfileData(currentUser?.email)
@@ -317,8 +320,18 @@ export default function ProfilePage(): ReactElement {
     setSuccess(false);
 
     // Validate required fields
-    if (!profileData.firstName || !profileData.lastName) {
+    const trimmedFirstName = profileData.firstName?.trim() || "";
+    const trimmedLastName = profileData.lastName?.trim() || "";
+    const trimmedEmail = profileData.email?.trim() || "";
+    
+    if (!trimmedFirstName || !trimmedLastName) {
       setError("First name and last name are required.");
+      setSaving(false);
+      return;
+    }
+
+    if (!trimmedEmail) {
+      setError("Email is required.");
       setSaving(false);
       return;
     }
@@ -329,15 +342,22 @@ export default function ProfilePage(): ReactElement {
       return;
     }
 
+    if (!isJobSeeker) {
+      setError("This profile page is for job seekers only. If you're an employer, please use the employer dashboard.");
+      setSaving(false);
+      return;
+    }
+
     try {
       const updateData = {
-        first_name: profileData.firstName.trim(),
-        last_name: profileData.lastName.trim(),
-        email: profileData.email.trim(),
+        first_name: trimmedFirstName,
+        last_name: trimmedLastName,
+        email: trimmedEmail,
         phone: profileData.phone?.trim() || null,
         location: profileData.location?.trim() || null,
         bio: profileData.summary?.trim() || null,
-        skills: profileData.skills,
+        skills: profileData.skills || [],
+        experience_years: 0, // Required by schema, default to 0
         education_level:
           profileData.education.length > 0
             ? profileData.education[0].degree
@@ -356,10 +376,23 @@ export default function ProfilePage(): ReactElement {
         setSuccess(true);
       } else {
         // Create new profile
-        const created: JobSeekerProfile = (await api.jobSeekerProfiles.create({
+        // Note: Backend uses authenticated user's ID, so user_id is included but backend will use the auth token
+        const createData = {
           ...updateData,
-          user_id: userId,
-        })) as JobSeekerProfile;
+          user_id: userId, // Backend will use authenticated user's ID, but we include it for schema validation
+        };
+        
+        // Log create data for debugging
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Profile] Creating profile with data:", {
+            ...createData,
+            skills: createData.skills.length,
+          });
+        }
+        
+        const created: JobSeekerProfile = (await api.jobSeekerProfiles.create(
+          createData
+        )) as JobSeekerProfile;
         setApiProfile(created);
         setProfileId(created.id);
         setSuccess(true);
@@ -378,12 +411,27 @@ export default function ProfilePage(): ReactElement {
         });
         setError(`Validation error: ${errorMessages.join(", ")}`);
       } else if (err instanceof ApiError) {
+        // Extract detailed error message from backend
+        let errorMessage = err.message;
+        if (err.data && typeof err.data === 'object') {
+          const errorData = err.data as Record<string, unknown>;
+          if (errorData.detail) {
+            errorMessage = String(errorData.detail);
+          } else if (errorData.message) {
+            errorMessage = String(errorData.message);
+          }
+        }
+        
         if (err.status === 403) {
           setError(
             "Authentication required to save profile. Please log in to save your changes."
           );
+        } else if (err.status === 400) {
+          setError(`Failed to save profile: ${errorMessage}. Please check that you're logged in as a job seeker and that all required fields are filled.`);
+        } else if (err.status === 401) {
+          setError("Your session has expired. Please log in again.");
         } else {
-          setError(`Failed to save profile: ${err.message}`);
+          setError(`Failed to save profile: ${errorMessage}`);
         }
       } else {
         setError("An unexpected error occurred. Please try again.");
