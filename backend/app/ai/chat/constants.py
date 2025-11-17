@@ -16,3 +16,4 @@ class ChatEventType(str, Enum):
     SUMMARY = "summary"
     COMPLETE = "complete"
     ERROR = "error"
+    NAVIGATE = "navigate"

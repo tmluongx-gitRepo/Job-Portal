@@ -35,6 +35,7 @@ class ChatOrchestrator:
         self._job_seeker_agent = JobSeekerAgent()
         self._employer_agent = EmployerAgent()
         self._inflight: bool = False
+        self._session_matches: dict[str, list[dict[str, Any]]] = {}
 
     async def stream_response(
         self, *, message: str, user_context: dict, session: ChatSession
@@ -78,7 +79,11 @@ class ChatOrchestrator:
             if account_type == "employer":
                 agent = self._employer_agent
 
-            matches, match_summary, chunk_iterator = await agent.stream(message, user_context)
+            recent_matches = self._session_matches.get(session.session_id, [])
+            agent_context = dict(user_context)
+            agent_context["recent_matches"] = recent_matches
+
+            matches, match_summary, chunk_iterator = await agent.stream(message, agent_context)
 
             if matches:
                 await self._session_store.save_message(
@@ -100,6 +105,17 @@ class ChatOrchestrator:
                 yield {
                     "type": ChatEventType.MATCHES.value,
                     "data": {"matches": matches, "summary": match_summary},
+                }  # type: ignore[misc]
+                self._session_matches[session.session_id] = matches
+            elif session.session_id in self._session_matches:
+                # Clear cached matches when none are returned
+                self._session_matches.pop(session.session_id, None)
+
+            navigate_to = agent_context.pop("navigate_to", None)
+            if isinstance(navigate_to, str) and navigate_to:
+                yield {
+                    "type": ChatEventType.NAVIGATE.value,
+                    "data": {"path": navigate_to},
                 }  # type: ignore[misc]
 
             accumulated: list[str] = []

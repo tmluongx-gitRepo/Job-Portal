@@ -1,497 +1,570 @@
 "use client";
 
-import React, { useState, useEffect, useRef, type ReactElement } from "react";
-import { MessageCircle, Send, X, Bot, User } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactElement,
+} from "react";
 
-interface Message {
-  id: number;
-  type: "user" | "bot" | "action";
-  content?: string;
-  action?: string;
-  timestamp: Date;
-}
+import clsx from "clsx";
+import {
+  Bot,
+  Briefcase,
+  Loader2,
+  MapPin,
+  MessageCircle,
+  Send,
+  Sparkles,
+  Star,
+  UserRound,
+  X,
+} from "lucide-react";
+
+import { useChatStream } from "@/lib/chat/useChatStream";
+import type { ChatMessage, Match } from "@/lib/chat";
+import { getAccessToken, getCurrentUser, type AuthUser } from "@/lib/auth";
 
 interface HarmonyChatbotProps {
-  onClose: () => void;
-  isOpen?: boolean;
+  isOpen: boolean;
   onOpen: () => void;
+  onClose: () => void;
 }
 
-/*
- * HARMONY AI CHATBOT COMPONENT
- *
- * This is Career Harmony's AI assistant chatbot component. Harmony is designed to be:
- * - Warm and supportive while clearly identifying as an AI
- * - Focused on career guidance, encouragement, and dignity-first messaging
- * - Professional but empathetic, avoiding uncanny valley issues
- * - Aligned with Career Harmony's human-centered philosophy
- *
- * PERSONALITY GUIDELINES FOR AI INTEGRATION:
- * - Always introduce herself as "Harmony, your AI career companion"
- * - Maintain supportive, encouraging tone without being overly emotional
- * - Focus on user's inherent worth and potential
- * - Provide practical career guidance while validating feelings
- * - Use appropriate emojis sparingly for warmth
- * - Acknowledge when users are stressed/overwhelmed with genuine empathy
- * - Never claim to have human emotions or experiences
- *
- * INTEGRATION NOTES:
- * - Replace getBotResponse() with actual AI backend calls
- * - Messages array should connect to conversation history storage
- * - Consider rate limiting and user session management
- * - Implement proper error handling for AI service failures
- */
+type AccountType = "job_seeker" | "employer" | "unknown";
 
-const HarmonyChatbot = ({
-  onClose,
-  isOpen = false,
-  onOpen,
-}: HarmonyChatbotProps): ReactElement => {
-  // Chat state management
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      type: "bot",
-      content:
-        "Hi there! I'm Harmony, your AI career companion here at Career Harmony. 🌿 I'm here to help make your career journey feel supported and empowered. Whether you're job searching, career planning, or just need someone to remind you of your worth - I'm here to help. What can I assist with today?",
-      timestamp: new Date(),
-    },
-  ]);
-  const [currentMessage, setCurrentMessage] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [isWorking, setIsWorking] = useState(false); // New state for action indicators
-  const messagesEndRef = useRef<HTMLDivElement>(null); // Reference for auto-scroll
+function formatTimestamp(timestamp?: string): string {
+  if (!timestamp) return "Just now";
+  try {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch (error) {
+    console.warn("Failed to format timestamp", error);
+    return "Just now";
+  }
+}
 
-  // Action indicator types
-  const ACTION_TYPES = {
-    JOB_APPLICATION_SUBMITTED: "Job Application Submitted",
-    JOB_LISTED: "Job Listed",
-    INTERVIEW_SCHEDULED: "Interview Scheduled",
-    SEARCH_COMPLETED: "Search Completed",
-    GENERATED_RECOMMENDATIONS: "Generated Recommendations",
-  } as const;
+function renderMatchScore(score: number): string {
+  const percentage = Math.round(Math.min(1, Math.max(0, score)) * 100);
+  return `${percentage}%`; // percentage string
+}
 
-  // Auto-scroll to bottom when messages change
-  const scrollToBottom = (): void => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping, isWorking]);
-
-  /*
-   * MOCK RESPONSE SYSTEM
-   * In production, replace this with actual AI backend integration
-   * These responses demonstrate Harmony's personality and approach
-   */
-  const getBotResponse = (
-    userMessage: string
-  ): string | { type: string; action: string; response: string } => {
-    const message = userMessage.toLowerCase();
-
-    // Job search and opportunities
-    if (
-      message.includes("job") ||
-      message.includes("position") ||
-      message.includes("work")
-    ) {
-      return "I'd be happy to help you explore new opportunities! 🌟 I believe every person deserves work that truly values them. What kind of role or work environment are you most interested in?";
-    }
-
-    // Resume and profile help
-    else if (message.includes("resume") || message.includes("cv")) {
-      return "Your resume tells your unique professional story! ✨ I can help guide you through showcasing your experiences and achievements effectively. What aspect of your resume would you like to work on?";
-    }
-
-    // Interview preparation
-    else if (message.includes("interview") || message.includes("hiring")) {
-      return "Interview preparation is so important! 💚 Remember, interviews are conversations to find mutual fit - the right employer will recognize your value. What part of interviewing would you like help with?";
-    }
-
-    // Test phrase for action indicator
-    else if (
-      message.includes("fill out") ||
-      message.includes("apply") ||
-      message.includes("submit application")
-    ) {
-      return {
-        type: "ACTION",
-        action: ACTION_TYPES.JOB_APPLICATION_SUBMITTED,
-        response:
-          "I've successfully submitted your job application! 📋 Your profile information has been matched to the job requirements and submitted. You should receive a confirmation email shortly. Good luck! ✨",
-      };
-    } else if (
-      message.includes("schedule interview") ||
-      message.includes("book interview") ||
-      message.includes("interview")
-    ) {
-      return {
-        type: "ACTION",
-        action: ACTION_TYPES.INTERVIEW_SCHEDULED,
-        response:
-          "Interview scheduled successfully! 📅 I've coordinated the timing with both parties and sent calendar invites. All participants will receive reminder notifications. Looking forward to a great conversation! 💼",
-      };
-    } else if (
-      message.includes("post job") ||
-      message.includes("create job") ||
-      message.includes("list job")
-    ) {
-      return {
-        type: "ACTION",
-        action: ACTION_TYPES.JOB_LISTED,
-        response:
-          "Your job listing has been posted successfully! 📢 It's now live and visible to qualified candidates. I've optimized the description for better visibility and included all the details you provided. 🌟",
-      };
-    } else if (
-      message.includes("search for") ||
-      message.includes("find jobs") ||
-      message.includes("find candidates")
-    ) {
-      return {
-        type: "ACTION",
-        action: ACTION_TYPES.SEARCH_COMPLETED,
-        response:
-          "Search completed! 🔍 I've found several great matches based on your criteria. I've filtered the results to show the most relevant opportunities and ranked them by compatibility. Take a look at what I found! ✨",
-      };
-    } else if (
-      message.includes("recommend") ||
-      message.includes("suggestions") ||
-      message.includes("matches")
-    ) {
-      return {
-        type: "ACTION",
-        action: ACTION_TYPES.GENERATED_RECOMMENDATIONS,
-        response:
-          "I've generated personalized recommendations for you! 🎯 Based on your profile and preferences, I've identified the best matches. Each recommendation includes a compatibility score and reasoning for why it's a good fit. 💡",
-      };
-    }
-
-    // Salary and compensation
-    else if (
-      message.includes("salary") ||
-      message.includes("compensation") ||
-      message.includes("pay")
-    ) {
-      return "Salary conversations are crucial for ensuring fair compensation! 💪 I'm here to help you prepare for these discussions with confidence. What field or type of role are you considering?";
-    }
-
-    // Stress and emotional support - CRITICAL for Career Harmony's mission
-    else if (
-      message.includes("stress") ||
-      message.includes("anxiety") ||
-      message.includes("overwhelmed") ||
-      message.includes("scared") ||
-      message.includes("worried")
-    ) {
-      return "Job searching can feel overwhelming, and those feelings are completely valid. 🤗 Please remember that your worth isn't determined by any single opportunity. Consider taking breaks when you need them, and don't hesitate to reach out to supportive people in your life. You have value, and the right opportunity will recognize that. 💕";
-    }
-
-    // Gratitude responses
-    else if (
-      message.includes("thank") ||
-      message.includes("thanks") ||
-      message.includes("appreciate")
-    ) {
-      return "You're very welcome! 🌿 I'm here to support your career journey and remind you of your inherent worth. You've got this! ✨";
-    }
-
-    // Identity and self-introduction
-    else if (
-      message.includes("harmony") ||
-      message.includes("who are you") ||
-      message.includes("tell me about") ||
-      message.includes("name")
-    ) {
-      return "I'm Harmony, Career Harmony's AI assistant! 😊 I chose this name because I believe in helping people find harmony between who they are and the work they do. I'm here to provide career guidance, support, and encouragement throughout your journey. What would you like to explore?";
-    }
-
-    // Default supportive response
-    else {
-      return "I'm here to help with your career journey in whatever way I can! 🌟 Whether you need job search guidance, career advice, or just some encouragement, I'm ready to assist. What's most important to you right now?";
-    }
-  };
-
-  /*
-   * MESSAGE HANDLING
-   * Replace this mock implementation with actual AI service calls
-   */
-  const handleSendMessage = async (): Promise<void> => {
-    if (!currentMessage.trim()) return; // Just return early if empty
-
-    // Add user message to conversation
-    const userMessage: Message = {
-      id: messages.length + 1,
-      type: "user",
-      content: currentMessage,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    const messageToSend = currentMessage;
-    setCurrentMessage("");
-    setIsTyping(true);
-
-    // Simulate AI thinking time (replace with actual API call)
-    setTimeout(
-      () => {
-        const response = getBotResponse(messageToSend);
-
-        // Check if this should trigger an action sequence
-        if (
-          typeof response === "object" &&
-          response !== null &&
-          "type" in response &&
-          response.type === "ACTION"
-        ) {
-          setIsWorking(true);
-          setIsTyping(false);
-
-          // Simulate action taking time
-          setTimeout(() => {
-            // Add persistent action indicator
-            const actionIndicator: Message = {
-              id: messages.length + 2,
-              type: "action",
-              action: response.action,
-              timestamp: new Date(),
-            };
-
-            // Add Harmony's response message
-            const harmonyResponse: Message = {
-              id: messages.length + 3,
-              type: "bot",
-              content: response.response,
-              timestamp: new Date(),
-            };
-
-            setMessages((prev) => [...prev, actionIndicator, harmonyResponse]);
-            setIsWorking(false);
-          }, 3000); // 3 second action simulation
-        } else {
-          // Regular chat response
-          const botResponse: Message = {
-            id: messages.length + 2,
-            type: "bot",
-            content: typeof response === "string" ? response : "",
-            timestamp: new Date(),
-          };
-
-          setMessages((prev) => [...prev, botResponse]);
-          setIsTyping(false);
-        }
-      },
-      1000 + Math.random() * 2000
-    );
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      void handleSendMessage();
-    }
-  };
+function MatchCard({
+  match,
+  accountType,
+}: {
+  match: Match;
+  accountType: AccountType;
+}): ReactElement {
+  const isEmployer = accountType === "employer";
+  const icon = isEmployer ? (
+    <UserRound className="w-4 h-4 text-green-700" />
+  ) : (
+    <Briefcase className="w-4 h-4 text-green-700" />
+  );
+  const location = match.metadata?.location ?? match.subtitle ?? null;
+  const company = (match.metadata?.company as string | undefined) ?? undefined;
+  const jobType = (match.metadata?.job_type as string | undefined) ?? undefined;
+  const experience =
+    (match.metadata?.experience_required as string | undefined) ?? undefined;
+  const jobId = (match.metadata?.job_id as string | undefined) ?? match.id;
+  const skills = Array.isArray(match.metadata?.skills)
+    ? (match.metadata?.skills as unknown[])
+        .map((skill) => (typeof skill === "string" ? skill : null))
+        .filter((skill): skill is string => Boolean(skill))
+    : [];
 
   return (
-    <>
-      {/* Floating Chat Button - Shows when chat is closed */}
-      {!isOpen && (
-        <button
-          onClick={onOpen}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-green-600 via-green-500 to-amber-400 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center z-50 hover:scale-105"
-          aria-label="Open Harmony chatbot"
-        >
-          <MessageCircle className="w-6 h-6" />
-        </button>
-      )}
-
-      {/* Main Chatbot Window */}
-      {isOpen && (
-        <div className="fixed bottom-6 right-6 w-96 h-[32rem] bg-white rounded-xl shadow-2xl border border-green-200 flex flex-col z-50 overflow-hidden">
-          {/* Chat Header */}
-          <div className="bg-gradient-to-r from-green-600 via-green-500 to-amber-400 text-white p-4 rounded-t-xl flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                <Bot className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Harmony</h3>
-                <p className="text-xs text-green-50">
-                  Your AI career companion
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-white/80 hover:text-white transition-colors"
-              aria-label="Close chatbot"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Messages Container */}
-          <div
-            className="flex-1 p-4 overflow-y-scroll space-y-4"
-            style={{
-              maxHeight: "50vh",
-              scrollbarWidth: "thin",
-              scrollbarColor: "#fde68a #fffbeb",
-            }}
-          >
-            {messages.map((message) => (
-              <div key={message.id}>
-                {/* Regular Messages */}
-                {(message.type === "user" || message.type === "bot") && (
-                  <div
-                    className={`flex ${
-                      message.type === "user" ? "justify-end" : "justify-start"
-                    }`}
-                  >
-                    {/* Message Tag Outside Bubble */}
-                    <div
-                      className={`flex flex-col ${
-                        message.type === "user" ? "items-end" : "items-start"
-                      } max-w-[80%]`}
-                    >
-                      <div
-                        className={`text-base font-medium mb-1 px-2 ${
-                          message.type === "user"
-                            ? "text-green-600"
-                            : "text-green-600"
-                        }`}
-                      >
-                        {message.type === "user" ? "You" : "Harmony"}
-                      </div>
-
-                      <div
-                        className={`rounded-lg ${
-                          message.type === "user"
-                            ? "bg-green-500 text-white"
-                            : "bg-gradient-to-r from-green-50 to-amber-50 text-green-900 border border-green-200"
-                        }`}
-                      >
-                        <div className="flex items-start space-x-2 p-3">
-                          {message.type === "bot" && (
-                            <Bot className="w-4 h-4 mt-0.5 text-green-600" />
-                          )}
-                          {message.type === "user" && (
-                            <User className="w-4 h-4 mt-0.5" />
-                          )}
-                          <p className="text-sm leading-relaxed">
-                            {message.content}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Taken Indicators */}
-                {message.type === "action" && (
-                  <div className="flex justify-center mb-4">
-                    <div className="bg-gradient-to-r from-green-100 to-amber-100 border-2 border-green-300 rounded-lg px-4 py-2 max-w-sm">
-                      <div className="flex items-center justify-center">
-                        <span className="text-sm font-medium text-green-800">
-                          ✓ {message.action}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {/* Working/Action Indicator */}
-            {isWorking && (
-              <div className="flex justify-start">
-                <div className="flex flex-col items-start max-w-[80%]">
-                  <div className="text-base font-medium mb-1 px-2 text-green-600">
-                    Harmony
-                  </div>
-                  <div className="bg-gradient-to-r from-green-50 to-amber-50 text-green-900 border border-green-200 rounded-lg">
-                    <div className="flex items-center space-x-2 p-3">
-                      <Bot className="w-4 h-4 text-green-600" />
-                      <div className="flex items-center space-x-2">
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></div>
-                          <div
-                            className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
-                            style={{ animationDelay: "0.2s" }}
-                          ></div>
-                          <div
-                            className="w-2 h-2 bg-amber-300 rounded-full animate-pulse"
-                            style={{ animationDelay: "0.4s" }}
-                          ></div>
-                        </div>
-                        <span className="text-sm text-green-700 ml-2">
-                          Taking action for you...
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+    <div className="border border-green-200 rounded-lg p-3 bg-green-50/60 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white border border-green-200">
+            {icon}
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-green-900">
+              {match.label}
+            </p>
+            {company && (
+              <p className="text-xs text-green-700 font-medium">{company}</p>
             )}
-
-            {/* Typing Indicator */}
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="flex flex-col items-start max-w-[80%]">
-                  {/* Harmony Tag for typing indicator */}
-                  <div className="text-base font-medium mb-1 px-2 text-green-600">
-                    Harmony
-                  </div>
-                  <div className="bg-gradient-to-r from-green-50 to-amber-50 text-green-900 border border-green-200 rounded-lg">
-                    <div className="flex items-center space-x-2 p-3">
-                      <Bot className="w-4 h-4 text-green-600" />
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce"></div>
-                        <div
-                          className="w-2 h-2 bg-green-600 rounded-full animate-bounce"
-                          style={{ animationDelay: "0.1s" }}
-                        ></div>
-                        <div
-                          className="w-2 h-2 bg-amber-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "0.2s" }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {match.subtitle && (
+              <p className="text-xs text-green-700 mt-0.5">{match.subtitle}</p>
             )}
-
-            {/* Invisible element to scroll to */}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Message Input */}
-          <div className="p-4 border-t border-green-200 bg-gradient-to-r from-green-50/30 to-amber-50/30">
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                value={currentMessage}
-                onChange={(e) => setCurrentMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask me how Career Harmony can help."
-                disabled={isTyping || isWorking}
-                className="flex-1 px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              <button
-                onClick={() => void handleSendMessage()}
-                disabled={isTyping || isWorking}
-                className="bg-amber-400 text-white p-2 rounded-lg hover:bg-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                aria-label="Send message"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </div>
           </div>
         </div>
+        <div className="flex items-center gap-1 bg-white border border-amber-200 text-amber-700 text-xs font-semibold px-2 py-1 rounded-full">
+          <Star className="w-3 h-3" />
+          {renderMatchScore(match.match_score)}
+        </div>
+      </div>
+      {location && (
+        <div className="mt-2 flex items-center gap-1 text-xs text-green-700">
+          <MapPin className="w-3 h-3" />
+          <span>{location}</span>
+        </div>
       )}
-    </>
+      {(jobType || experience) && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-green-700">
+          {jobType && (
+            <span className="inline-flex items-center gap-1">
+              <Briefcase className="w-3 h-3" />
+              {jobType}
+            </span>
+          )}
+          {experience && (
+            <span className="inline-flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-amber-500" />
+              {experience}
+            </span>
+          )}
+        </div>
+      )}
+      {skills.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {skills.slice(0, 6).map((skill) => (
+            <span
+              key={skill}
+              className="text-[11px] font-medium px-2 py-1 rounded-full bg-white border border-green-200 text-green-700"
+            >
+              {skill}
+            </span>
+          ))}
+        </div>
+      )}
+      {match.reasons.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {match.reasons.slice(0, 3).map((reason: string) => (
+            <li
+              key={reason}
+              className="text-[11px] text-green-700 flex items-center gap-1"
+            >
+              <Sparkles className="w-3 h-3 text-amber-500" />
+              <span>{reason}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {jobId && accountType !== "employer" && (
+        <div className="mt-3 flex items-center justify-end">
+          <Link
+            href={`/apply/${jobId}`}
+            className="inline-flex items-center gap-2 text-xs font-semibold text-green-800 bg-white border border-green-300 px-3 py-1.5 rounded-full hover:bg-green-50 transition-colors"
+          >
+            Apply now
+            <Send className="w-3 h-3" />
+          </Link>
+        </div>
+      )}
+    </div>
   );
-};
+}
 
-export default HarmonyChatbot;
+function MessageBubble({
+  message,
+}: {
+  message: ChatMessage;
+}): ReactElement | null {
+  const isUser = message.role === "user";
+  const isAssistant = message.role === "assistant";
+  const bubbleText = (() => {
+    if (typeof message.text === "string" && message.text.trim().length > 0) {
+      return message.text.trim();
+    }
+    if (message.payload_type === "matches") {
+      const structured = message.structured as
+        | { summary?: unknown }
+        | undefined;
+      const summary = structured?.summary;
+      if (typeof summary === "string" && summary.trim()) {
+        return summary.trim();
+      }
+      return "I found some matches for you.";
+    }
+    if (message.structured && typeof message.structured === "object") {
+      try {
+        return JSON.stringify(message.structured);
+      } catch (error) {
+        console.warn("Failed to render structured message", error);
+      }
+    }
+    return null;
+  })();
+
+  if (!bubbleText) {
+    return null;
+  }
+
+  const textBlocks: string[] = bubbleText
+    .split(/\n{2,}|\r\n{2,}/)
+    .flatMap((block: string) => block.split(/\n/))
+    .map((segment: string) => segment.trim())
+    .filter((line: string) => line.length > 0);
+
+  return (
+    <div
+      className={clsx("flex", isUser ? "justify-end" : "justify-start")}
+      aria-live="polite"
+    >
+      <div
+        className={clsx(
+          "max-w-[88%] rounded-2xl px-4 py-3 text-sm shadow-lg border transition-all",
+          isUser
+            ? "bg-gradient-to-r from-green-600 to-emerald-500 text-white border-green-600"
+            : "bg-gradient-to-r from-white via-green-50/80 to-emerald-50/70 text-green-900 border-green-200"
+        )}
+      >
+        {isAssistant && (
+          <div className="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wide text-green-700">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100">
+              <Bot className="h-3.5 w-3.5" />
+            </span>
+            Harmony says
+          </div>
+        )}
+        <div
+          className={clsx(
+            "space-y-2",
+            isUser ? "text-white" : "text-green-900"
+          )}
+        >
+          {textBlocks.map((line: string, idx: number) => (
+            <p
+              key={`${line}-${idx}`}
+              className="leading-relaxed whitespace-pre-line"
+            >
+              {line}
+            </p>
+          ))}
+        </div>
+        <span
+          className={clsx(
+            "mt-1 block text-[11px] uppercase tracking-wide",
+            isUser ? "text-green-50/80" : "text-green-500"
+          )}
+        >
+          {isUser ? "You" : "Harmony"} • {formatTimestamp(message.created_at)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export default function HarmonyChatbot({
+  isOpen,
+  onOpen,
+  onClose,
+}: HarmonyChatbotProps): ReactElement {
+  const [token, setToken] = useState<string | undefined>();
+  const [accountType, setAccountType] = useState<AccountType>("unknown");
+  const [input, setInput] = useState("");
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+
+  const {
+    status,
+    matches,
+    messages,
+    streamingText,
+    error,
+    connect,
+    disconnect,
+    sendMessage,
+    navigateTo,
+    clearNavigation,
+  } = useChatStream({ token, autoConnect: false });
+  const router = useRouter();
+
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const syncAuthFromStorage = (): void => {
+      const accessToken = getAccessToken() ?? undefined;
+      setToken(accessToken);
+
+      const currentUser: AuthUser | null = getCurrentUser();
+      if (currentUser?.account_type === "employer") {
+        setAccountType("employer");
+      } else if (currentUser?.account_type === "job_seeker") {
+        setAccountType("job_seeker");
+      } else {
+        setAccountType("unknown");
+      }
+    };
+
+    syncAuthFromStorage();
+    window.addEventListener("storage", syncAuthFromStorage);
+    return () => {
+      window.removeEventListener("storage", syncAuthFromStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      disconnect();
+      return;
+    }
+    if (!token) {
+      return;
+    }
+    connect();
+    return () => {
+      disconnect();
+    };
+  }, [isOpen, token, connect, disconnect]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setInput("");
+      setSubmissionError(null);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!navigateTo) {
+      return;
+    }
+    router.push(navigateTo);
+    clearNavigation();
+  }, [navigateTo, router, clearNavigation]);
+
+  const transcript = useMemo(
+    () =>
+      messages.filter(
+        (message) => message.role === "user" || message.role === "assistant"
+      ),
+    [messages]
+  );
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const container = scrollContainerRef.current;
+    if (!container) {
+      return;
+    }
+    container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+  }, [isOpen, transcript, streamingText, matches, error, submissionError]);
+
+  const connectionStatus = useMemo(() => {
+    switch (status) {
+      case "connecting":
+        return {
+          label: "Connecting",
+          tone: "text-amber-600",
+          dot: "bg-amber-400",
+        } as const;
+      case "open":
+        return {
+          label: "Online",
+          tone: "text-green-600",
+          dot: "bg-green-500",
+        } as const;
+      case "closed":
+        return {
+          label: "Reconnecting",
+          tone: "text-amber-600",
+          dot: "bg-amber-400",
+        } as const;
+      default:
+        return {
+          label: "Idle",
+          tone: "text-slate-500",
+          dot: "bg-slate-400",
+        } as const;
+    }
+  }, [status]);
+
+  const showMatches = matches.length > 0;
+  const isAuthenticated = Boolean(token);
+  const isSendingDisabled = !isAuthenticated || status !== "open";
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const trimmed = input.trim();
+    if (!trimmed) {
+      return;
+    }
+    if (!isAuthenticated) {
+      setSubmissionError("Please sign in again to chat.");
+      return;
+    }
+
+    try {
+      sendMessage(trimmed);
+      setInput("");
+      setSubmissionError(null);
+    } catch (sendError) {
+      console.error("Failed to send chat message", sendError);
+      setSubmissionError("We couldn't deliver that. Please try again.");
+    }
+  };
+
+  const matchesHeading =
+    accountType === "employer" ? "Recommended candidates" : "Recommended roles";
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50">
+      {!isOpen ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex items-center gap-2 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 text-white px-5 py-3 shadow-lg shadow-green-500/30 hover:shadow-green-600/40 transition-all"
+        >
+          <MessageCircle className="w-5 h-5" />
+          <span className="text-sm font-semibold">Chat with Harmony</span>
+        </button>
+      ) : (
+        <div className="w-[380px] sm:w-[420px] h-[560px] bg-white border border-green-200 rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+          <header className="px-5 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/15">
+                  <Bot className="w-5 h-5" />
+                </span>
+                <div>
+                  <p className="text-base font-semibold">Harmony Assist</p>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span
+                      className={clsx(
+                        "w-2 h-2 rounded-full",
+                        connectionStatus.dot
+                      )}
+                    />
+                    <span>{connectionStatus.label}</span>
+                  </div>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-white/80">
+                {accountType === "employer"
+                  ? "Ask for qualified candidates, status updates, or next steps for applicants."
+                  : "Ask for matching roles, application tips, or follow-ups based on your resume."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                disconnect();
+                onClose();
+              }}
+              className="rounded-full p-2 hover:bg-white/10 transition"
+              aria-label="Close chat"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </header>
+
+          <div
+            ref={scrollContainerRef}
+            className="flex-1 bg-green-50/60 px-4 py-3 overflow-y-auto space-y-3"
+          >
+            {!isAuthenticated && (
+              <div className="bg-white border border-amber-300 text-amber-700 text-sm rounded-xl p-3">
+                Please sign in again to start a conversation.
+              </div>
+            )}
+
+            {transcript.length === 0 &&
+              streamingText.length === 0 &&
+              isAuthenticated && (
+                <div className="bg-white border border-green-200 rounded-xl p-4 text-sm text-green-700 shadow-sm">
+                  <p className="font-semibold flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    Tip
+                  </p>
+                  <p className="mt-1">
+                    Ask Harmony to find roles that match your profile or see
+                    candidate recommendations for your open jobs.
+                  </p>
+                </div>
+              )}
+
+            {transcript.map((message, index) => {
+              const key = message.created_at
+                ? `${message.role}-${message.created_at}`
+                : `${message.role}-${index}`;
+              return <MessageBubble key={key} message={message} />;
+            })}
+
+            {streamingText && (
+              <div className="flex justify-start">
+                <div className="max-w-[88%] rounded-2xl px-4 py-2 text-sm bg-white text-green-900 border border-green-200 shadow-sm">
+                  <p className="whitespace-pre-wrap leading-relaxed">
+                    {streamingText}
+                    <Loader2 className="w-3 h-3 inline animate-spin ml-1" />
+                  </p>
+                  <span className="mt-1 block text-[11px] uppercase tracking-wide text-green-500">
+                    Harmony • typing
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {(error || submissionError) && (
+              <div className="bg-white border border-red-200 text-red-600 text-sm rounded-xl p-3">
+                {error ?? submissionError}
+              </div>
+            )}
+
+            {showMatches && (
+              <div className="bg-white border border-green-200 rounded-xl p-3 shadow-sm space-y-3">
+                <p className="text-sm font-semibold text-green-900 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  {matchesHeading}
+                </p>
+                <div className="space-y-2">
+                  {matches.map((match) => (
+                    <MatchCard
+                      key={match.id}
+                      match={match}
+                      accountType={accountType}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <form
+            onSubmit={handleSubmit}
+            className="border-t border-green-200 bg-white px-4 py-3"
+          >
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder={
+                  accountType === "employer"
+                    ? "Ask for candidate matches or status updates..."
+                    : "Ask for job matches or interview prep..."
+                }
+                className="flex-1 rounded-full border border-green-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-green-50/80 text-green-900"
+                disabled={isSendingDisabled}
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-green-600 to-emerald-500 text-white p-2.5 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSendingDisabled}
+                aria-label="Send message"
+              >
+                {isSendingDisabled ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
