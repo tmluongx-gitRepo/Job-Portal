@@ -225,12 +225,11 @@ export default function JobApplicationPage(): ReactElement | null {
         const mongoUserId = currentUserInfo.id; // This is the MongoDB ObjectId
 
         // Try to fetch user's job seeker profile
-        try {
-          const userProfile = (await api.jobSeekerProfiles.getByUserId(
-            mongoUserId
-          )) as JobSeekerProfile;
+        const userProfile =
+          await api.jobSeekerProfiles.getByUserId(mongoUserId);
+        if (userProfile) {
           setProfile(userProfile);
-          setJobSeekerProfileId(userProfile.id);
+          setJobSeekerProfileId(userProfile.id ?? null);
 
           // Pre-fill form with profile data
           setApplicationData((prev) => ({
@@ -242,8 +241,7 @@ export default function JobApplicationPage(): ReactElement | null {
             location: userProfile.location || "",
             keySkills: userProfile.skills || [],
           }));
-        } catch (_err) {
-          // Profile doesn't exist yet - that's okay
+        } else {
           console.info("[Application] No profile found - user can still apply");
         }
       } catch (err) {

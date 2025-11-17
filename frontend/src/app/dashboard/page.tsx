@@ -81,15 +81,13 @@ export default function DashboardPage(): ReactElement {
 
         // First, fetch profile to get job seeker profile ID
         let profileId: string | null = null;
-        try {
-          const userProfile = (await api.jobSeekerProfiles.getByUserId(
-            mongoUserId
-          )) as JobSeekerProfile;
+        const userProfile =
+          await api.jobSeekerProfiles.getByUserId(mongoUserId);
+        if (userProfile) {
           setProfile(userProfile);
-          profileId = userProfile.id;
+          profileId = userProfile.id ?? null;
           setJobSeekerProfileId(profileId);
-        } catch (_err) {
-          // Profile might not exist - that's okay, but we can't fetch applications/recommendations
+        } else {
           console.info(
             "[Dashboard] Profile not found - cannot fetch applications/recommendations"
           );

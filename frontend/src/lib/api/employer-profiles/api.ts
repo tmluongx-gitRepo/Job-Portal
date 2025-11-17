@@ -3,6 +3,7 @@
  */
 import { z } from "zod";
 import { ApiError, apiRequest } from "../client";
+import type { EmployerProfile } from "./types";
 import {
   EmployerProfileCreateSchema,
   EmployerProfileUpdateSchema,
@@ -37,7 +38,7 @@ export const employerProfileApi = {
     });
   },
 
-  async getByUserId(userId: string) {
+  async getByUserId(userId: string): Promise<EmployerProfile | null> {
     try {
       return await apiRequest(`/api/employer-profiles/user/${userId}`, {
         method: "GET",
