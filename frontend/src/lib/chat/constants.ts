@@ -6,6 +6,7 @@ export const ChatEventTypes = {
   SUMMARY: "summary",
   COMPLETE: "complete",
   ERROR: "error",
+  NAVIGATE: "navigate",
 } as const;
 
 export type ChatEventType =

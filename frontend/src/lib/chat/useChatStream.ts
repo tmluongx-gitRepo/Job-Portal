@@ -24,6 +24,7 @@ export interface ChatStreamState {
   messages: ChatMessage[];
   streamingText: string;
   error?: string;
+  navigateTo?: string;
 }
 
 const initialState: ChatStreamState = {
@@ -31,12 +32,14 @@ const initialState: ChatStreamState = {
   matches: [],
   messages: [],
   streamingText: "",
+  navigateTo: undefined,
 };
 
 export interface UseChatStreamResult extends ChatStreamState {
   sendMessage(message: string): void;
   connect(): void;
   disconnect(): void;
+  clearNavigation(): void;
 }
 
 export function useChatStream(
@@ -81,15 +84,32 @@ export function useChatStream(
               ...prev,
               streamingText: `${prev.streamingText}${(data.text as string) ?? ""}`,
             };
-          case ChatEventTypes.COMPLETE:
+          case ChatEventTypes.COMPLETE: {
+            const assistantText = prev.streamingText.trim();
+            const assistantMessage = assistantText
+              ? [
+                  {
+                    role: "assistant",
+                    text: assistantText,
+                    created_at: new Date().toISOString(),
+                  } as ChatMessage,
+                ]
+              : [];
             return {
               ...prev,
               streamingText: "",
+              messages: [...prev.messages, ...assistantMessage],
             };
+          }
           case ChatEventTypes.ERROR:
             return {
               ...prev,
               error: (data.message as string) ?? "Unexpected chat error",
+            };
+          case ChatEventTypes.NAVIGATE:
+            return {
+              ...prev,
+              navigateTo: (data.path as string) ?? prev.navigateTo,
             };
           default:
             return prev;
@@ -129,6 +149,10 @@ export function useChatStream(
     setState((prev) => ({ ...prev, status: "closed" }));
   }, []);
 
+  const clearNavigation = useCallback(() => {
+    setState((prev) => ({ ...prev, navigateTo: undefined }));
+  }, []);
+
   useEffect(() => {
     if (!autoConnect) {
       return;
@@ -144,6 +168,20 @@ export function useChatStream(
     if (!connectionRef.current) {
       throw new Error("Chat connection is not established");
     }
+    setState((prev) => ({
+      ...prev,
+      matches: [],
+      streamingText: "",
+      navigateTo: undefined,
+      messages: [
+        ...prev.messages,
+        {
+          role: "user",
+          text: message,
+          created_at: new Date().toISOString(),
+        } as ChatMessage,
+      ],
+    }));
     connectionRef.current.sendMessage(message);
   }, []);
 
@@ -153,7 +191,8 @@ export function useChatStream(
       sendMessage,
       connect,
       disconnect,
+      clearNavigation,
     }),
-    [connect, disconnect, sendMessage, state]
+    [clearNavigation, connect, disconnect, sendMessage, state]
   );
 }

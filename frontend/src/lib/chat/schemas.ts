@@ -60,6 +60,7 @@ const BaseEventSchema = z.object({
     ChatEventTypes.SUMMARY,
     ChatEventTypes.COMPLETE,
     ChatEventTypes.ERROR,
+    ChatEventTypes.NAVIGATE,
   ]),
   data: z.unknown(),
 });
@@ -99,6 +100,15 @@ export const ErrorEventSchema = BaseEventSchema.extend({
   data: ErrorEventDataSchema,
 });
 
+const NavigateEventDataSchema = z.object({
+  path: z.string(),
+});
+
+export const NavigateEventSchema = BaseEventSchema.extend({
+  type: z.literal(ChatEventTypes.NAVIGATE),
+  data: NavigateEventDataSchema,
+});
+
 export const ChatEventSchema = z.discriminatedUnion("type", [
   InfoEventSchema,
   TokenEventSchema,
@@ -107,6 +117,7 @@ export const ChatEventSchema = z.discriminatedUnion("type", [
   SummaryEventSchema,
   CompleteEventSchema,
   ErrorEventSchema,
+  NavigateEventSchema,
 ]);
 
 export const ChatEventStreamSchema = z.array(ChatEventSchema);

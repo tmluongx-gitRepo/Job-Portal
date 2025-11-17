@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -10,42 +11,6 @@ from app.ai.chat.instrumentation import logger
 from app.ai.chat.tools.scoring import calculate_candidate_matches, calculate_job_matches
 from app.config import settings
 from app.database import get_collection, get_job_seeker_profiles_collection, get_jobs_collection
-
-FALLBACK_JOB_MATCHES: list[dict[str, Any]] = [
-    {
-        "job_id": "sample-job-1",
-        "title": "AI Solutions Engineer",
-        "match_score": 0.82,
-    },
-    {
-        "job_id": "sample-job-2",
-        "title": "Data Scientist",
-        "match_score": 0.78,
-    },
-    {
-        "job_id": "sample-job-3",
-        "title": "Backend Developer",
-        "match_score": 0.74,
-    },
-]
-
-FALLBACK_CANDIDATE_MATCHES: list[dict[str, Any]] = [
-    {
-        "candidate_id": "sample-candidate-1",
-        "name": "Jordan Lee",
-        "match_score": 0.84,
-    },
-    {
-        "candidate_id": "sample-candidate-2",
-        "name": "Casey Morgan",
-        "match_score": 0.8,
-    },
-    {
-        "candidate_id": "sample-candidate-3",
-        "name": "Taylor Kim",
-        "match_score": 0.77,
-    },
-]
 
 _RESUME_FEATURE_KEYS: dict[str, Sequence[str]] = {
     "skills": ("skills", "resume_skills", "top_skills"),
@@ -162,14 +127,24 @@ async def _query_chroma(
 
 
 async def fetch_job_matches_for_user(
-    *, user_context: dict, limit: int = 3
+    *, user_context: dict, limit: int = 3, query: str | None = None
 ) -> Sequence[dict[str, Any]]:
     """Fetch candidate job matches for a job seeker."""
 
     resume_summary = _sanitize_query_text(
         user_context.get("resume_summary"), fallback="job recommendations"
     )
+    if query:
+        resume_summary = (f"{resume_summary} {query}").strip()
     resume_features = _extract_resume_features(user_context)
+    resume_features = dict(resume_features)
+
+    query_skill_hints = _extract_skill_hints(query)
+    if query_skill_hints:
+        existing_skills = _coerce_string_set(resume_features.get("skills"))
+        merged = sorted(existing_skills | query_skill_hints)
+        resume_features["skills"] = merged
+    skill_filters = _coerce_string_set(resume_features.get("skills"))
 
     search_limit = max(limit * 2, limit)
     matches = await _query_chroma(
@@ -179,6 +154,8 @@ async def fetch_job_matches_for_user(
         where={"kind": "job"},
     )
     if matches:
+        if skill_filters:
+            matches = [match for match in matches if _record_matches_keywords(match, skill_filters)]
         logger.info(
             "chat.retriever.job_matches",
             extra={
@@ -196,15 +173,28 @@ async def fetch_job_matches_for_user(
         if ranked:
             return ranked[:limit]
 
-    fallback = await _metadata_job_matches(features=resume_features, limit=limit)
-    logger.info(
-        "chat.retriever.job_matches",
-        extra={
-            "stage": "metadata" if fallback else "fallback",
-            "count": len(fallback) if fallback else len(FALLBACK_JOB_MATCHES[:limit]),
-        },
+    fallback = await _metadata_job_matches(
+        features=resume_features,
+        limit=limit,
+        skill_filters=skill_filters,
     )
-    return fallback if fallback else FALLBACK_JOB_MATCHES[:limit]
+    if fallback:
+        logger.info(
+            "chat.retriever.job_matches",
+            extra={"stage": "metadata", "count": len(fallback)},
+        )
+        return fallback
+
+    catalog = await _catalog_job_matches(limit=limit)
+    if catalog:
+        logger.info(
+            "chat.retriever.job_matches",
+            extra={"stage": "catalog", "count": len(catalog)},
+        )
+        return catalog
+
+    logger.info("chat.retriever.job_matches", extra={"stage": "empty", "count": 0})
+    return []
 
 
 async def fetch_candidate_matches_for_employer(
@@ -243,14 +233,23 @@ async def fetch_candidate_matches_for_employer(
             return ranked[:limit]
 
     fallback = await _metadata_candidate_matches(features=job_features, limit=limit)
-    logger.info(
-        "chat.retriever.candidate_matches",
-        extra={
-            "stage": "metadata" if fallback else "fallback",
-            "count": len(fallback) if fallback else len(FALLBACK_CANDIDATE_MATCHES[:limit]),
-        },
-    )
-    return fallback if fallback else FALLBACK_CANDIDATE_MATCHES[:limit]
+    if fallback:
+        logger.info(
+            "chat.retriever.candidate_matches",
+            extra={"stage": "metadata", "count": len(fallback)},
+        )
+        return fallback
+
+    catalog = await _catalog_candidate_matches(limit=limit)
+    if catalog:
+        logger.info(
+            "chat.retriever.candidate_matches",
+            extra={"stage": "catalog", "count": len(catalog)},
+        )
+        return catalog
+
+    logger.info("chat.retriever.candidate_matches", extra={"stage": "empty", "count": 0})
+    return []
 
 
 def _extract_resume_features(user_context: Mapping[str, Any]) -> dict[str, Any]:
@@ -332,14 +331,96 @@ def _normalise_feature_value(
     return None
 
 
-async def _metadata_job_matches(*, features: Mapping[str, Any], limit: int) -> list[dict[str, Any]]:
+_SKILL_TRIGGER_PATTERN = re.compile(r"skills?\s*[:=-]?\s*(.+)", re.IGNORECASE)
+_TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+_STOPWORDS = {
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "to",
+    "for",
+    "with",
+    "please",
+    "filter",
+    "skills",
+    "skill",
+    "by",
+    "show",
+    "me",
+    "can",
+    "you",
+    "find",
+}
+
+
+def _extract_skill_hints(query: str | None) -> set[str]:
+    if not query:
+        return set()
+    match = _SKILL_TRIGGER_PATTERN.search(query)
+    candidate_text = match.group(1) if match else query
+    return {
+        token
+        for token in _TOKEN_PATTERN.findall(candidate_text.lower())
+        if token and token not in _STOPWORDS
+    }
+
+
+def _coerce_string_set(value: Any) -> set[str]:
+    if value is None:
+        return set()
+    if isinstance(value, str):
+        cleaned = value.strip()
+        return {cleaned.lower()} if cleaned else set()
+    if isinstance(value, Sequence) and not isinstance(value, bytes | bytearray | str):
+        result: set[str] = set()
+        for item in value:
+            if isinstance(item, str) and item.strip():
+                result.add(item.strip().lower())
+        return result
+    return set()
+
+
+def _record_matches_keywords(record: Mapping[str, Any], keywords: set[str]) -> bool:
+    if not keywords:
+        return True
+    haystack_parts: list[str] = []
+    for key in (
+        "label",
+        "title",
+        "company",
+        "subtitle",
+        "industry",
+        "job_type",
+    ):
+        value = record.get(key)
+        if isinstance(value, str):
+            haystack_parts.append(value.lower())
+    for key in ("skills", "skills_required"):
+        value = record.get(key)
+        if isinstance(value, Sequence) and not isinstance(value, bytes | bytearray | str):
+            haystack_parts.extend(str(item).lower() for item in value if item)
+        elif isinstance(value, str):
+            haystack_parts.append(value.lower())
+    haystack = " ".join(haystack_parts)
+    return all(keyword in haystack for keyword in keywords)
+
+
+async def _metadata_job_matches(
+    *,
+    features: Mapping[str, Any],
+    limit: int,
+    skill_filters: set[str] | None,
+) -> list[dict[str, Any]]:
     collection = get_jobs_collection()
 
-    def _query() -> list[dict[str, Any]]:
-        cursor = collection.find({"is_active": True}).limit(120)
-        results: list[dict[str, Any]] = []
-        for doc in cursor:  # type: ignore[attr-defined]
-            results.append(
+    cursor = collection.find({"is_active": True}).limit(120)
+    jobs: list[dict[str, Any]] = []
+
+    try:
+        async for doc in cursor:  # type: ignore[async-for]
+            jobs.append(
                 {
                     "job_id": str(doc.get("_id")),
                     "title": doc.get("title"),
@@ -352,12 +433,11 @@ async def _metadata_job_matches(*, features: Mapping[str, Any], limit: int) -> l
                     "source": "metadata",
                 }
             )
-        return results
-
-    try:
-        jobs = await asyncio.to_thread(_query)
-    except Exception:  # pragma: no cover
+    except Exception:  # pragma: no cover - defensive fallback
         return []
+
+    if skill_filters:
+        jobs = [job for job in jobs if _record_matches_keywords(job, skill_filters)]
 
     ranked = calculate_job_matches(resume_features=features, jobs=jobs)
     return ranked[:limit]
@@ -368,14 +448,15 @@ async def _metadata_candidate_matches(
 ) -> list[dict[str, Any]]:
     collection = get_job_seeker_profiles_collection()
 
-    def _query() -> list[dict[str, Any]]:
-        cursor = collection.find({}).limit(120)
-        results: list[dict[str, Any]] = []
-        for doc in cursor:  # type: ignore[attr-defined]
+    cursor = collection.find({}).limit(120)
+    candidates: list[dict[str, Any]] = []
+
+    try:
+        async for doc in cursor:  # type: ignore[async-for]
             full_name = " ".join(
                 filter(None, [doc.get("first_name"), doc.get("last_name")])
             ).strip()
-            results.append(
+            candidates.append(
                 {
                     "candidate_id": str(doc.get("_id")),
                     "name": full_name or None,
@@ -387,12 +468,62 @@ async def _metadata_candidate_matches(
                     "source": "metadata",
                 }
             )
-        return results
-
-    try:
-        candidates = await asyncio.to_thread(_query)
     except Exception:  # pragma: no cover
         return []
 
     ranked = calculate_candidate_matches(job_features=features, candidates=candidates)
     return ranked[:limit]
+
+
+async def _catalog_job_matches(limit: int) -> list[dict[str, Any]]:
+    collection = get_jobs_collection()
+    cursor = collection.find({"is_active": True}).sort("created_at", -1).limit(max(limit, 5))
+
+    catalog: list[dict[str, Any]] = []
+    try:
+        async for doc in cursor:  # type: ignore[async-for]
+            catalog.append(
+                {
+                    "job_id": str(doc.get("_id")),
+                    "title": doc.get("title"),
+                    "company": doc.get("company"),
+                    "location": doc.get("location"),
+                    "job_type": doc.get("job_type"),
+                    "skills_required": doc.get("skills_required", []),
+                    "experience_required": doc.get("experience_required"),
+                    "match_score": 0.35,
+                    "source": "catalog",
+                }
+            )
+    except Exception:  # pragma: no cover - catalog fallback best effort
+        return []
+
+    return catalog[:limit]
+
+
+async def _catalog_candidate_matches(limit: int) -> list[dict[str, Any]]:
+    collection = get_job_seeker_profiles_collection()
+    cursor = collection.find({}).sort("created_at", -1).limit(max(limit, 5))
+
+    catalog: list[dict[str, Any]] = []
+    try:
+        async for doc in cursor:  # type: ignore[async-for]
+            full_name = " ".join(
+                filter(None, [doc.get("first_name"), doc.get("last_name")])
+            ).strip()
+            catalog.append(
+                {
+                    "candidate_id": str(doc.get("_id")),
+                    "name": full_name or "Candidate",
+                    "location": doc.get("location"),
+                    "skills": doc.get("skills", []),
+                    "experience_years": doc.get("experience_years"),
+                    "industry": doc.get("industry"),
+                    "match_score": 0.35,
+                    "source": "catalog",
+                }
+            )
+    except Exception:  # pragma: no cover - catalog fallback best effort
+        return []
+
+    return catalog[:limit]
