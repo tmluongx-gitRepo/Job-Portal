@@ -70,8 +70,25 @@ class Settings(BaseSettings):
     CHAT_SUMMARY_MAX_RETRIES: int = 3
     CHAT_SUMMARY_RETRY_MIN_DELAY: float = 0.5
 
+    # Webhook settings
+    WEBHOOK_TIMEOUT_SECONDS: float = 5.0
+    WEBHOOK_MAX_RETRIES: int = 3
+    WEBHOOK_RETRY_MIN_DELAY: float = 0.5
+    N8N_WEBHOOK_AUTH_HEADER_NAME: str | None = None
+    N8N_WEBHOOK_AUTH_HEADER_VALUE: str | None = None
+
+    # N8N Webhook Integration
+    N8N_WEBHOOK_URL: str = ""
+    N8N_WEBHOOK_ENABLED: bool = False
+
     # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://frontend:3000"]
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://frontend:3000",
+        "http://n8n:5678",
+        "http://localhost:5678",
+        "http://host.docker.internal:5678",
+    ]
 
     model_config = SettingsConfigDict(env_file=str(ENV_FILE), case_sensitive=True, extra="ignore")
 
