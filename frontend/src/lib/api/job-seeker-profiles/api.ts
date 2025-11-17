@@ -2,7 +2,7 @@
  * Job Seeker Profile API functions
  */
 import { z } from "zod";
-import { apiRequest } from "../client";
+import { ApiError, apiRequest } from "../client";
 import {
   JobSeekerProfileCreateSchema,
   JobSeekerProfileUpdateSchema,
@@ -65,11 +65,17 @@ export const jobSeekerProfileApi = {
   },
 
   async getByUserId(userId: string) {
-    return apiRequest(`/api/job-seeker-profiles/user/${userId}`, {
-      method: "GET",
-      responseSchema: JobSeekerProfileResponseSchema,
-      silentStatuses: [404],
-    });
+    try {
+      return await apiRequest(`/api/job-seeker-profiles/user/${userId}`, {
+        method: "GET",
+        responseSchema: JobSeekerProfileResponseSchema,
+      });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   async update(
