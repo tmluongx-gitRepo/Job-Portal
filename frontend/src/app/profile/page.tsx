@@ -140,12 +140,20 @@ export default function ProfilePage(): ReactElement {
         const mongoUserId = currentUserInfo.id; // This is the MongoDB ObjectId
 
         // Try to get profile by MongoDB user ID
-        const profile: JobSeekerProfile =
-          (await api.jobSeekerProfiles.getByUserId(
-            mongoUserId
-          )) as JobSeekerProfile;
+        const profile = await api.jobSeekerProfiles.getByUserId(mongoUserId);
+
+        if (!profile) {
+          console.info(
+            "[Profile] No profile found for user - initializing with empty data"
+          );
+          setApiProfile(null);
+          setProfileId(null);
+          setProfileData(getDefaultProfileData(currentUser?.email));
+          return;
+        }
+
         setApiProfile(profile);
-        setProfileId(profile.id);
+        setProfileId(profile.id ?? null);
 
         // Transform API profile to form format
         setProfileData({
@@ -524,10 +532,12 @@ export default function ProfilePage(): ReactElement {
             );
             const currentUserInfo = await api.auth.getCurrentUser();
             const mongoUserId = currentUserInfo.id;
-            const existingProfile: JobSeekerProfile =
-              (await api.jobSeekerProfiles.getByUserId(
-                mongoUserId
-              )) as JobSeekerProfile;
+            const existingProfile =
+              await api.jobSeekerProfiles.getByUserId(mongoUserId);
+
+            if (!existingProfile || !existingProfile.id) {
+              throw new Error("Existing profile not found");
+            }
 
             // Set profileId and retry as update
             setProfileId(existingProfile.id);

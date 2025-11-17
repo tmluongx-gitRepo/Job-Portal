@@ -146,22 +146,20 @@ export default function EmployerDashboard(): ReactElement {
         const mongoUserId = currentUserInfo.id; // This is the MongoDB ObjectId
 
         // Fetch employer profile
-        let profile: EmployerProfile | null = null;
-        let employerProfileId: string | null = null;
-        try {
-          profile = await api.employerProfiles.getByUserId(mongoUserId);
+        const employerUserId = mongoUserId;
+        const profile = await api.employerProfiles.getByUserId(mongoUserId);
+        if (profile) {
           setEmployerProfile(profile);
-          employerProfileId = profile.id;
-        } catch (_err) {
+        } else {
           console.info(
             "[Employer Dashboard] Profile not found - cannot fetch jobs/applications"
           );
         }
 
-        if (employerProfileId) {
+        if (employerUserId) {
           // Fetch jobs posted by this employer
           const employerJobs = (await api.jobs.getAll({
-            posted_by: employerProfileId,
+            posted_by: employerUserId,
             limit: 100,
           })) as Job[];
           setJobs(employerJobs);

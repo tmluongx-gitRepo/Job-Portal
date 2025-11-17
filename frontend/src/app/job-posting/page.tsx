@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { api, ApiError, ValidationError } from "../../lib/api";
 import { getCurrentUserId } from "../../lib/auth";
-import type { JobCreate, EmployerProfile } from "../../lib/api";
+import type { JobCreate } from "../../lib/api";
 
 // TODO: Replace with API call to fetch employer info
 const employerInfo = {
@@ -360,36 +360,29 @@ export default function JobPostingPage(): ReactElement {
 
       // Get or create employer profile
       let employerProfileId: string;
-      try {
-        // Try to get existing employer profile
-        const existingProfile: EmployerProfile =
-          (await api.employerProfiles.getByUserId(
-            mongoUserId
-          )) as EmployerProfile;
+      const existingProfile =
+        await api.employerProfiles.getByUserId(mongoUserId);
+
+      if (existingProfile && existingProfile.id) {
         employerProfileId = existingProfile.id;
-      } catch (err) {
+      } else {
         // Profile doesn't exist, create one
-        if (err instanceof ApiError && err.status === 404) {
-          // Get company name from form (same logic as transformToApiFormat)
-          const companyName =
-            employerInfo.companies.find((c) => c.id === selectedCompany)
-              ?.name || selectedCompany;
+        const companyName =
+          employerInfo.companies.find((c) => c.id === selectedCompany)?.name ||
+          selectedCompany;
 
-          if (!companyName || companyName.trim() === "") {
-            throw new Error(
-              "Company name is required to create employer profile"
-            );
-          }
-
-          const newProfile: EmployerProfile =
-            (await api.employerProfiles.create({
-              user_id: mongoUserId,
-              company_name: companyName,
-            })) as EmployerProfile;
-          employerProfileId = newProfile.id;
-        } else {
-          throw err;
+        if (!companyName || companyName.trim() === "") {
+          throw new Error(
+            "Company name is required to create employer profile"
+          );
         }
+
+        const newProfile = await api.employerProfiles.create({
+          user_id: mongoUserId,
+          company_name: companyName,
+        });
+
+        employerProfileId = (newProfile as { id: string }).id;
       }
 
       // Create job with employer profile ID

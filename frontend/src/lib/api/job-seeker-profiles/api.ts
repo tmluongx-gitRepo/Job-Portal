@@ -3,6 +3,7 @@
  */
 import { z } from "zod";
 import { ApiError, apiRequest } from "../client";
+import type { JobSeekerProfile } from "./types";
 import {
   JobSeekerProfileCreateSchema,
   JobSeekerProfileUpdateSchema,
@@ -64,7 +65,7 @@ export const jobSeekerProfileApi = {
     });
   },
 
-  async getByUserId(userId: string) {
+  async getByUserId(userId: string): Promise<JobSeekerProfile | null> {
     try {
       return await apiRequest(`/api/job-seeker-profiles/user/${userId}`, {
         method: "GET",

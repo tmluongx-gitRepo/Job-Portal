@@ -3,18 +3,32 @@
 import { useState, useEffect, type ReactElement } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Leaf, Bell, Settings, User as UserIcon } from "lucide-react";
+import { Leaf, Settings, User as UserIcon } from "lucide-react";
 import {
   isAuthenticated,
   getCurrentUser,
   clearAuth,
   type AuthUser,
 } from "@/lib/auth";
+import NotificationButton from "@/components/NotificationButton";
+import {
+  mockJobSeekerNotifications,
+  mockEmployerNotifications,
+} from "@/lib/notifications";
 
 export default function Header(): ReactElement {
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const pathname = usePathname();
+
+  const notifications = user
+    ? user.account_type === "employer"
+      ? mockEmployerNotifications
+      : mockJobSeekerNotifications
+    : [];
+  const unreadCount = notifications.filter(
+    (notification) => !notification.read
+  ).length;
 
   // Check authentication status
   useEffect(() => {
@@ -145,12 +159,14 @@ export default function Header(): ReactElement {
             {authenticated && user ? (
               <>
                 {/* Authenticated user actions */}
-                <button
-                  className="text-green-700 hover:text-green-800 transition-colors p-2"
-                  aria-label="Notifications"
-                >
-                  <Bell className="w-5 h-5" />
-                </button>
+                <NotificationButton
+                  unreadCount={unreadCount}
+                  href={
+                    user.account_type === "employer"
+                      ? "/notifications/employer"
+                      : "/notifications"
+                  }
+                />
                 <Link
                   href="/profile"
                   className="text-green-700 hover:text-green-800 transition-colors p-2"

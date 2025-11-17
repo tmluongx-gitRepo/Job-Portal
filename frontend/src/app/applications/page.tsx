@@ -24,229 +24,9 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { api, ApiError } from "../../lib/api";
-import type { Job, Application } from "../../lib/api";
+import type { Job, Application, JobSeekerProfile } from "../../lib/api";
 
 // TODO: Replace with API call to fetch applicants
-const _sampleApplicants = [
-  {
-    id: 1,
-    name: "Sarah Chen",
-    email: "sarah.chen@email.com",
-    phone: "(555) 123-4567",
-    location: "Phoenix, AZ",
-    appliedDate: "2024-11-01",
-    status: "unreviewed",
-    experience: "3 years",
-    education: "Bachelor's in Marketing",
-    currentRole: "Marketing Assistant at Creative Agency",
-    skills: [
-      "Social Media Marketing",
-      "Content Creation",
-      "Adobe Creative Suite",
-      "Google Analytics",
-      "Email Marketing",
-      "Brand Strategy",
-      "Copywriting",
-      "Photoshop",
-      "Video Editing",
-      "SEO Optimization",
-    ],
-    resumeUrl: "/resumes/sarah-chen.pdf",
-    coverLetterExcerpt:
-      "I&apos;m excited to bring my creative marketing experience to TechFlow Solutions...",
-    matchScore: 92,
-    volunteerWork: [
-      "Local Animal Shelter - Marketing Volunteer (2+ years): Created social media campaigns that increased adoptions by 40%",
-      "Community Garden Coordinator - Phoenix Urban Farm (1 year): Organized events and managed Instagram account",
-      "Habitat for Humanity - Communications Team (6 months): Designed promotional materials for fundraising events",
-      "Arizona Food Bank - Marketing Assistant (1 year): Developed email campaigns reaching 5,000+ donors",
-      "Local Library Reading Program - Social Media Manager (8 months): Grew followers from 200 to 1,500",
-      "Youth Mentorship Program - Workshop Leader (2 years): Taught digital marketing skills to high school students",
-      "Environmental Coalition - Graphic Designer (1 year): Created awareness campaigns for sustainability initiatives",
-    ],
-    personalProjects: [
-      "Sustainable Living Blog (2022-present): Built Instagram account from 0 to 12K followers focused on eco-friendly lifestyle tips",
-      "Freelance Graphic Design Business: Created brand identities for 15+ local small businesses",
-      "Community Art Festival Website: Designed and developed responsive website that increased ticket sales by 60%",
-      "Photography Portfolio: Self-taught photographer with work featured in 3 local exhibitions",
-      'Podcast "Creative Minds" (2023): Interviewed 25+ local artists and entrepreneurs, 2K+ monthly downloads',
-      "Volunteer Coordination App: Developed mobile app prototype to streamline volunteer scheduling for nonprofits",
-    ],
-  },
-  {
-    id: 2,
-    name: "Marcus Rodriguez",
-    email: "marcus.r@email.com",
-    phone: "(555) 987-6543",
-    location: "Scottsdale, AZ",
-    appliedDate: "2024-10-30",
-    status: "reviewed",
-    experience: "5 years",
-    education: "MBA in Marketing",
-    currentRole: "Senior Marketing Specialist at Digital Corp",
-    skills: [
-      "Campaign Management",
-      "Data Analysis",
-      "Brand Strategy",
-      "SEO/SEM",
-      "Marketing Automation",
-      "A/B Testing",
-      "Customer Segmentation",
-      "CRM Management",
-      "Lead Generation",
-      "Conversion Optimization",
-      "Google Ads",
-      "Facebook Ads",
-    ],
-    resumeUrl: "/resumes/marcus-rodriguez.pdf",
-    coverLetterExcerpt:
-      "With my extensive background in digital marketing campaigns...",
-    matchScore: 88,
-    volunteerWork: [
-      "St. Mary's Food Bank - Digital Marketing Lead (3 years): Increased online donations by 150% through targeted campaigns",
-      "Big Brothers Big Sisters - Mentorship Program (2 years): Mentored at-risk youth in business and technology skills",
-      "Phoenix Children's Hospital - Fundraising Committee (1 year): Organized charity events raising $50K+ annually",
-      "Local Chamber of Commerce - Marketing Advisory Board (2 years): Provided pro-bono marketing consulting for small businesses",
-      "Arizona Hispanic Chamber - Bilingual Marketing Volunteer (18 months): Developed Spanish-language marketing materials",
-      "United Way Campaign - Team Leader (1 year): Led workplace giving campaign exceeding goals by 25%",
-    ],
-    personalProjects: [
-      "Marketing Automation Consultancy: Built SaaS tool helping small businesses automate email sequences, 50+ clients",
-      "Data Visualization Dashboard: Created real-time analytics platform used by 3 local marketing agencies",
-      "Spanish-English Marketing Blog: Educational content reaching 5K+ monthly readers in Latino business community",
-      "E-commerce Store Analytics: Developed custom Google Analytics setup increasing client conversion rates by 35%",
-      "Local Restaurant Marketing Case Study: Volunteer project that tripled social media engagement in 6 months",
-      'Marketing Podcast Co-host: "Digital Marketing Decoded" with 10K+ monthly downloads and 50+ episodes',
-      "AI Marketing Tools Research: Testing and reviewing emerging AI tools, findings shared with 2K+ LinkedIn followers",
-    ],
-  },
-  {
-    id: 3,
-    name: "Emily Thompson",
-    email: "emily.thompson@email.com",
-    phone: "(555) 456-7890",
-    location: "Tempe, AZ",
-    appliedDate: "2024-10-29",
-    status: "shortlisted",
-    experience: "2 years",
-    education: "Bachelor's in Communications",
-    currentRole: "Junior Marketing Coordinator at StartupCo",
-    skills: [
-      "Email Marketing",
-      "Social Media Management",
-      "Event Planning",
-      "Content Writing",
-      "Customer Service",
-      "Project Management",
-      "Canva Design",
-      "WordPress",
-      "Mailchimp",
-      "Hootsuite",
-      "Google Workspace",
-    ],
-    resumeUrl: "/resumes/emily-thompson.pdf",
-    coverLetterExcerpt:
-      "I would love to contribute my enthusiasm and fresh perspective...",
-    matchScore: 85,
-    volunteerWork: [
-      "Youth Mentorship Program - Program Coordinator (3 years): Organized workshops for 100+ high school students annually",
-      "Tempe Arts Festival - Marketing Committee (2 years): Managed social media and increased attendance by 30%",
-      "Local Women's Shelter - Communications Volunteer (18 months): Created awareness campaigns and donor newsletters",
-      "Environmental Club - Events Manager (1 year): Planned sustainability workshops and community clean-up events",
-      "Animal Rescue Network - Social Media Coordinator (2 years): Managed adoption campaigns and fundraising events",
-      "Senior Center - Technology Instructor (1 year): Taught social media and digital communication skills to seniors",
-      "Food Distribution Center - Volunteer Coordinator (6 months): Organized weekly volunteer schedules for 40+ people",
-    ],
-    personalProjects: [
-      'Sustainable Living Blog "Green Valley Life": 500+ posts about eco-friendly practices, 3K+ monthly readers',
-      "Community Cleanup Initiative: Organized monthly neighborhood cleanups, removed 2 tons of trash in 2023",
-      "Local Business Directory Website: Built WordPress site featuring 200+ Tempe small businesses",
-      "Digital Scrapbooking Service: Helped 30+ families create digital photo albums and memory books",
-      "Farmers Market Social Media: Volunteer social media manager increasing vendor participation by 45%",
-      "Personal Finance Workshop Series: Created and taught budgeting workshops for young adults at community center",
-    ],
-  },
-  {
-    id: 4,
-    name: "David Kim",
-    email: "david.kim@email.com",
-    phone: "(555) 321-0987",
-    location: "Phoenix, AZ",
-    appliedDate: "2024-10-28",
-    status: "interview_scheduled",
-    experience: "4 years",
-    education: "Bachelor's in Business Administration",
-    currentRole: "Marketing Coordinator at TechStart",
-    skills: [
-      "Project Management",
-      "Digital Marketing",
-      "Team Collaboration",
-      "Presentation Skills",
-      "Agile Methodology",
-      "Stakeholder Management",
-      "Budget Planning",
-      "Market Research",
-      "Content Strategy",
-      "Cross-functional Leadership",
-    ],
-    resumeUrl: "/resumes/david-kim.pdf",
-    coverLetterExcerpt:
-      "I&apos;m particularly drawn to TechFlow's innovative approach...",
-    matchScore: 90,
-    volunteerWork: [
-      "Habitat for Humanity - Build Team Leader (4 years): Led construction teams of 15+ volunteers on weekend builds",
-      "STEM Education Foundation - Workshop Facilitator (3 years): Taught business and entrepreneurship to middle school students",
-      "Korean Community Center - Marketing Director (2 years): Increased community event attendance by 200%",
-      "Local Food Bank - Operations Volunteer (2 years): Managed inventory and coordinated distribution schedules",
-      "Phoenix Marathon - Social Media Coordinator (1 year): Managed race day communications and participant engagement",
-      "Small Business Development Center - Mentor (18 months): Provided marketing guidance to 10+ startup founders",
-    ],
-    personalProjects: [
-      "Startup Marketing Strategy Consulting: Helped 5 friends launch businesses with comprehensive marketing plans",
-      "Photography Portfolio Website: Self-built responsive site showcasing landscape and portrait work",
-      "Korean-English Business Translation Service: Freelance work helping Korean businesses expand to US markets",
-      "Local Hiking Group Organizer: Built community of 200+ hiking enthusiasts through social media and events",
-      "Real Estate Investment Analysis Tool: Excel-based calculator used by 3 local real estate agents",
-      'Community Newsletter "Phoenix Rising": Monthly digital publication reaching 1,500+ neighborhood residents',
-      "Small Business Podcast Guest: Featured on 8 podcasts sharing marketing insights and entrepreneurship tips",
-    ],
-  },
-  {
-    id: 5,
-    name: "Jessica Miller",
-    email: "jessica.m@email.com",
-    phone: "(555) 654-3210",
-    location: "Mesa, AZ",
-    appliedDate: "2024-10-27",
-    status: "rejected",
-    experience: "1 year",
-    education: "Associate's in Marketing",
-    currentRole: "Marketing Intern at LocalBiz",
-    skills: [
-      "Social Media",
-      "Basic Analytics",
-      "Customer Service",
-      "Microsoft Office",
-      "Entry-level Design",
-      "Communication",
-    ],
-    resumeUrl: "/resumes/jessica-miller.pdf",
-    coverLetterExcerpt:
-      "Although I&apos;m early in my career, I&apos;m eager to learn...",
-    matchScore: 72,
-    volunteerWork: [
-      "Mesa Public Library - Reading Program Assistant (2 years): Helped organize summer reading programs for children",
-      "Local Elementary School - After-school Tutor (1 year): Provided homework help and mentorship to students",
-      "Community Recreation Center - Event Helper (6 months): Assisted with setup and coordination of community events",
-      "Animal Shelter - Weekend Volunteer (1 year): Helped with animal care and adoption event setup",
-    ],
-    personalProjects: [
-      "Family Restaurant Social Media: Created Instagram and Facebook content for family's small restaurant business",
-      'Personal Blog "Life After College": Shared experiences and tips for recent graduates, 50+ followers',
-      "Neighborhood Babysitting Service: Built client base of 8 families through word-of-mouth referrals",
-    ],
-  },
-];
 
 const getStatusBadge = (
   status: string
@@ -271,6 +51,21 @@ const getStatusBadge = (
       text: "text-purple-800",
       label: "Interview Scheduled",
     },
+    under_review: {
+      bg: "bg-blue-100",
+      text: "text-blue-800",
+      label: "Under Review",
+    },
+    offer_extended: {
+      bg: "bg-amber-100",
+      text: "text-amber-800",
+      label: "Offer Extended",
+    },
+    accepted: {
+      bg: "bg-emerald-100",
+      text: "text-emerald-800",
+      label: "Accepted",
+    },
     rejected: { bg: "bg-red-100", text: "text-red-800", label: "Rejected" },
   };
 
@@ -283,8 +78,11 @@ const getStatusDropdownOptions = (
   const allStatuses = [
     { value: "unreviewed", label: "Unreviewed" },
     { value: "reviewed", label: "Reviewed" },
+    { value: "under_review", label: "Under Review" },
     { value: "shortlisted", label: "Shortlisted" },
     { value: "interview_scheduled", label: "Interview Scheduled" },
+    { value: "offer_extended", label: "Offer Extended" },
+    { value: "accepted", label: "Accepted" },
     { value: "rejected", label: "Rejected" },
   ];
 
@@ -361,7 +159,8 @@ interface TransformedApplicant {
   email: string;
   phone: string;
   location: string;
-  appliedDate: string;
+  appliedAt: Date;
+  appliedAgo: string;
   status: string;
   experience: string;
   education: string;
@@ -387,6 +186,76 @@ function formatDateAgo(date: Date): string {
   if (diffDays < 14) return "1 week ago";
   if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
   return `${Math.floor(diffDays / 30)} months ago`;
+}
+
+function formatExactDate(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+async function fetchJobSeekerProfile(
+  profileId: string,
+  cache: Map<string, JobSeekerProfile | null>
+): Promise<JobSeekerProfile | null> {
+  if (cache.has(profileId)) {
+    return cache.get(profileId) ?? null;
+  }
+
+  try {
+    const profile = await api.jobSeekerProfiles.getById(profileId);
+    cache.set(profileId, profile);
+    return profile;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      cache.set(profileId, null);
+      return null;
+    }
+
+    console.error("Failed to fetch job seeker profile:", error);
+    cache.set(profileId, null);
+    return null;
+  }
+}
+
+function buildCandidateName(
+  profile: JobSeekerProfile | null,
+  fallbackId: string
+): string {
+  if (!profile) {
+    return `Candidate ${fallbackId.slice(0, 8)}`;
+  }
+
+  const first = profile.first_name?.trim() ?? "";
+  const last = profile.last_name?.trim() ?? "";
+  const fullName = `${first} ${last}`.trim();
+  return fullName || `Candidate ${fallbackId.slice(0, 8)}`;
+}
+
+function formatExperience(years?: number | null): string {
+  if (years === null || years === undefined) {
+    return "Experience not provided";
+  }
+
+  if (years === 0) {
+    return "Entry level";
+  }
+
+  return `${years} year${years === 1 ? "" : "s"}`;
+}
+
+function calculateMatchScore(application: Application): number {
+  const score = (application as unknown as { match_score?: number })
+    .match_score;
+  if (typeof score === "number") {
+    if (score > 1) {
+      return Math.round(score);
+    }
+    return Math.round(score * 100);
+  }
+  return 0;
 }
 
 function ApplicationsPageContent(): ReactElement {
@@ -441,27 +310,38 @@ function ApplicationsPageContent(): ReactElement {
 
         // Transform applications to applicants format
         // TODO: Fetch job seeker profiles to get name, email, phone, experience, etc.
+        const profileCache = new Map<string, JobSeekerProfile | null>();
+
         const transformedApplicants: TransformedApplicant[] = await Promise.all(
-          jobApplications.map(async (app: Application, index: number) => {
-            // TODO: Fetch job seeker profile using app.job_seeker_id
-            // For now, using placeholder data
+          jobApplications.map(async (app: Application) => {
+            const profile = await fetchJobSeekerProfile(
+              app.job_seeker_id,
+              profileCache
+            );
+
+            const appliedAt = new Date(app.applied_date);
+            const appliedAgo = formatDateAgo(appliedAt);
+
             return {
               id: app.id,
-              name: `Candidate ${app.job_seeker_id.slice(0, 8)}`, // TODO: Get from profile
-              email: `candidate${index}@email.com`, // TODO: Get from profile
-              phone: "(555) 000-0000", // TODO: Get from profile
-              location: jobData.location, // TODO: Get from profile
-              appliedDate: formatDateAgo(new Date(app.applied_date)),
-              status: app.status === "pending" ? "unreviewed" : app.status,
-              experience: "Unknown", // TODO: Get from profile
-              education: "Unknown", // TODO: Get from profile
-              currentRole: "Unknown", // TODO: Get from profile
-              skills: [], // TODO: Get from profile
-              resumeUrl: "", // TODO: Get from application or profile
+              name: buildCandidateName(profile, app.job_seeker_id),
+              email: profile?.email || "",
+              phone: profile?.phone || "",
+              location: profile?.location || jobData.location || "Unknown",
+              appliedAt,
+              appliedAgo,
+              status: app.status,
+              experience: formatExperience(profile?.experience_years),
+              education: profile?.education_level
+                ? `Education: ${profile.education_level}`
+                : "Education not provided",
+              currentRole: profile?.bio ? profile.bio : "Role not provided",
+              skills: profile?.skills || [],
+              resumeUrl: profile?.resume_file_url || "",
               coverLetterExcerpt: app.notes || "No cover letter provided.",
-              matchScore: 0, // TODO: Calculate match score
-              volunteerWork: [], // TODO: Get from profile
-              personalProjects: [], // TODO: Get from profile
+              matchScore: calculateMatchScore(app),
+              volunteerWork: [],
+              personalProjects: [],
             };
           })
         );
@@ -498,6 +378,11 @@ function ApplicationsPageContent(): ReactElement {
       count: applicants.filter((a) => a.status === "reviewed").length,
     },
     {
+      value: "under_review",
+      label: "Under Review",
+      count: applicants.filter((a) => a.status === "under_review").length,
+    },
+    {
       value: "shortlisted",
       label: "Shortlisted",
       count: applicants.filter((a) => a.status === "shortlisted").length,
@@ -507,6 +392,16 @@ function ApplicationsPageContent(): ReactElement {
       label: "Interview Scheduled",
       count: applicants.filter((a) => a.status === "interview_scheduled")
         .length,
+    },
+    {
+      value: "offer_extended",
+      label: "Offer Extended",
+      count: applicants.filter((a) => a.status === "offer_extended").length,
+    },
+    {
+      value: "accepted",
+      label: "Accepted",
+      count: applicants.filter((a) => a.status === "accepted").length,
     },
     {
       value: "rejected",
@@ -862,7 +757,7 @@ function ApplicationsPageContent(): ReactElement {
                           </span>
                           <span className="flex items-center whitespace-nowrap">
                             <Briefcase className="w-3 h-3 mr-1 flex-shrink-0" />
-                            {applicant.experience} exp
+                            {applicant.experience}
                           </span>
                           <span className="flex items-center min-w-0">
                             <GraduationCap className="w-3 h-3 mr-1 flex-shrink-0" />
@@ -937,27 +832,10 @@ function ApplicationsPageContent(): ReactElement {
                         {applicant.phone}
                       </a>
                       <span className="text-xs text-gray-500 whitespace-nowrap">
-                        Applied{" "}
-                        {(() => {
-                          const date = new Date(
-                            applicant.appliedDate + "T00:00:00"
-                          );
-                          const months = [
-                            "Jan",
-                            "Feb",
-                            "Mar",
-                            "Apr",
-                            "May",
-                            "Jun",
-                            "Jul",
-                            "Aug",
-                            "Sep",
-                            "Oct",
-                            "Nov",
-                            "Dec",
-                          ];
-                          return `${months[date.getMonth()]} ${date.getDate()}`;
-                        })()}
+                        Applied {formatExactDate(applicant.appliedAt)} •
+                        <span className="ml-1 text-green-600">
+                          {applicant.appliedAgo}
+                        </span>
                       </span>
                     </div>
 

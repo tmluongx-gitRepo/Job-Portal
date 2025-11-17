@@ -17,10 +17,11 @@ async def upsert_job_embedding(*, job_id: str, text: str, metadata: dict[str, ob
             "embeddings.vector_missing",
             extra={"kind": "job", "job_id": job_id},
         )
+    sanitized = _sanitize_metadata({"kind": "job", "job_id": job_id, **metadata})
     collection.upsert(
         ids=[f"job::{job_id}"],
         documents=[text],
-        metadatas=[{"kind": "job", "job_id": job_id, **metadata}],
+        metadatas=[sanitized],
         embeddings=[vector] if vector else None,
     )
 
@@ -36,10 +37,11 @@ async def upsert_candidate_embedding(
             "embeddings.vector_missing",
             extra={"kind": "candidate", "candidate_id": candidate_id},
         )
+    sanitized = _sanitize_metadata({"kind": "candidate", "candidate_id": candidate_id, **metadata})
     collection.upsert(
         ids=[f"candidate::{candidate_id}"],
         documents=[text],
-        metadatas=[{"kind": "candidate", "candidate_id": candidate_id, **metadata}],
+        metadatas=[sanitized],
         embeddings=[vector] if vector else None,
     )
 
@@ -69,6 +71,23 @@ async def delete_candidate_embedding(candidate_id: str) -> None:
 
     collection = get_collection(settings.CHROMA_COLLECTION_NAME)
     collection.delete(ids=[f"candidate::{candidate_id}"])
+
+
+def _sanitize_metadata(metadata: dict[str, object]) -> dict[str, object]:
+    """Ensure metadata values conform to Chroma requirements."""
+
+    cleaned: dict[str, object] = {}
+    for key, value in metadata.items():
+        if value is None:
+            cleaned[key] = None
+        elif isinstance(value, str | int | float | bool):
+            cleaned[key] = value
+        elif isinstance(value, list | tuple | set):
+            # Join sequences into a comma-separated string
+            cleaned[key] = ", ".join(str(item) for item in value)
+        else:
+            cleaned[key] = str(value)
+    return cleaned
 
 
 def build_candidate_document(profile: dict[str, object]) -> str:
