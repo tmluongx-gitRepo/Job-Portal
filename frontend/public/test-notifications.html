@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Notifications - Clear LocalStorage</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(to bottom right, #f0fdf4, #fef3c7);
+        }
+        h1 {
+            color: #166534;
+        }
+        button {
+            background: linear-gradient(to right, #16a34a, #15803d);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 2px solid #bbf7d0;
+        }
+        .output {
+            background: #f0fdf4;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .success {
+            color: #166534;
+            font-weight: bold;
+        }
+        .info {
+            color: #0369a1;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔔 Notification System Test</h1>
+    
+    <div class="section">
+        <h2>Step 1: Clear LocalStorage</h2>
+        <p>First, clear any existing notification data from localStorage:</p>
+        <button onclick="clearStorage()">🗑️ Clear All LocalStorage</button>
+        <div id="clearOutput" class="output"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 2: Test Pages</h2>
+        <p>Navigate to the notification pages to test the fix:</p>
+        <button onclick="testEmployer()">👔 Employer Notifications</button>
+        <button onclick="testJobSeeker()">👤 Job Seeker Notifications</button>
+    </div>
+
+    <div class="section">
+        <h2>Step 3: Verify Data</h2>
+        <p>Check the current localStorage data:</p>
+        <button onclick="checkStorage()">🔍 Inspect LocalStorage</button>
+        <div id="inspectOutput" class="output"></div>
+    </div>
+
+    <div class="section">
+        <h2>Quick Links</h2>
+        <button onclick="goToDashboard()">📊 Job Seeker Dashboard</button>
+        <button onclick="goToEmployerDashboard()">📊 Employer Dashboard</button>
+    </div>
+
+    <script>
+        function clearStorage() {
+            const output = document.getElementById('clearOutput');
+            
+            try {
+                // Clear all localStorage
+                localStorage.clear();
+                
+                output.innerHTML = `
+                    <p class="success">✅ LocalStorage cleared successfully!</p>
+                    <p class="info">Removed keys: job_seeker_notifications, employer_notifications</p>
+                `;
+                
+                console.log('LocalStorage cleared');
+            } catch (error) {
+                output.innerHTML = `<p style="color: red;">❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        function testEmployer() {
+            window.location.href = '/notifications/employer';
+        }
+
+        function testJobSeeker() {
+            window.location.href = '/notifications';
+        }
+
+        function goToDashboard() {
+            window.location.href = '/dashboard';
+        }
+
+        function goToEmployerDashboard() {
+            window.location.href = '/employer-dashboard';
+        }
+
+        function checkStorage() {
+            const output = document.getElementById('inspectOutput');
+            
+            try {
+                const jsNotifications = localStorage.getItem('job_seeker_notifications');
+                const empNotifications = localStorage.getItem('employer_notifications');
+                
+                let html = '';
+                
+                if (jsNotifications) {
+                    const parsed = JSON.parse(jsNotifications);
+                    html += `<p class="success">📋 Job Seeker Notifications: ${parsed.length} items</p>`;
+                    html += `<p class="info">First item type: ${parsed[0]?.type || 'N/A'}</p>`;
+                    html += `<p class="info">Has icon property: ${parsed[0]?.hasOwnProperty('icon') ? 'YES (will cause error!)' : 'NO (expected - will be restored by app)'}</p>`;
+                } else {
+                    html += '<p class="info">No job seeker notifications in storage</p>';
+                }
+                
+                if (empNotifications) {
+                    const parsed = JSON.parse(empNotifications);
+                    html += `<p class="success">📋 Employer Notifications: ${parsed.length} items</p>`;
+                    html += `<p class="info">First item type: ${parsed[0]?.type || 'N/A'}</p>`;
+                    html += `<p class="info">Has icon property: ${parsed[0]?.hasOwnProperty('icon') ? 'YES (will cause error!)' : 'NO (expected - will be restored by app)'}</p>`;
+                } else {
+                    html += '<p class="info">No employer notifications in storage</p>';
+                }
+                
+                output.innerHTML = html || '<p class="info">LocalStorage is empty</p>';
+            } catch (error) {
+                output.innerHTML = `<p style="color: red;">❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Auto-check storage on load
+        window.addEventListener('load', function() {
+            setTimeout(checkStorage, 100);
+        });
+    </script>
+</body>
+</html>
+
+

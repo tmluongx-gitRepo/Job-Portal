@@ -2,7 +2,7 @@
  * Employer Profile API functions
  */
 import { z } from "zod";
-import { apiRequest } from "../client";
+import { ApiError, apiRequest } from "../client";
 import {
   EmployerProfileCreateSchema,
   EmployerProfileUpdateSchema,
@@ -38,10 +38,17 @@ export const employerProfileApi = {
   },
 
   async getByUserId(userId: string) {
-    return apiRequest(`/api/employer-profiles/user/${userId}`, {
-      method: "GET",
-      responseSchema: EmployerProfileResponseSchema,
-    });
+    try {
+      return await apiRequest(`/api/employer-profiles/user/${userId}`, {
+        method: "GET",
+        responseSchema: EmployerProfileResponseSchema,
+      });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   async update(
