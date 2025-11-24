@@ -119,7 +119,7 @@ export default function LoginPage(): ReactElement {
                     value={formData.email}
                     onChange={handleInputChange}
                     autoComplete="off"
-                    className="w-full pl-10 pr-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all"
+                    className="w-full pl-10 pr-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white text-black placeholder:text-green-600 transition-all"
                     placeholder="your@email.com"
                     required
                   />
@@ -141,7 +141,7 @@ export default function LoginPage(): ReactElement {
                     value={formData.password}
                     onChange={handleInputChange}
                     autoComplete="off"
-                    className="w-full pl-10 pr-12 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 transition-all"
+                    className="w-full pl-10 pr-12 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white text-black placeholder:text-green-600 transition-all"
                     placeholder="Enter your password"
                     required
                   />

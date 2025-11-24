@@ -4,7 +4,9 @@
       "Bash(ruff check:*)",
       "Bash(ruff format:*)",
       "Bash(python3 -m mypy:*)",
-      "Bash(bash -c \"cd /Users/mario/Projects/AZNext_AI_Builder_Projects/Job-Portal/backend && source .venv/bin/activate && ruff check app/\")"
+      "Bash(bash -c \"cd /Users/mario/Projects/AZNext_AI_Builder_Projects/Job-Portal/backend && source .venv/bin/activate && ruff check app/\")",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat(mario-feature-chat): add conversational chat enhancements\n\nAdd job application submission, employer application review, and enhanced\nnatural language understanding to chat system.\n\nKey features:\n- Job seekers can apply to jobs via chat (\"apply to first job\")\n- Employers can review applications via chat\n- Small talk and status question handling\n- Skill-based filtering in job matching\n- Navigation events for dashboard deep-linking\n- Session-based match caching for context awareness\n\nBackend enhancements:\n- Application submission with duplicate detection\n- Webhook integration for application events\n- Enhanced job/candidate retrieval with query parsing\n- Ordinal and natural language job reference resolution\n\nFrontend enhancements:\n- Navigate event handling for dashboard routing\n- Updated chat UI schemas and types\n- Enhanced streaming support\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
