@@ -8,7 +8,7 @@ import { JobCreateSchema, JobUpdateSchema, JobResponseSchema } from "./schemas";
 export const jobApi = {
   async create(data: z.infer<typeof JobCreateSchema>, postedBy?: string) {
     const query = postedBy ? `?posted_by=${postedBy}` : "";
-    return apiRequest(`/jobs${query}`, {
+    return apiRequest(`/api/jobs${query}`, {
       method: "POST",
       requestSchema: JobCreateSchema,
       responseSchema: JobResponseSchema,
@@ -29,7 +29,7 @@ export const jobApi = {
       query.set("is_active", params.is_active.toString());
     if (params?.posted_by) query.set("posted_by", params.posted_by);
 
-    return apiRequest(`/jobs?${query}`, {
+    return apiRequest(`/api/jobs?${query}`, {
       method: "GET",
       responseSchema: z.array(JobResponseSchema),
     });
@@ -61,7 +61,7 @@ export const jobApi = {
       }
     });
 
-    return apiRequest(`/jobs/search?${query}`, {
+    return apiRequest(`/api/jobs/search?${query}`, {
       method: "GET",
       responseSchema: z.array(JobResponseSchema),
     });
@@ -69,14 +69,14 @@ export const jobApi = {
 
   async getById(jobId: string, incrementViews = false) {
     const query = incrementViews ? "?increment_views=true" : "";
-    return apiRequest(`/jobs/${jobId}${query}`, {
+    return apiRequest(`/api/jobs/${jobId}${query}`, {
       method: "GET",
       responseSchema: JobResponseSchema,
     });
   },
 
   async update(jobId: string, data: z.infer<typeof JobUpdateSchema>) {
-    return apiRequest(`/jobs/${jobId}`, {
+    return apiRequest(`/api/jobs/${jobId}`, {
       method: "PUT",
       requestSchema: JobUpdateSchema,
       responseSchema: JobResponseSchema,
@@ -85,7 +85,7 @@ export const jobApi = {
   },
 
   async delete(jobId: string) {
-    return apiRequest(`/jobs/${jobId}`, {
+    return apiRequest(`/api/jobs/${jobId}`, {
       method: "DELETE",
       responseSchema: z.null(),
     });
@@ -97,7 +97,7 @@ export const jobApi = {
       query.set("is_active", params.is_active.toString());
     if (params?.posted_by) query.set("posted_by", params.posted_by);
 
-    return apiRequest(`/jobs/count?${query}`, {
+    return apiRequest(`/api/jobs/count?${query}`, {
       method: "GET",
       responseSchema: z.object({ count: z.number() }),
     });

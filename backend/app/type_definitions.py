@@ -16,6 +16,7 @@ class UserDocument(TypedDict):
     _id: ObjectId
     email: str
     account_type: str
+    supabase_id: NotRequired[str]  # Supabase UUID - only for auth lookup
     created_at: datetime
     updated_at: datetime
 
@@ -98,7 +99,10 @@ class JobDocument(TypedDict):
     posted_by: NotRequired[str]
     industry: NotRequired[str]
     company_size: NotRequired[str]
-    is_active: bool
+    is_active: bool  # Whether job is currently accepting applications (can be toggled by employer)
+    filled: (
+        bool  # Whether position has been filled (set when application accepted) - defaults to False
+    )
     view_count: int
     application_count: int
     created_at: datetime
@@ -158,3 +162,86 @@ class RecommendationDocument(TypedDict):
     created_at: datetime
     job_details: NotRequired[dict[str, object]]
     seeker_details: NotRequired[dict[str, object]]
+
+
+class SavedJobDocument(TypedDict):
+    """MongoDB SavedJob document structure."""
+
+    _id: ObjectId
+    job_seeker_id: str
+    job_id: str
+    notes: NotRequired[str]
+    saved_date: datetime
+    created_at: datetime
+
+
+class ResumeDocument(TypedDict):
+    """MongoDB Resume document structure."""
+
+    _id: ObjectId
+    job_seeker_id: str
+    dropbox_path: str
+    original_filename: str
+    uploaded_at: datetime
+    content_type: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class InterviewDocument(TypedDict):
+    """MongoDB Interview document structure."""
+
+    _id: ObjectId
+    application_id: str
+    job_id: str
+    job_seeker_id: str
+    employer_id: str
+    interview_type: str  # phone, video, in-person, technical, behavioral, panel
+    scheduled_date: datetime
+    duration_minutes: int
+    timezone: str
+    location: NotRequired[str]  # Physical address or meeting link
+    interviewer_name: NotRequired[str]
+    interviewer_email: NotRequired[str]
+    interviewer_phone: NotRequired[str]
+    status: str  # scheduled, rescheduled, completed, cancelled, no_show
+    notes: NotRequired[str]  # Employer notes for job seeker
+    internal_notes: NotRequired[str]  # Internal employer notes
+    feedback: NotRequired[str]  # Post-interview feedback
+    rating: NotRequired[int]  # 1-5 rating
+    reminder_sent: bool
+    cancelled_by: NotRequired[str]  # user_id who cancelled
+    cancelled_reason: NotRequired[str]
+    rescheduled_from: NotRequired[datetime]  # Original date if rescheduled
+    created_at: datetime
+    updated_at: datetime
+
+
+class ChatSessionDocument(TypedDict):
+    """MongoDB chat session document structure."""
+
+    _id: ObjectId
+    session_id: str
+    user_id: ObjectId
+    role: str
+    status: str
+    summary: NotRequired[str | None]
+    last_interaction_at: datetime
+    created_at: datetime
+    updated_at: datetime
+
+
+class ChatMessageDocument(TypedDict):
+    """MongoDB chat message document structure."""
+
+    _id: ObjectId
+    session_id: str
+    role: str
+    payload_type: str
+    text: NotRequired[str | None]
+    structured: NotRequired[Any]
+    tokens_used: NotRequired[int | None]
+    created_at: datetime
+    # NOTE: We rely on ChatSessionDocument.user_id for provenance. If future
+    # auditing requires per-message user identifiers, add a redundant
+    # session_user_id field here and in persistence layer.

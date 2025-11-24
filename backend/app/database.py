@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 import chromadb
@@ -7,6 +8,8 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection, Asyn
 from redis import asyncio as aioredis
 
 from app.config import settings
+
+_logger = logging.getLogger(__name__)
 
 # Global ChromaDB client instance
 _chroma_client: ClientAPI | None = None
@@ -103,7 +106,32 @@ async def ping_redis() -> dict[str, str]:
             "mode": info.get("redis_mode", "standalone"),
         }
     finally:
-        await redis.aclose()
+        await redis.aclose()  # type: ignore[attr-defined]
+
+
+async def _safe_create_index(
+    collection: AsyncIOMotorCollection,
+    failures: list[dict[str, str]],
+    *args: Any,
+    **kwargs: Any,
+) -> None:
+    """Create an index while tolerating failures on startup."""
+
+    try:
+        await collection.create_index(*args, **kwargs)
+    except Exception as exc:  # pragma: no cover - defensive logging
+        payload = {
+            "collection": getattr(collection, "name", "unknown"),
+            "index_args": repr(args),
+            "index_kwargs": repr(kwargs),
+        }
+        if settings.DEBUG:
+            _logger.exception("database.index_creation_failed", extra=payload)
+        else:
+            payload["error"] = str(exc)
+            _logger.warning("database.index_creation_failed", extra=payload)
+        payload["error"] = str(exc)
+        failures.append(payload)
 
 
 # MongoDB Collection Helpers
@@ -141,3 +169,189 @@ def get_recommendations_collection() -> AsyncIOMotorCollection:
     """Get recommendations collection from MongoDB."""
     db = get_mongo_database()
     return db["recommendations"]
+
+
+def get_saved_jobs_collection() -> AsyncIOMotorCollection:
+    """Get saved_jobs collection from MongoDB."""
+    db = get_mongo_database()
+    return db["saved_jobs"]
+
+
+def get_resumes_collection() -> AsyncIOMotorCollection:
+    """Get resumes collection from MongoDB."""
+    db = get_mongo_database()
+    return db["resumes"]
+
+
+def get_interviews_collection() -> AsyncIOMotorCollection:
+    """Get interviews collection from MongoDB."""
+    db = get_mongo_database()
+    return db["interviews"]
+
+
+def get_chat_sessions_collection() -> AsyncIOMotorCollection:
+    """Get chat_sessions collection from MongoDB."""
+    db = get_mongo_database()
+    return db["chat_sessions"]
+
+
+def get_chat_messages_collection() -> AsyncIOMotorCollection:
+    """Get chat_messages collection from MongoDB."""
+    db = get_mongo_database()
+    return db["chat_messages"]
+
+
+async def _init_user_indexes(db: Any, failures: list[dict[str, str]]) -> None:
+    """Initialize indexes for users and profiles."""
+    # Users collection indexes
+    users = db["users"]
+    await _safe_create_index(users, failures, "email", unique=True)
+    await _safe_create_index(users, failures, "account_type")
+    await _safe_create_index(users, failures, [("created_at", -1)])
+
+    # Job Seeker Profiles collection indexes
+    job_seeker_profiles = db["job_seeker_profiles"]
+    await _safe_create_index(job_seeker_profiles, failures, "user_id", unique=True)
+    await _safe_create_index(job_seeker_profiles, failures, "email")
+    await _safe_create_index(job_seeker_profiles, failures, "skills")
+    await _safe_create_index(job_seeker_profiles, failures, "location")
+    await _safe_create_index(job_seeker_profiles, failures, "experience_years")
+    await _safe_create_index(job_seeker_profiles, failures, [("updated_at", -1)])
+    await _safe_create_index(
+        job_seeker_profiles,
+        failures,
+        [("skills", 1), ("location", 1), ("experience_years", 1)],
+    )
+
+    # Employer Profiles collection indexes
+    employer_profiles = db["employer_profiles"]
+    await _safe_create_index(employer_profiles, failures, "user_id", unique=True)
+    await _safe_create_index(employer_profiles, failures, "company_name")
+    await _safe_create_index(employer_profiles, failures, "industry")
+    await _safe_create_index(employer_profiles, failures, "location")
+    await _safe_create_index(employer_profiles, failures, [("created_at", -1)])
+
+
+async def _init_job_indexes(db: Any, failures: list[dict[str, str]]) -> None:
+    """Initialize indexes for jobs and applications."""
+    # Jobs collection indexes
+    jobs = db["jobs"]
+    await _safe_create_index(jobs, failures, "posted_by")
+    await _safe_create_index(jobs, failures, "is_active")
+    await _safe_create_index(jobs, failures, "location")
+    await _safe_create_index(jobs, failures, "job_type")
+    await _safe_create_index(jobs, failures, "skills_required")
+    await _safe_create_index(jobs, failures, "industry")
+    await _safe_create_index(jobs, failures, "remote_ok")
+    await _safe_create_index(jobs, failures, [("created_at", -1)])
+    await _safe_create_index(jobs, failures, [("is_active", 1), ("created_at", -1)])
+    await _safe_create_index(jobs, failures, [("is_active", 1), ("location", 1), ("job_type", 1)])
+    # Text index for full-text search on title, description, company
+    await _safe_create_index(
+        jobs,
+        failures,
+        [("title", "text"), ("description", "text"), ("company", "text")],
+        weights={"title": 10, "company": 5, "description": 1},
+    )
+
+    # Applications collection indexes
+    applications = db["applications"]
+    await _safe_create_index(applications, failures, "job_seeker_id")
+    await _safe_create_index(applications, failures, "job_id")
+    await _safe_create_index(applications, failures, "status")
+    await _safe_create_index(applications, failures, [("applied_date", -1)])
+    await _safe_create_index(
+        applications,
+        failures,
+        [("job_seeker_id", 1), ("job_id", 1)],
+        unique=True,
+    )  # Prevent duplicate applications
+    await _safe_create_index(applications, failures, [("job_id", 1), ("status", 1)])
+
+
+async def _init_feature_indexes(db: Any, failures: list[dict[str, str]]) -> None:
+    """Initialize indexes for recommendations, saved jobs, resumes, and interviews."""
+    # Recommendations collection indexes
+    recommendations = db["recommendations"]
+    await _safe_create_index(recommendations, failures, "job_seeker_id")
+    await _safe_create_index(recommendations, failures, "job_id")
+    await _safe_create_index(recommendations, failures, "status")
+    await _safe_create_index(recommendations, failures, [("created_at", -1)])
+    await _safe_create_index(recommendations, failures, [("job_seeker_id", 1), ("status", 1)])
+
+    # Saved Jobs collection indexes
+    saved_jobs = db["saved_jobs"]
+    await _safe_create_index(saved_jobs, failures, "job_seeker_id")
+    await _safe_create_index(saved_jobs, failures, "job_id")
+    await _safe_create_index(saved_jobs, failures, [("saved_date", -1)])
+    await _safe_create_index(
+        saved_jobs,
+        failures,
+        [("job_seeker_id", 1), ("job_id", 1)],
+        unique=True,
+    )  # Prevent duplicate saves
+
+    # Resumes collection indexes
+    resumes = db["resumes"]
+    await _safe_create_index(resumes, failures, "job_seeker_id", unique=True)  # One resume per user
+    await _safe_create_index(resumes, failures, [("uploaded_at", -1)])
+
+    # Interviews collection indexes
+    interviews = db["interviews"]
+    # One active interview per application (not historical)
+    # This enforces that rescheduled interviews update the same document
+    # If you need interview history, consider a separate interviews_history collection
+    await _safe_create_index(interviews, failures, "application_id", unique=True)
+    await _safe_create_index(interviews, failures, "job_id")
+    await _safe_create_index(interviews, failures, "job_seeker_id")
+    await _safe_create_index(interviews, failures, "employer_id")
+    await _safe_create_index(interviews, failures, "status")
+    await _safe_create_index(
+        interviews, failures, [("scheduled_date", 1)]
+    )  # For upcoming interviews
+    await _safe_create_index(interviews, failures, [("created_at", -1)])
+    await _safe_create_index(
+        interviews, failures, [("employer_id", 1), ("status", 1)]
+    )  # Employer filtering
+    await _safe_create_index(
+        interviews, failures, [("job_seeker_id", 1), ("status", 1)]
+    )  # Job seeker filtering
+
+
+async def _init_chat_indexes(db: Any, failures: list[dict[str, str]]) -> None:
+    """Initialize indexes for chat sessions and messages."""
+
+    chat_sessions = db["chat_sessions"]
+    await _safe_create_index(chat_sessions, failures, "session_id", unique=True)
+    await _safe_create_index(chat_sessions, failures, "user_id")
+    await _safe_create_index(chat_sessions, failures, [("user_id", 1), ("status", 1)])
+    await _safe_create_index(chat_sessions, failures, [("last_interaction_at", -1)])
+
+    chat_messages = db["chat_messages"]
+    await _safe_create_index(chat_messages, failures, "session_id")
+    await _safe_create_index(chat_messages, failures, [("session_id", 1), ("created_at", -1)])
+
+
+async def init_db_indexes() -> None:
+    """Initialize all database indexes."""
+    db = get_mongo_database()
+    failures: list[dict[str, str]] = []
+
+    await _init_user_indexes(db, failures)
+    await _init_job_indexes(db, failures)
+    await _init_feature_indexes(db, failures)
+    await _init_chat_indexes(db, failures)
+
+    if failures:
+        summary = ", ".join(
+            f"{item.get('collection', 'unknown')}: {item.get('error', 'unknown error')}"
+            for item in failures
+        )
+        _logger.error(
+            "database.index_creation_partial",
+            extra={
+                "failure_count": len(failures),
+                "failures": failures,
+                "summary": summary,
+            },
+        )

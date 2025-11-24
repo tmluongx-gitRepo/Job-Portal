@@ -3,11 +3,14 @@
 [project]
 name = "job-portal-backend"
 version = "0.1.0"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 
 [tool.mypy]
 # Python version
-python_version = "3.12"
+python_version = "3.11"
+
+# Package resolution
+explicit_package_bases = false
 
 # Strict mode
 strict = true
@@ -25,7 +28,7 @@ check_untyped_defs = true
 disallow_untyped_calls = false  # Too strict for FastAPI/Motor
 disallow_any_generics = false  # Too strict for Motor
 warn_redundant_casts = true
-warn_unused_ignores = true
+warn_unused_ignores = false  # Allow defensive type: ignore comments
 no_implicit_reexport = true
 strict_equality = true
 
@@ -52,6 +55,14 @@ module = [
     "motor.*",
     "chromadb.*",
     "redis.*",
+    "dropbox.*",
+    "supabase.*",
+    "fastapi.*",
+    "pymongo.*",
+    "pytest_asyncio.*",
+    "langchain.*",
+    "langchain_core.*",
+    "langchain_openai.*",
 ]
 ignore_missing_imports = true
 

@@ -1,4 +1,5 @@
 import { type ReactElement } from "react";
+import Link from "next/link";
 import {
   MapPin,
   DollarSign,
@@ -13,7 +14,7 @@ import {
 } from "lucide-react";
 
 interface Job {
-  id: number;
+  id: string | number; // Support both for backwards compatibility
   title: string;
   company: string;
   location: string;
@@ -387,9 +388,12 @@ export default function JobListing({
             </div>
           ) : (
             <>
-              <button className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-2 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center">
+              <Link
+                href={`/apply/${job.id}`}
+                className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-2 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center"
+              >
                 Apply Now
-              </button>
+              </Link>
               <button className="bg-yellow-100 text-green-700 border border-green-300 px-6 py-2 rounded-lg font-medium hover:bg-yellow-200 transition-all">
                 Learn More
               </button>

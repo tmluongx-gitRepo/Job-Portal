@@ -1,4 +1,10 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Find .env file in project root directory
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent  # Job-Portal/
+ENV_FILE = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
@@ -7,6 +13,7 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "Job Portal API"
     APP_VERSION: str = "0.1.0"
+    APP_ENV: str = "development"
     DEBUG: bool = True
 
     # ChromaDB Vector Database
@@ -17,19 +24,89 @@ class Settings(BaseSettings):
     # MongoDB
     MONGO_URI: str = "mongodb://localhost:27017"
     MONGO_DB_NAME: str = "job_portal"
+    MONGO_TEST_DB_NAME: str = "job_portal_test"  # Test database name
 
     # Redis
     REDIS_URL: str = "redis://redis:6379/0"
+    REDIS_KEY_PREFIX: str = "job-portal"
 
     # Security
+    # Must be set via environment variable - never use default in production!
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://frontend:3000"]
+    # Supabase Authentication
+    # These must be set via environment variables (.env file)
+    # Never commit secrets to version control!
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""  # For testing/admin operations - NEVER commit this!
+    SUPABASE_JWT_SECRET: str = ""  # For JWT signature verification - NEVER commit this!
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
+    # Dropbox File Storage
+    DROPBOX_APP_KEY: str = ""
+    DROPBOX_APP_SECRET: str = ""
+    DROPBOX_ACCESS_TOKEN: str = ""
+
+    # OpenAI / LangChain
+    OPENAI_API_KEY: str = ""
+    OPENAI_CHAT_MODEL: str = "gpt-4o-mini"
+    OPENAI_JOB_SEEKER_MODEL: str | None = None  # Defaults to OPENAI_CHAT_MODEL when unset
+    OPENAI_EMPLOYER_MODEL: str | None = None  # Defaults to OPENAI_CHAT_MODEL when unset
+    OPENAI_SUMMARY_MODEL: str | None = None  # Defaults to OPENAI_CHAT_MODEL when unset
+    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-large"
+    LANGCHAIN_TRACING_ENABLED: bool = False
+    LANGCHAIN_PROJECT: str | None = None
+
+    # Conversational agent settings
+    CHAT_SESSION_TTL_SECONDS: int = 60 * 60 * 48  # 48 hours
+    CHAT_RECENT_MESSAGE_LIMIT: int = 20
+    CHAT_SUMMARY_MAX_TOKENS: int = 750
+    CHAT_RATE_LIMIT_MAX_MESSAGES: int = 30
+    CHAT_RATE_LIMIT_WINDOW_SECONDS: int = 60
+    CHAT_STREAM_MAX_RETRIES: int = 3
+    CHAT_STREAM_RETRY_MIN_DELAY: float = 0.5
+    CHAT_SUMMARY_MAX_RETRIES: int = 3
+    CHAT_SUMMARY_RETRY_MIN_DELAY: float = 0.5
+
+    # Webhook settings
+    WEBHOOK_TIMEOUT_SECONDS: float = 5.0
+    WEBHOOK_MAX_RETRIES: int = 3
+    WEBHOOK_RETRY_MIN_DELAY: float = 0.5
+    N8N_WEBHOOK_AUTH_HEADER_NAME: str | None = None
+    N8N_WEBHOOK_AUTH_HEADER_VALUE: str | None = None
+
+    # N8N Webhook Integration
+    N8N_WEBHOOK_URL: str = ""
+    N8N_WEBHOOK_ENABLED: bool = False
+
+    # CORS
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://frontend:3000",
+        "http://n8n:5678",
+        "http://localhost:5678",
+        "http://host.docker.internal:5678",
+    ]
+
+    model_config = SettingsConfigDict(env_file=str(ENV_FILE), case_sensitive=True, extra="ignore")
 
 
 settings = Settings()
+
+
+def validate_runtime_configuration() -> None:
+    """Raise a runtime error if mandatory configuration is missing."""
+
+    if settings.DEBUG or settings.APP_ENV.lower() in {"development", "test"}:
+        return
+
+    missing: list[str] = []
+
+    if not settings.OPENAI_API_KEY:
+        missing.append("OPENAI_API_KEY")
+
+    if missing:
+        joined = ", ".join(missing)
+        raise RuntimeError(f"Missing required configuration value(s) for production: {joined}.")

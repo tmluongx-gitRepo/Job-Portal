@@ -36,6 +36,10 @@ build/
 .DS_Store
 Thumbs.db
 
+# System packages
+*.deb
+*.rpm
+
 # Logs
 *.log
 logs/
@@ -51,3 +55,4 @@ redis_data/
 
 # AI Example Files
 ai-mockups/
+PR_DESCRIPTION.md

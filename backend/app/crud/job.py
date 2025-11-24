@@ -4,7 +4,7 @@ from typing import cast
 from bson import ObjectId
 
 from app.database import get_jobs_collection
-from app.types import JobDocument
+from app.type_definitions import JobDocument
 
 
 async def create_job(job_data: dict[str, object], posted_by: str | None = None) -> JobDocument:
@@ -24,6 +24,7 @@ async def create_job(job_data: dict[str, object], posted_by: str | None = None) 
         **job_data,
         "posted_by": posted_by,
         "is_active": True,
+        "filled": False,  # Explicitly set filled to False for new jobs
         "view_count": 0,
         "application_count": 0,
         "created_at": datetime.now(UTC),
@@ -276,4 +277,4 @@ async def get_jobs_count(is_active: bool | None = None, posted_by: str | None = 
     if posted_by:
         query["posted_by"] = posted_by
 
-    return await collection.count_documents(query)
+    return await collection.count_documents(query)  # type: ignore[no-any-return]

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type ReactElement } from "react";
+import { useState, useEffect, type FormEvent, type ReactElement } from "react";
 
 import {
   Search,
@@ -10,217 +10,63 @@ import {
   ChevronRight,
 } from "lucide-react";
 import JobListing from "../../components/JobListing";
-
-// Sample job data - will be replaced with API call later
-const sampleJobs = [
-  {
-    id: 1,
-    title: "Marketing Coordinator",
-    company: "TechFlow Solutions",
-    location: "Phoenix, AZ",
-    type: "Full-time",
-    salary: "$45,000 - $55,000",
-    posted: "2 days ago",
-    description:
-      "Join our dynamic marketing team to create engaging campaigns and build meaningful connections with our community.",
-    requirements: [
-      "2+ years marketing experience",
-      "Social media management",
-      "Content creation",
-    ],
-    benefits: ["Health insurance", "Flexible schedule", "401k matching"],
-    values: ["Innovation", "Work-Life Balance", "Community Impact"],
-    cultureFit: [
-      "Collaborative team environment",
-      "Creative problem-solving encouraged",
-      "Casual dress code",
-    ],
-  },
-  {
-    id: 2,
-    title: "Business Analyst",
-    company: "DataCore Industries",
-    location: "Scottsdale, AZ",
-    type: "Full-time",
-    salary: null,
-    posted: "1 week ago",
-    description:
-      "Analyze business processes and collaborate with teams to drive data-informed decision making.",
-    requirements: [
-      "Bachelor's degree preferred",
-      "Excel proficiency",
-      "Problem-solving skills",
-    ],
-    benefits: [
-      "Remote work options",
-      "Professional development",
-      "Team outings",
-    ],
-    values: null,
-    cultureFit: [
-      "Data-driven decision making",
-      "Cross-functional collaboration",
-      "Continuous learning mindset",
-    ],
-  },
-  {
-    id: 3,
-    title: "Customer Success Associate",
-    company: "Summit Financial",
-    location: "Remote",
-    type: "Full-time",
-    salary: "$42,000 - $50,000",
-    posted: "3 days ago",
-    description:
-      "Help our clients achieve their financial goals while building lasting relationships.",
-    requirements: [
-      "Strong communication skills",
-      "Customer service experience",
-      "Detail-oriented",
-    ],
-    benefits: [
-      "Health & dental",
-      "Home office stipend",
-      "Growth opportunities",
-    ],
-    values: ["Client-First Approach", "Integrity", "Professional Growth"],
-    cultureFit: [
-      "Relationship-focused environment",
-      "Empathy and patience valued",
-      "Results-oriented team",
-    ],
-  },
-  {
-    id: 4,
-    title: "Project Manager",
-    company: "InnovateNow Corp",
-    location: "Tempe, AZ",
-    type: "Full-time",
-    salary: "$65,000 - $75,000",
-    posted: "5 days ago",
-    description:
-      "Lead cross-functional teams to deliver impactful projects that drive business growth.",
-    requirements: [
-      "3+ years project management",
-      "Agile methodology",
-      "Leadership experience",
-    ],
-    benefits: ["Comprehensive benefits", "Flexible PTO", "Learning budget"],
-    values: ["Innovation", "Transparency", "Continuous Improvement"],
-    cultureFit: null,
-  },
-  {
-    id: 5,
-    title: "Administrative Assistant",
-    company: "Metro Healthcare Group",
-    location: "Phoenix, AZ",
-    type: "Part-time",
-    salary: "$16 - $19 per hour",
-    posted: "1 day ago",
-    description:
-      "Support our healthcare team with administrative tasks in a caring, patient-focused environment.",
-    requirements: [
-      "High school diploma",
-      "Microsoft Office",
-      "Healthcare experience preferred",
-    ],
-    benefits: ["Healthcare discount", "Flexible hours", "Supportive team"],
-    values: ["Patient Care", "Compassion", "Teamwork"],
-    cultureFit: [
-      "Caring and supportive atmosphere",
-      "Patient-first mentality",
-      "Collaborative healthcare team",
-    ],
-  },
-  {
-    id: 6,
-    title: "Sales Representative",
-    company: "BlueTech Systems",
-    location: "Mesa, AZ",
-    type: "Full-time",
-    salary: null,
-    posted: "4 days ago",
-    description:
-      "Build relationships with clients and help them find technology solutions that fit their needs.",
-    requirements: [
-      "Sales experience helpful",
-      "Relationship building",
-      "Tech interest",
-    ],
-    benefits: [
-      "Commission structure",
-      "Training program",
-      "Career advancement",
-    ],
-    values: null,
-    cultureFit: null,
-  },
-  {
-    id: 7,
-    title: "UX Designer",
-    company: "Creative Solutions Co.",
-    location: "Phoenix, AZ",
-    type: "Full-time",
-    salary: "$55,000 - $70,000",
-    posted: "1 week ago",
-    description:
-      "Design user-centered experiences that delight customers and drive business results.",
-    requirements: [
-      "2+ years UX design",
-      "Figma proficiency",
-      "User research experience",
-    ],
-    benefits: [
-      "Health insurance",
-      "Creative freedom",
-      "Design conference budget",
-    ],
-    values: ["User-Centered Design", "Innovation", "Collaboration"],
-    cultureFit: [
-      "Design thinking culture",
-      "Feedback-driven environment",
-      "Work-life balance focus",
-    ],
-    hasApplied: true,
-    appliedDate: "2024-10-28",
-  },
-];
+import { useJobs, useJobSearch } from "@/features/jobs";
 
 export default function JobsPage(): ReactElement {
+  // ✅ Use custom hooks for data fetching
+  const {
+    jobs: initialJobs,
+    loading: initialLoading,
+    error: initialError,
+    refetch,
+  } = useJobs();
+  const {
+    jobs: searchResults,
+    loading: searchLoading,
+    error: searchError,
+    searchJobs,
+  } = useJobSearch();
+
+  // UI state
   const [searchTerm, setSearchTerm] = useState("");
   const [location, setLocation] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [savedJobs, setSavedJobs] = useState<Set<number>>(new Set());
-  const [saveMessages, setSaveMessages] = useState<Record<number, string>>({});
-  const [expandedJobs, setExpandedJobs] = useState<Set<number>>(new Set());
+  const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
+  const [saveMessages, setSaveMessages] = useState<Record<string, string>>({});
+  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
+  const [isSearchMode, setIsSearchMode] = useState(false);
   const jobsPerPage = 10;
 
-  // TODO: Replace with API call
-  const jobs = sampleJobs;
+  // Determine which jobs to show
+  const jobs = isSearchMode ? searchResults : initialJobs;
+  const loading = isSearchMode ? searchLoading : initialLoading;
+  const error = isSearchMode ? searchError : initialError;
+  const totalJobs = jobs.length;
 
-  const handleSaveJob = (jobId: number): void => {
-    setSavedJobs((prev: Set<number>) => {
+  const handleSaveJob = (jobId: string | number): void => {
+    const jobIdStr = String(jobId);
+    setSavedJobs((prev: Set<string>) => {
       const newSaved = new Set(prev);
-      if (newSaved.has(jobId)) {
-        newSaved.delete(jobId);
-        setSaveMessages((prev: Record<number, string>) => ({
+      if (newSaved.has(jobIdStr)) {
+        newSaved.delete(jobIdStr);
+        setSaveMessages((prev: Record<string, string>) => ({
           ...prev,
-          [jobId]: "Job removed from saved",
+          [jobIdStr]: "Job removed from saved",
         }));
       } else {
-        newSaved.add(jobId);
-        setSaveMessages((prev: Record<number, string>) => ({
+        newSaved.add(jobIdStr);
+        setSaveMessages((prev: Record<string, string>) => ({
           ...prev,
-          [jobId]: "Job saved!",
+          [jobIdStr]: "Job saved!",
         }));
       }
 
       // Clear message after 2 seconds
       setTimeout(() => {
-        setSaveMessages((prev: Record<number, string>) => {
+        setSaveMessages((prev: Record<string, string>) => {
           const newMessages = { ...prev };
-          delete newMessages[jobId];
+          delete newMessages[jobIdStr];
           return newMessages;
         });
       }, 2000);
@@ -229,24 +75,29 @@ export default function JobsPage(): ReactElement {
     });
   };
 
-  const toggleJobExpansion = (jobId: number): void => {
-    setExpandedJobs((prev: Set<number>) => {
+  const toggleJobExpansion = (jobId: string | number): void => {
+    const jobIdStr = String(jobId);
+    setExpandedJobs((prev: Set<string>) => {
       const newExpanded = new Set(prev);
-      if (newExpanded.has(jobId)) {
-        newExpanded.delete(jobId);
+      if (newExpanded.has(jobIdStr)) {
+        newExpanded.delete(jobIdStr);
       } else {
-        newExpanded.add(jobId);
+        newExpanded.add(jobIdStr);
       }
       return newExpanded;
     });
   };
 
   // Pagination logic
-  const totalJobs = jobs.length;
   const totalPages = Math.ceil(totalJobs / jobsPerPage);
   const startIndex = (currentPage - 1) * jobsPerPage;
   const endIndex = startIndex + jobsPerPage;
   const currentJobs = jobs.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, location]);
 
   const goToPage = (page: number): void => {
     setCurrentPage(page);
@@ -265,10 +116,31 @@ export default function JobsPage(): ReactElement {
     }
   };
 
-  const handleSearch = (e: FormEvent): void => {
+  const handleSearch = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
-    // TODO: Implement search functionality
-    console.log("Search:", { searchTerm, location });
+    setCurrentPage(1); // Reset to first page
+
+    // Set search mode BEFORE the API call so loading state shows immediately
+    setIsSearchMode(true);
+
+    try {
+      // ✅ Use search hook
+      await searchJobs({
+        query: searchTerm || undefined,
+        location: location || undefined,
+      });
+    } catch (error) {
+      // Error is already handled by the hook, but we stay in search mode
+      // to show the error state properly
+      console.error("Search failed:", error);
+    }
+  };
+
+  const handleResetSearch = (): void => {
+    setSearchTerm("");
+    setLocation("");
+    setIsSearchMode(false);
+    setCurrentPage(1);
   };
 
   return (
@@ -288,7 +160,10 @@ export default function JobsPage(): ReactElement {
         {/* Search Interface */}
         <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow-lg border border-green-200 p-6 mb-8">
           <form
-            onSubmit={handleSearch}
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSearch(e);
+            }}
             className="flex flex-col lg:flex-row gap-4"
           >
             <div className="flex-1 relative">
@@ -395,58 +270,109 @@ export default function JobsPage(): ReactElement {
         </div>
 
         {/* Results Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <p className="text-green-700">
-              <span className="font-semibold">{totalJobs} opportunities</span>{" "}
-              found
-            </p>
-            <p className="text-sm text-green-600">
-              Rejections don&apos;t automatically mean you&apos;re a bad
-              candidate. You have value.
-            </p>
-            {totalJobs > 0 && (
-              <p className="text-sm text-green-600 mt-1">
-                Showing {startIndex + 1}-{Math.min(endIndex, totalJobs)} of{" "}
-                {totalJobs} results
+        {!loading && (
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-green-700">
+                <span className="font-semibold">{totalJobs} opportunities</span>{" "}
+                found
               </p>
+              <p className="text-sm text-green-600">
+                Rejections don&apos;t automatically mean you&apos;re a bad
+                candidate. You have value.
+              </p>
+              {totalJobs > 0 && (
+                <p className="text-sm text-green-600 mt-1">
+                  Showing {startIndex + 1}-{Math.min(endIndex, totalJobs)} of{" "}
+                  {totalJobs} results
+                </p>
+              )}
+            </div>
+
+            <select className="px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 bg-white/80 shadow-lg border-b-2 border-b-green-300">
+              <option>Sort by Relevance</option>
+              <option>Sort by Date Posted</option>
+              <option>Salary (High - Low)</option>
+              <option>Salary (Low - High)</option>
+            </select>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-12 text-center">
+            <p className="text-green-700 text-lg mb-2">Loading jobs...</p>
+            <p className="text-green-600 text-sm">Please wait</p>
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+            <p className="text-red-800">❌ {error}</p>
+            <button
+              onClick={() => {
+                if (isSearchMode) {
+                  void searchJobs({ query: searchTerm, location });
+                } else {
+                  void refetch();
+                }
+              }}
+              className="mt-2 text-red-600 hover:text-red-800 underline text-sm"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading ? (
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-12 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+            <p className="text-green-700 text-lg mb-2">Loading jobs...</p>
+            <p className="text-green-600 text-sm">
+              Fetching opportunities from the database
+            </p>
+          </div>
+        ) : (
+          /* Job Listings */
+          <div className="space-y-6">
+            {currentJobs.length > 0 ? (
+              currentJobs
+                .filter((job) => job.id != null && job.id !== undefined)
+                .map((job) => {
+                  const jobId = String(job.id);
+                  return (
+                    <JobListing
+                      key={jobId}
+                      job={job}
+                      isSaved={savedJobs.has(jobId)}
+                      isExpanded={expandedJobs.has(jobId)}
+                      saveMessage={saveMessages[jobId]}
+                      onSave={() => handleSaveJob(jobId)}
+                      onToggleExpand={() => toggleJobExpansion(jobId)}
+                    />
+                  );
+                })
+            ) : (
+              <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-12 text-center">
+                <p className="text-green-700 text-lg mb-2">No jobs found</p>
+                <p className="text-green-600 text-sm">
+                  Try adjusting your search criteria or filters
+                </p>
+                <button
+                  onClick={handleResetSearch}
+                  className="mt-4 bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-2 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all"
+                >
+                  {isSearchMode ? "Reset Search" : "Load Jobs"}
+                </button>
+              </div>
             )}
           </div>
-
-          <select className="px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 bg-white/80 shadow-lg border-b-2 border-b-green-300">
-            <option>Sort by Relevance</option>
-            <option>Sort by Date Posted</option>
-            <option>Salary (High - Low)</option>
-            <option>Salary (Low - High)</option>
-          </select>
-        </div>
-
-        {/* Job Listings */}
-        <div className="space-y-6">
-          {currentJobs.length > 0 ? (
-            currentJobs.map((job) => (
-              <JobListing
-                key={job.id}
-                job={job}
-                isSaved={savedJobs.has(job.id)}
-                isExpanded={expandedJobs.has(job.id)}
-                saveMessage={saveMessages[job.id]}
-                onSave={() => handleSaveJob(job.id)}
-                onToggleExpand={() => toggleJobExpansion(job.id)}
-              />
-            ))
-          ) : (
-            <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-12 text-center">
-              <p className="text-green-700 text-lg mb-2">No jobs found</p>
-              <p className="text-green-600 text-sm">
-                Try adjusting your search criteria or filters
-              </p>
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {!loading && !error && totalPages > 1 && (
           <div className="flex items-center justify-between mt-8 bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-6">
             <div className="flex items-center space-x-4">
               <p className="text-sm text-green-700">

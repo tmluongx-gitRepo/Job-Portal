@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, type ReactElement } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   Save,
@@ -15,6 +16,9 @@ import {
   CheckCircle,
   Users,
 } from "lucide-react";
+import { api, ApiError, ValidationError } from "../../lib/api";
+import { getCurrentUserId } from "../../lib/auth";
+import type { JobCreate } from "../../lib/api";
 
 // TODO: Replace with API call to fetch employer info
 const employerInfo = {
@@ -145,6 +149,8 @@ interface JobData {
 }
 
 export default function JobPostingPage(): ReactElement {
+  const router = useRouter();
+  const userId = getCurrentUserId();
   const [selectedCompany, setSelectedCompany] = useState("");
   const [jobData, setJobData] = useState<JobData>({
     title: "",
@@ -170,6 +176,10 @@ export default function JobPostingPage(): ReactElement {
     "saving" | "saved" | "error"
   >("saved");
   const [showPreview, setShowPreview] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Auto-save functionality (simulated)
   useEffect(() => {
@@ -235,6 +245,179 @@ export default function JobPostingPage(): ReactElement {
       }));
       setCurrentTemplate(templateKey);
     }
+  };
+
+  // Transform form data to API format
+  const transformToApiFormat = (data: JobData): JobCreate => {
+    // Combine requirements and niceToHave into a single requirements string
+    const allRequirements = [
+      ...data.requirements.filter((r) => r.trim()),
+      ...data.niceToHave
+        .filter((r) => r.trim())
+        .map((r) => `Nice to have: ${r}`),
+    ].join("\n");
+
+    // Parse salary values with validation
+    const parseSalary = (value: string | undefined): number | null => {
+      if (!value || !data.salaryDisclosed) return null;
+      const cleaned = value.replace(/[^0-9]/g, "");
+      if (!cleaned) return null;
+      const parsed = parseInt(cleaned, 10);
+      return isNaN(parsed) ? null : parsed;
+    };
+
+    const salaryMin = parseSalary(data.salaryMin);
+    const salaryMax = parseSalary(data.salaryMax);
+
+    // Parse application deadline
+    const applicationDeadline = data.applicationDeadline
+      ? new Date(data.applicationDeadline)
+      : null;
+
+    // Determine remote_ok from workArrangement
+    const remote_ok =
+      data.workArrangement === "Remote" || data.workArrangement === "Hybrid";
+
+    // Get company name from selected company or typed value
+    const companyName =
+      employerInfo.companies.find((c) => c.id === selectedCompany)?.name ||
+      selectedCompany;
+
+    return {
+      title: data.title,
+      company: companyName,
+      description: data.description,
+      requirements: allRequirements || null,
+      responsibilities: data.responsibilities.filter((r) => r.trim()),
+      location: data.location,
+      job_type: data.jobType,
+      remote_ok,
+      salary_min: salaryMin,
+      salary_max: salaryMax,
+      experience_required: data.experienceLevel || null,
+      education_required: null, // Not in form yet
+      industry: data.industry || null,
+      company_size: null, // Not in form yet
+      benefits: data.compensationAdditional
+        ? [data.compensationAdditional]
+        : [],
+      skills_required: [], // Could extract from requirements later
+      application_deadline: applicationDeadline,
+    };
+  };
+
+  const handlePublishJob = async (): Promise<void> => {
+    setIsSubmitting(true);
+    setSubmitError(null);
+    setSubmitSuccess(false);
+    setFieldErrors({});
+
+    // Check authentication
+    if (!userId) {
+      setSubmitError("You must be logged in to post a job.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Validate each field individually
+    const errors: Record<string, string> = {};
+
+    if (!jobData.title?.trim()) {
+      errors.title = "Job title is required";
+    }
+
+    if (!jobData.description?.trim()) {
+      errors.description = "Job description is required";
+    }
+
+    if (!jobData.location?.trim()) {
+      errors.location = "Location is required";
+    }
+
+    // Company validation - allow either selected company or typed name
+    const companyName =
+      employerInfo.companies.find((c) => c.id === selectedCompany)?.name ||
+      selectedCompany;
+
+    if (!companyName?.trim() || companyName === "Your Company") {
+      errors.company = "Please select or enter a company name";
+    }
+
+    // If there are validation errors, show them and stop
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      const missingFields = Object.keys(errors).join(", ");
+      setSubmitError(`Please fix the following fields: ${missingFields}`);
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      // Get MongoDB ObjectId from /api/auth/me (backend converts Supabase UUID to MongoDB ObjectId)
+      // The userId from getCurrentUserId() is the Supabase UUID, but backend expects MongoDB ObjectId
+      const currentUserInfo = await api.auth.getCurrentUser();
+      const mongoUserId = currentUserInfo.id; // This is the MongoDB ObjectId
+
+      // Get or create employer profile
+      let employerProfileId: string;
+      const existingProfile =
+        await api.employerProfiles.getByUserId(mongoUserId);
+
+      if (existingProfile && existingProfile.id) {
+        employerProfileId = existingProfile.id;
+      } else {
+        // Profile doesn't exist, create one
+        const companyName =
+          employerInfo.companies.find((c) => c.id === selectedCompany)?.name ||
+          selectedCompany;
+
+        if (!companyName || companyName.trim() === "") {
+          throw new Error(
+            "Company name is required to create employer profile"
+          );
+        }
+
+        const newProfile = await api.employerProfiles.create({
+          user_id: mongoUserId,
+          company_name: companyName,
+        });
+
+        employerProfileId = (newProfile as { id: string }).id;
+      }
+
+      // Create job with employer profile ID
+      const apiData = transformToApiFormat(jobData);
+      const createdJob = await api.jobs.create(apiData, employerProfileId);
+
+      console.log("Job created successfully:", createdJob);
+      setSubmitSuccess(true);
+
+      // Redirect to jobs page after a short delay
+      setTimeout(() => {
+        router.push("/jobs");
+      }, 1500);
+    } catch (err) {
+      console.error("Failed to create job:", err);
+      if (err instanceof ValidationError) {
+        const errorMessages = err.issues.map((issue) => {
+          const field = issue.path.join(".");
+          return `${field}: ${issue.message}`;
+        });
+        setSubmitError(`Validation error: ${errorMessages.join(", ")}`);
+      } else if (err instanceof ApiError) {
+        setSubmitError(`Failed to create job: ${err.message}`);
+      } else {
+        setSubmitError("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveDraft = async (): Promise<void> => {
+    // For now, draft saving is the same as publishing
+    // In the future, we could add an is_active: false flag
+    await handlePublishJob();
   };
 
   const getAutoSaveIndicator = (): ReactElement | null => {
@@ -323,8 +506,22 @@ export default function JobPostingPage(): ReactElement {
                   </label>
                   <select
                     value={selectedCompany}
-                    onChange={(e) => setSelectedCompany(e.target.value)}
-                    className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                    onChange={(e) => {
+                      setSelectedCompany(e.target.value);
+                      // Clear error when user selects
+                      if (fieldErrors.company) {
+                        setFieldErrors((prev) => {
+                          const newErrors = { ...prev };
+                          delete newErrors.company;
+                          return newErrors;
+                        });
+                      }
+                    }}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent bg-white/80 ${
+                      fieldErrors.company
+                        ? "border-red-400 focus:ring-red-400"
+                        : "border-green-300 focus:ring-green-400"
+                    }`}
                   >
                     <option value="">Select a company...</option>
                     {employerInfo.companies.map((company) => (
@@ -333,6 +530,11 @@ export default function JobPostingPage(): ReactElement {
                       </option>
                     ))}
                   </select>
+                  {fieldErrors.company && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {fieldErrors.company}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -375,12 +577,29 @@ export default function JobPostingPage(): ReactElement {
                     <input
                       type="text"
                       value={jobData.title}
-                      onChange={(e) =>
-                        handleInputChange("title", e.target.value)
-                      }
-                      className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                      onChange={(e) => {
+                        handleInputChange("title", e.target.value);
+                        // Clear error when user types
+                        if (fieldErrors.title) {
+                          setFieldErrors((prev) => {
+                            const newErrors = { ...prev };
+                            delete newErrors.title;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent bg-white/80 ${
+                        fieldErrors.title
+                          ? "border-red-400 focus:ring-red-400"
+                          : "border-green-300 focus:ring-green-400"
+                      }`}
                       placeholder="e.g. Senior Marketing Coordinator"
                     />
+                    {fieldErrors.title && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {fieldErrors.title}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -456,17 +675,34 @@ export default function JobPostingPage(): ReactElement {
 
                 <div>
                   <label className="block text-sm font-medium text-green-800 mb-2">
-                    Location
+                    Location *
                   </label>
                   <input
                     type="text"
                     value={jobData.location}
-                    onChange={(e) =>
-                      handleInputChange("location", e.target.value)
-                    }
-                    className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80"
+                    onChange={(e) => {
+                      handleInputChange("location", e.target.value);
+                      // Clear error when user types
+                      if (fieldErrors.location) {
+                        setFieldErrors((prev) => {
+                          const newErrors = { ...prev };
+                          delete newErrors.location;
+                          return newErrors;
+                        });
+                      }
+                    }}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent bg-white/80 ${
+                      fieldErrors.location
+                        ? "border-red-400 focus:ring-red-400"
+                        : "border-green-300 focus:ring-green-400"
+                    }`}
                     placeholder="e.g. Phoenix, AZ or Remote"
                   />
+                  {fieldErrors.location && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {fieldErrors.location}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -481,13 +717,30 @@ export default function JobPostingPage(): ReactElement {
                 </p>
                 <textarea
                   value={jobData.description}
-                  onChange={(e) =>
-                    handleInputChange("description", e.target.value)
-                  }
+                  onChange={(e) => {
+                    handleInputChange("description", e.target.value);
+                    // Clear error when user types
+                    if (fieldErrors.description) {
+                      setFieldErrors((prev) => {
+                        const newErrors = { ...prev };
+                        delete newErrors.description;
+                        return newErrors;
+                      });
+                    }
+                  }}
                   rows={8}
-                  className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white/80 resize-none"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent bg-white/80 resize-none ${
+                    fieldErrors.description
+                      ? "border-red-400 focus:ring-red-400"
+                      : "border-green-300 focus:ring-green-400"
+                  }`}
                   placeholder="Describe the role, the team, and what makes this opportunity special. Focus on growth, impact, and culture fit rather than just tasks..."
                 />
+                {fieldErrors.description && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {fieldErrors.description}
+                  </p>
+                )}
               </div>
 
               {/* Requirements */}
@@ -749,23 +1002,72 @@ export default function JobPostingPage(): ReactElement {
               <h3 className="text-lg font-semibold text-green-800 mb-4">
                 Actions
               </h3>
+
+              {/* Error Message */}
+              {submitError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-800">{submitError}</p>
+                </div>
+              )}
+
+              {/* Success Message */}
+              {submitSuccess && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800 flex items-center">
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Job posted successfully! Redirecting...
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <button
                   onClick={() => setShowPreview(!showPreview)}
-                  className="w-full bg-green-50 text-green-700 border border-green-300 py-3 px-4 rounded-lg font-medium hover:bg-green-100 transition-all flex items-center justify-center"
+                  disabled={isSubmitting}
+                  className="w-full bg-green-50 text-green-700 border border-green-300 py-3 px-4 rounded-lg font-medium hover:bg-green-100 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Eye className="w-4 h-4 mr-2" />
                   Preview Job Posting
                 </button>
 
-                <button className="w-full bg-amber-50 text-amber-700 border border-amber-300 py-3 px-4 rounded-lg font-medium hover:bg-amber-100 transition-all flex items-center justify-center">
-                  <Save className="w-4 h-4 mr-2" />
-                  Save as Draft
+                <button
+                  onClick={() => {
+                    void handleSaveDraft();
+                  }}
+                  disabled={isSubmitting}
+                  className="w-full bg-amber-50 text-amber-700 border border-amber-300 py-3 px-4 rounded-lg font-medium hover:bg-amber-100 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Save as Draft
+                    </>
+                  )}
                 </button>
 
-                <button className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-4 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center">
-                  <Users className="w-4 h-4 mr-2" />
-                  Publish Job
+                <button
+                  onClick={() => {
+                    void handlePublishJob();
+                  }}
+                  disabled={isSubmitting}
+                  className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-4 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    <>
+                      <Users className="w-4 h-4 mr-2" />
+                      Publish Job
+                    </>
+                  )}
                 </button>
               </div>
             </div>

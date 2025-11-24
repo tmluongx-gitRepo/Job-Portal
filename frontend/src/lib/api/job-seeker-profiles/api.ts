@@ -2,7 +2,8 @@
  * Job Seeker Profile API functions
  */
 import { z } from "zod";
-import { apiRequest } from "../client";
+import { ApiError, apiRequest } from "../client";
+import type { JobSeekerProfile } from "./types";
 import {
   JobSeekerProfileCreateSchema,
   JobSeekerProfileUpdateSchema,
@@ -11,7 +12,7 @@ import {
 
 export const jobSeekerProfileApi = {
   async create(data: z.infer<typeof JobSeekerProfileCreateSchema>) {
-    return apiRequest("/job-seeker-profiles", {
+    return apiRequest("/api/job-seeker-profiles", {
       method: "POST",
       requestSchema: JobSeekerProfileCreateSchema,
       responseSchema: JobSeekerProfileResponseSchema,
@@ -24,7 +25,7 @@ export const jobSeekerProfileApi = {
     if (params?.skip) query.set("skip", params.skip.toString());
     if (params?.limit) query.set("limit", params.limit.toString());
 
-    return apiRequest(`/job-seeker-profiles?${query}`, {
+    return apiRequest(`/api/job-seeker-profiles?${query}`, {
       method: "GET",
       responseSchema: z.array(JobSeekerProfileResponseSchema),
     });
@@ -50,7 +51,7 @@ export const jobSeekerProfileApi = {
     if (params.skip) query.set("skip", params.skip.toString());
     if (params.limit) query.set("limit", params.limit.toString());
 
-    return apiRequest(`/job-seeker-profiles/search?${query}`, {
+    return apiRequest(`/api/job-seeker-profiles/search?${query}`, {
       method: "GET",
       responseSchema: z.array(JobSeekerProfileResponseSchema),
     });
@@ -58,24 +59,31 @@ export const jobSeekerProfileApi = {
 
   async getById(profileId: string, incrementViews = false) {
     const query = incrementViews ? "?increment_views=true" : "";
-    return apiRequest(`/job-seeker-profiles/${profileId}${query}`, {
+    return apiRequest(`/api/job-seeker-profiles/${profileId}${query}`, {
       method: "GET",
       responseSchema: JobSeekerProfileResponseSchema,
     });
   },
 
-  async getByUserId(userId: string) {
-    return apiRequest(`/job-seeker-profiles/user/${userId}`, {
-      method: "GET",
-      responseSchema: JobSeekerProfileResponseSchema,
-    });
+  async getByUserId(userId: string): Promise<JobSeekerProfile | null> {
+    try {
+      return await apiRequest(`/api/job-seeker-profiles/user/${userId}`, {
+        method: "GET",
+        responseSchema: JobSeekerProfileResponseSchema,
+      });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   async update(
     profileId: string,
     data: z.infer<typeof JobSeekerProfileUpdateSchema>
   ) {
-    return apiRequest(`/job-seeker-profiles/${profileId}`, {
+    return apiRequest(`/api/job-seeker-profiles/${profileId}`, {
       method: "PUT",
       requestSchema: JobSeekerProfileUpdateSchema,
       responseSchema: JobSeekerProfileResponseSchema,
@@ -84,7 +92,7 @@ export const jobSeekerProfileApi = {
   },
 
   async delete(profileId: string) {
-    return apiRequest(`/job-seeker-profiles/${profileId}`, {
+    return apiRequest(`/api/job-seeker-profiles/${profileId}`, {
       method: "DELETE",
       responseSchema: z.null(),
     });

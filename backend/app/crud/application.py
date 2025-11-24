@@ -2,9 +2,11 @@ from datetime import UTC, datetime
 from typing import cast
 
 from bson import ObjectId
+from bson.errors import InvalidId
 
+from app.constants import ApplicationStatus, InterviewStatus
 from app.database import get_applications_collection
-from app.types import ApplicationDocument
+from app.type_definitions import ApplicationDocument
 
 
 async def create_application(
@@ -25,7 +27,7 @@ async def create_application(
     now = datetime.now(UTC)
 
     # Create status history entry
-    initial_status = "Application Submitted"
+    initial_status = ApplicationStatus.SUBMITTED.value
     status_history_entry = {
         "status": initial_status,
         "changed_at": now,
@@ -211,7 +213,7 @@ async def get_applications_count(
     if status:
         query["status"] = status
 
-    return await collection.count_documents(query)
+    return await collection.count_documents(query)  # type: ignore[no-any-return]
 
 
 async def check_duplicate_application(job_seeker_id: str, job_id: str) -> bool:
@@ -230,3 +232,107 @@ async def check_duplicate_application(job_seeker_id: str, job_id: str) -> bool:
     existing = await collection.find_one({"job_seeker_id": job_seeker_id, "job_id": job_id})
 
     return existing is not None
+
+
+async def cancel_all_interviews_for_application(application_id: str) -> int:
+    """
+    Cancel all scheduled/rescheduled interviews for an application.
+
+    This is typically called when an application is rejected or accepted,
+    to automatically cancel any pending interviews.
+
+    Note:
+        Race conditions: This does not prevent new interviews from being scheduled
+        after cancellation. Business logic should prevent interviews for applications
+        in REJECTED/ACCEPTED states.
+
+    Args:
+        application_id: Application ID
+
+    Returns:
+        Number of interviews cancelled
+    """
+    from app.crud import interview as interview_crud
+    from app.database import get_interviews_collection
+
+    interviews_collection = get_interviews_collection()
+
+    # Find all scheduled or rescheduled interviews for this application
+    interviews = await interviews_collection.find(
+        {
+            "application_id": application_id,
+            "status": {"$in": [InterviewStatus.SCHEDULED.value, InterviewStatus.RESCHEDULED.value]},
+        }
+    ).to_list(length=100)  # Reasonable limit - most applications have 1-3 interviews
+
+    cancelled_count = 0
+
+    for interview in interviews:
+        result = await interview_crud.cancel_interview(
+            str(interview["_id"]),
+            cancelled_by="system",
+            reason="Application status changed",
+        )
+        # cancel_interview returns the updated document or None
+        if result is not None:
+            cancelled_count += 1
+
+    return cancelled_count
+
+
+async def reject_other_applications_for_job(job_id: str, except_application_id: str) -> int:
+    """
+    Auto-reject all other applications when one is accepted.
+
+    Warning:
+        This method may load a large number of documents into memory if a job has
+        thousands of applications. For production systems with high application volumes,
+        consider implementing pagination or aggregation pipelines.
+
+    Args:
+        job_id: Job ID
+        except_application_id: Application ID to exclude (the accepted one)
+
+    Returns:
+        Number of applications auto-rejected (0 if except_application_id is invalid)
+    """
+    collection = get_applications_collection()
+
+    # Validate except_application_id early
+    try:
+        except_object_id = ObjectId(except_application_id)
+    except InvalidId:
+        return 0
+
+    try:
+        # Update all other applications for this job that aren't already in a final state
+        result = await collection.update_many(
+            {
+                "job_id": job_id,
+                "_id": {"$ne": except_object_id},
+                "status": {
+                    "$nin": [ApplicationStatus.REJECTED.value, ApplicationStatus.ACCEPTED.value]
+                },
+            },
+            {
+                "$set": {
+                    "status": ApplicationStatus.REJECTED.value,
+                    "rejection_reason": "Position filled",
+                    "updated_at": datetime.now(UTC),
+                    "next_step": "Position has been filled",
+                },
+                "$push": {
+                    "status_history": {
+                        "status": ApplicationStatus.REJECTED.value,
+                        "changed_at": datetime.now(UTC),
+                        "notes": "Position filled - automatically rejected",
+                        "changed_by": "system",
+                    }
+                },
+            },
+        )
+
+    except Exception:
+        return 0
+    else:
+        return result.modified_count  # type: ignore[no-any-return]

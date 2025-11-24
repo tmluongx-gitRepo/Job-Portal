@@ -12,7 +12,7 @@ from app.database import (
     get_jobs_collection,
     get_recommendations_collection,
 )
-from app.types import RecommendationDocument
+from app.type_definitions import RecommendationDocument
 
 
 async def create_recommendation(recommendation_data: dict[str, object]) -> RecommendationDocument:
@@ -305,7 +305,7 @@ async def get_recommendations_count(
     if dismissed is not None:
         query["dismissed"] = dismissed
 
-    return await collection.count_documents(query)
+    return await collection.count_documents(query)  # type: ignore[no-any-return]
 
 
 async def check_recommendation_exists(job_seeker_id: str, job_id: str) -> bool:
@@ -323,4 +323,4 @@ async def check_recommendation_exists(job_seeker_id: str, job_id: str) -> bool:
 
     count = await collection.count_documents({"job_seeker_id": job_seeker_id, "job_id": job_id})
 
-    return count > 0
+    return count > 0  # type: ignore[no-any-return]

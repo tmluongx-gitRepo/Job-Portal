@@ -1,9 +1,5 @@
 #!/usr/bin/env sh
 
-if [ -f "$(dirname -- "$0")/_/husky.sh" ]; then
-  . "$(dirname -- "$0")/_/husky.sh"
-fi
-
 # Job Portal Pre-Commit Hook
 # Prefers running tooling directly in this environment,
 # and falls back to docker compose when needed.
@@ -101,7 +97,7 @@ if [ -n "$BACKEND_CHANGED" ]; then
     require_backend_env
     run_backend "uv run ruff check ."
     run_backend "uv run ruff format --check ."
-    run_backend "uv run mypy app/ --config-file=pyproject.toml"
+    run_backend "uv run mypy ."
 fi
 
 echo "✅ Pre-commit checks passed!"

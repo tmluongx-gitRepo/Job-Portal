@@ -1,9 +1,13 @@
-"""API routes for recommendations."""
+"""
+API routes for recommendations.
+"""
 
 from collections.abc import Iterable
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.auth.auth_utils import is_admin
+from app.auth.dependencies import get_current_user, require_admin
 from app.crud import job as job_crud
 from app.crud import job_seeker_profile as profile_crud
 from app.crud import recommendation as recommendation_crud
@@ -13,41 +17,54 @@ from app.schemas.recommendation import (
     RecommendationResponse,
     RecommendationUpdate,
 )
-from app.types import MatchFactorDocument, RecommendationDocument
+from app.type_definitions import RecommendationDocument
 
 router = APIRouter()
 
 
-def _convert_factors(raw_factors: Iterable[MatchFactorDocument] | None) -> list[MatchFactorSchema]:
-    """Convert stored factor dictionaries into schema objects."""
-
-    if not raw_factors:
-        return []
-    return [MatchFactorSchema.model_validate(factor) for factor in raw_factors]
-
-
 def _serialize_recommendation(document: RecommendationDocument) -> RecommendationResponse:
-    """Convert a database document into the API response schema."""
+    """Convert a database document to the response schema."""
+    job_seeker_id = document.get("job_seeker_id", "")
+    job_id = document.get("job_id", "")
+    match_percentage = document.get("match_percentage", 0)
+    reasoning = document.get("reasoning", "")
+    factors_data = document.get("factors", [])
+    factors = [MatchFactorSchema(**factor) for factor in factors_data]
+    ai_generated = document.get("ai_generated", True)
+    viewed = document.get("viewed", False)
+    dismissed = document.get("dismissed", False)
+    applied = document.get("applied", False)
 
     return RecommendationResponse(
         id=str(document["_id"]),
-        job_seeker_id=document["job_seeker_id"],
-        job_id=document["job_id"],
-        match_percentage=document["match_percentage"],
-        reasoning=document["reasoning"],
-        factors=_convert_factors(document.get("factors")),
-        ai_generated=document.get("ai_generated", True),
-        viewed=document.get("viewed", False),
-        dismissed=document.get("dismissed", False),
-        applied=document.get("applied", False),
+        job_seeker_id=job_seeker_id,
+        job_id=job_id,
+        match_percentage=match_percentage,
+        reasoning=reasoning,
+        factors=factors,
+        ai_generated=ai_generated,
+        viewed=viewed,
+        dismissed=dismissed,
+        applied=applied,
         created_at=document["created_at"],
     )
 
 
+def _serialize_recommendations(
+    documents: Iterable[RecommendationDocument],
+) -> list[RecommendationResponse]:
+    """Convert multiple recommendation documents into API response schemas."""
+    return [_serialize_recommendation(doc) for doc in documents]
+
+
 @router.post("", response_model=RecommendationResponse, status_code=status.HTTP_201_CREATED)
-async def create_recommendation(recommendation: RecommendationCreate) -> RecommendationResponse:
+async def create_recommendation(
+    recommendation: RecommendationCreate, _admin: dict = Depends(require_admin)
+) -> RecommendationResponse:
     """
     Create a new job recommendation.
+
+    **Requires:** Admin account (service-only operation)
 
     - **job_seeker_id**: ID of the job seeker
     - **job_id**: ID of the job being recommended
@@ -92,17 +109,21 @@ async def create_recommendation(recommendation: RecommendationCreate) -> Recomme
 @router.get("/job-seeker/{job_seeker_id}", response_model=list[dict])
 async def get_recommendations_for_job_seeker(
     job_seeker_id: str,
+    current_user: dict = Depends(get_current_user),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     min_match: int = Query(0, ge=0, le=100, description="Minimum match percentage"),
     include_viewed: bool = Query(True, description="Include viewed recommendations"),
     include_dismissed: bool = Query(False, description="Include dismissed recommendations"),
     include_applied: bool = Query(False, description="Include applied recommendations"),
-) -> list[dict[str, object]]:
+) -> list[dict]:
     """
     Get personalized job recommendations for a job seeker.
 
-    - **job_seeker_id**: Job seeker ID
+    **Requires:** Authentication
+    **Authorization:** Can only view your own recommendations (admins can view all)
+
+    - **job_seeker_id**: Job seeker profile ID
     - **min_match**: Minimum match percentage filter
     - **include_viewed**: Show recommendations user has already viewed
     - **include_dismissed**: Show recommendations user dismissed
@@ -110,6 +131,16 @@ async def get_recommendations_for_job_seeker(
 
     Returns recommendations sorted by match percentage (highest first) with full job details.
     """
+    # Verify user can access these recommendations
+    if not is_admin(current_user):
+        # Get user's job seeker profile
+        profile = await profile_crud.get_profile_by_user_id(current_user["id"])
+        if not profile or str(profile["_id"]) != job_seeker_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view your own recommendations",
+            )
+
     recommendations = await recommendation_crud.get_recommendations_for_job_seeker(
         job_seeker_id=job_seeker_id,
         skip=skip,
@@ -123,7 +154,7 @@ async def get_recommendations_for_job_seeker(
     # Format response with job details
     response = []
     for rec in recommendations:
-        job_details = rec.get("job_details", {})
+        job_details = rec.pop("job_details", {})
         response.append(
             {
                 "id": str(rec["_id"]),
@@ -131,7 +162,7 @@ async def get_recommendations_for_job_seeker(
                 "job_id": rec["job_id"],
                 "match_percentage": rec["match_percentage"],
                 "reasoning": rec["reasoning"],
-                "factors": rec.get("factors", []),
+                "factors": rec.get("factors", []),  # Safe access for older documents
                 "ai_generated": rec.get("ai_generated", True),
                 "viewed": rec.get("viewed", False),
                 "dismissed": rec.get("dismissed", False),
@@ -155,7 +186,7 @@ async def get_matching_candidates_for_job(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     min_match: int = Query(70, ge=0, le=100, description="Minimum match percentage"),
-) -> list[dict[str, object]]:
+) -> list[dict]:
     """
     Get recommended candidates for a specific job (for employers).
 
@@ -171,14 +202,14 @@ async def get_matching_candidates_for_job(
     # Format response
     response = []
     for rec in recommendations:
-        seeker_details = rec.get("seeker_details", {})
+        seeker_details = rec.pop("seeker_details", {})
         response.append(
             {
                 "id": str(rec["_id"]),
                 "job_seeker_id": rec["job_seeker_id"],
                 "match_percentage": rec["match_percentage"],
                 "reasoning": rec["reasoning"],
-                "factors": rec.get("factors", []),
+                "factors": rec.get("factors", []),  # Safe access for older documents
                 "seeker_name": seeker_details.get("name"),
                 "seeker_skills": seeker_details.get("skills", []),
                 "seeker_experience_years": seeker_details.get("experience_years"),
@@ -208,9 +239,14 @@ async def count_recommendations(
 
 
 @router.get("/{recommendation_id}", response_model=RecommendationResponse)
-async def get_recommendation(recommendation_id: str) -> RecommendationResponse:
+async def get_recommendation(
+    recommendation_id: str, current_user: dict = Depends(get_current_user)
+) -> RecommendationResponse:
     """
     Get a specific recommendation by ID.
+
+    **Requires:** Authentication
+    **Authorization:** Owner only (admins can view all)
     """
     recommendation = await recommendation_crud.get_recommendation_by_id(recommendation_id)
 
@@ -219,6 +255,15 @@ async def get_recommendation(recommendation_id: str) -> RecommendationResponse:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Recommendation {recommendation_id} not found",
         )
+
+    # Verify ownership
+    if not is_admin(current_user):
+        profile = await profile_crud.get_profile_by_user_id(current_user["id"])
+        if not profile or str(recommendation.get("job_seeker_id")) != str(profile["_id"]):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view your own recommendations",
+            )
 
     return _serialize_recommendation(recommendation)
 

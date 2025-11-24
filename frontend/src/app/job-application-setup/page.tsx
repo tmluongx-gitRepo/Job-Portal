@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type ReactElement } from "react";
-
+import { useState, useEffect, type ReactElement } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Eye,
   Plus,
@@ -11,15 +12,11 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
-
-// TODO: Replace with API call to fetch job data (would come from previous job posting form)
-const jobData = {
-  title: "Marketing Coordinator",
-  company: "TechFlow Solutions",
-  location: "Phoenix, AZ",
-  type: "Full-time",
-};
+import { api, ApiError } from "../../lib/api";
+import type { Job } from "../../lib/api";
 
 interface ApplicationSettings {
   applicationMethod: "Internal" | "External" | "Email";
@@ -31,6 +28,16 @@ interface ApplicationSettings {
 }
 
 export default function JobApplicationSetupPage(): ReactElement {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const jobId = searchParams.get("jobId");
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [job, setJob] = useState<Job | null>(null);
+  const [saving, setSaving] = useState(false);
+
   const [applicationSettings, setApplicationSettings] =
     useState<ApplicationSettings>({
       applicationMethod: "Internal",
@@ -43,6 +50,42 @@ export default function JobApplicationSetupPage(): ReactElement {
 
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
+
+  // Fetch job data
+  useEffect(() => {
+    const fetchJob = async (): Promise<void> => {
+      if (!jobId) {
+        setError(
+          "No job ID provided. Please navigate to this page from a job posting."
+        );
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const jobData = (await api.jobs.getById(jobId)) as Job;
+        setJob(jobData);
+      } catch (err) {
+        console.error("Failed to fetch job:", err);
+        if (err instanceof ApiError) {
+          if (err.status === 404) {
+            setError(`Job not found. The job ID "${jobId}" does not exist.`);
+          } else {
+            setError(`Failed to load job: ${err.message}`);
+          }
+        } else {
+          setError("An unexpected error occurred. Please try again.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void fetchJob();
+  }, [jobId]);
 
   const handleInputChange = (
     field: keyof ApplicationSettings,
@@ -86,6 +129,59 @@ export default function JobApplicationSetupPage(): ReactElement {
   const prevStep = (): void => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleSaveSettings = async (): Promise<void> => {
+    if (!jobId || !job) {
+      setError("Job ID is required to save settings");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      // TODO: When backend supports application settings, update the job with these settings
+      // For now, we'll store them in localStorage as a temporary solution
+      //
+      // ⚠️ LIMITATION: Settings are stored in browser localStorage, which means:
+      // - Settings are only available in the current browser/session
+      // - Settings are not shared across devices or users
+      // - Settings will be lost if browser data is cleared
+      //
+      // In the future, this should be: await api.jobs.update(jobId, { application_settings: ... })
+
+      const settingsToSave = {
+        jobId,
+        ...applicationSettings,
+      };
+
+      try {
+        localStorage.setItem(
+          `job_application_settings_${jobId}`,
+          JSON.stringify(settingsToSave)
+        );
+
+        // Show success feedback before redirect
+        setSuccess(true);
+
+        // Small delay to show success message, then redirect
+        setTimeout(() => {
+          router.push(`/job-posting?jobId=${jobId}&settingsSaved=true`);
+        }, 1000);
+      } catch (_storageError) {
+        throw new Error("Failed to save settings to browser storage");
+      }
+    } catch (err) {
+      console.error("Failed to save application settings:", err);
+      if (err instanceof ApiError) {
+        setError(`Failed to save settings: ${err.message}`);
+      } else {
+        setError("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -545,10 +641,22 @@ export default function JobApplicationSetupPage(): ReactElement {
                 <h4 className="font-semibold text-green-800">
                   Application Preview
                 </h4>
-                <button className="flex items-center px-4 py-2 bg-green-50 text-green-700 border border-green-300 rounded-lg font-medium hover:bg-green-100 transition-all text-sm">
+                <Link
+                  href={jobId ? `/apply/${jobId}` : "#"}
+                  onClick={(e) => {
+                    if (!jobId) {
+                      e.preventDefault();
+                    }
+                  }}
+                  className={`flex items-center px-4 py-2 bg-green-50 text-green-700 border border-green-300 rounded-lg font-medium hover:bg-green-100 transition-all text-sm ${
+                    !jobId
+                      ? "pointer-events-none opacity-50 cursor-not-allowed"
+                      : ""
+                  }`}
+                >
                   <Eye className="w-4 h-4 mr-2" />
                   Preview Application Form
-                </button>
+                </Link>
               </div>
 
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
@@ -589,10 +697,54 @@ export default function JobApplicationSetupPage(): ReactElement {
             Configure Job Applications
           </h1>
           <p className="text-green-700">
-            Set up how candidates will apply for your{" "}
-            <strong>{jobData.title}</strong> position
+            {job
+              ? `Set up how candidates will apply for your "${job.title}" position`
+              : "Set up how candidates will apply for this position"}
           </p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center">
+              <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+              <p className="text-red-800">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center">
+              <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+              <p className="text-green-800">
+                Settings saved successfully! Redirecting...
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Development/Demo Warning */}
+        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-yellow-800">
+              <p className="font-medium mb-1">Development Mode</p>
+              <p>
+                Application settings are stored in your browser&apos;s
+                localStorage. They are not shared across devices or users and
+                will be lost if browser data is cleared. Backend persistence
+                will be implemented before production.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {loading && (
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 p-12 text-center mb-8">
+            <RefreshCw className="w-8 h-8 text-green-600 animate-spin mx-auto mb-4" />
+            <p className="text-green-700">Loading job information...</p>
+          </div>
+        )}
 
         {/* Progress Steps */}
         <div className="mb-8">
@@ -660,40 +812,59 @@ export default function JobApplicationSetupPage(): ReactElement {
         </div>
 
         {/* Step Content */}
-        <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 shadow-sm p-6 mb-8">
-          {renderStep()}
-        </div>
+        {!loading && job && (
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-green-200 shadow-sm p-6 mb-8">
+            {renderStep()}
+          </div>
+        )}
 
         {/* Navigation */}
-        <div className="flex justify-between">
-          <button
-            onClick={prevStep}
-            disabled={currentStep === 1}
-            className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all ${
-              currentStep === 1
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-green-50 text-green-700 border border-green-300 hover:bg-green-100"
-            }`}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Previous
-          </button>
-
-          {currentStep < totalSteps ? (
+        {!loading && job && (
+          <div className="flex justify-between">
             <button
-              onClick={nextStep}
-              className="flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all"
+              onClick={prevStep}
+              disabled={currentStep === 1}
+              className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all ${
+                currentStep === 1
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-green-50 text-green-700 border border-green-300 hover:bg-green-100"
+              }`}
             >
-              Next
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Previous
             </button>
-          ) : (
-            <button className="flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all">
-              <FileText className="w-4 h-4 mr-2" />
-              Publish Job & Application
-            </button>
-          )}
-        </div>
+
+            {currentStep < totalSteps ? (
+              <button
+                onClick={nextStep}
+                className="flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all"
+              >
+                Next
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  void handleSaveSettings();
+                }}
+                disabled={saving}
+                className={`flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {saving ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Save Application Settings
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
