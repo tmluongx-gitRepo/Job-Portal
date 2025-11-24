@@ -32,7 +32,7 @@ httpx==0.28.1
 
 # AI / LangChain
 langchain==0.2.6
-langchain-core==0.2.10
+langchain-core==1.1.0
 langchain-openai==0.1.8
 langsmith==0.1.77
 
